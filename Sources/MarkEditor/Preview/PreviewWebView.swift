@@ -19,8 +19,7 @@ struct PreviewWebView: NSViewRepresentable {
 
     func makeNSView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
-        // Allow relative images (e.g. ![](./figura.png)) to load from the document's folder.
-        configuration.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
+        configuration.setURLSchemeHandler(context.coordinator.schemeHandler, forURLScheme: DocumentSchemeHandler.scheme)
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = context.coordinator
@@ -28,12 +27,16 @@ struct PreviewWebView: NSViewRepresentable {
         webView.allowsMagnification = true
 
         context.coordinator.webView = webView
-        webView.loadHTMLString(PreviewTemplate.html, baseURL: baseURL)
+        context.coordinator.schemeHandler.baseDirectory = baseURL
+        // Custom-scheme base: relative images resolve through the scheme
+        // handler (scoped to the document's folder) instead of file access.
+        webView.loadHTMLString(PreviewTemplate.html, baseURL: DocumentSchemeHandler.baseURL)
         return webView
     }
 
     func updateNSView(_ webView: WKWebView, context: Context) {
         let coordinator = context.coordinator
+        coordinator.schemeHandler.baseDirectory = baseURL
         coordinator.setStyle(fontFamily: FontOption.cssFamily(for: fontName), size: fontSize, lineHeight: lineHeight)
         coordinator.setMarkdown(markdown)
         coordinator.setScrollFraction(scrollFraction)
@@ -41,6 +44,7 @@ struct PreviewWebView: NSViewRepresentable {
 
     final class Coordinator: NSObject, WKNavigationDelegate {
         weak var webView: WKWebView?
+        let schemeHandler = DocumentSchemeHandler()
 
         private var isReady = false
         private var lastMarkdown: String?
@@ -135,17 +139,24 @@ struct PreviewWebView: NSViewRepresentable {
             decidePolicyFor navigationAction: WKNavigationAction,
             decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
         ) {
-            // Only the template load navigates in-app; links open in the browser.
-            if navigationAction.navigationType == .other, !isReady {
+            // Subframes (iframe embeds) load inside the preview.
+            guard navigationAction.targetFrame?.isMainFrame ?? true else {
                 decisionHandler(.allow)
                 return
             }
-            if let url = navigationAction.request.url,
-               let scheme = url.scheme?.lowercased(),
-               ["http", "https", "mailto"].contains(scheme) {
-                NSWorkspace.shared.open(url)
+            // Real link clicks open in the browser.
+            if navigationAction.navigationType == .linkActivated {
+                if let url = navigationAction.request.url,
+                   let scheme = url.scheme?.lowercased(),
+                   ["http", "https", "mailto"].contains(scheme) {
+                    NSWorkspace.shared.open(url)
+                }
+                decisionHandler(.cancel)
+                return
             }
-            decisionHandler(.cancel)
+            // Otherwise only the initial template load may navigate the main
+            // frame (blocks JS/meta redirects from raw HTML in the document).
+            decisionHandler(isReady ? .cancel : .allow)
         }
     }
 }

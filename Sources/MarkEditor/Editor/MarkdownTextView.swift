@@ -54,7 +54,12 @@ struct MarkdownTextView: NSViewRepresentable {
         guard let textView = coordinator.textView else { return }
 
         if textView.string != text {
+            let selection = textView.selectedRange()
             textView.string = text
+            let length = (text as NSString).length
+            textView.setSelectedRange(NSRange(location: min(selection.location, length), length: 0))
+            // The text view's undo entries hold ranges into the replaced text.
+            coordinator.textUndoManager.removeAllActions()
             coordinator.highlight()
         }
         if coordinator.appliedFontName != fontName || coordinator.appliedFontSize != fontSize {
@@ -73,12 +78,24 @@ struct MarkdownTextView: NSViewRepresentable {
         private(set) var appliedFontSize: Double?
         private let highlighter = MarkdownHighlighter()
 
+        /// Private undo stack for typing, so NSTextView's coalesced undo never
+        /// interleaves with the document-level undo SwiftUI registers for each
+        /// binding write (interleaving breaks ⌘Z and can apply stale ranges).
+        let textUndoManager = UndoManager()
+
         init(parent: MarkdownTextView) {
             self.parent = parent
         }
 
+        func undoManager(for view: NSTextView) -> UndoManager? {
+            textUndoManager
+        }
+
         func textDidChange(_ notification: Notification) {
             guard let textView else { return }
+            // During IME composition (dead keys: ´ + a → á) the text contains
+            // uncommitted marked text; committing fires textDidChange again.
+            guard !textView.hasMarkedText() else { return }
             parent.text = textView.string
             highlight()
         }

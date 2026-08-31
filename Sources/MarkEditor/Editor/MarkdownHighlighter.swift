@@ -37,7 +37,7 @@ final class MarkdownHighlighter {
     private static let italicRegex = regex(#"(?<![\w*])\*(?!\*)[^*\n]+\*(?!\*)|(?<![\w_])_(?!_)[^_\n]+_(?!_)"#)
     private static let linkRegex = regex(#"\[([^\]\n]*)\]\(([^)\n]*)\)"#)
     private static let inlineCodeRegex = regex(#"`[^`\n]+`"#)
-    private static let fencedCodeRegex = regex(#"^(```|~~~)[^\n]*\n[\s\S]*?^\1[ \t]*$"#)
+    private static let fenceLineRegex = regex(#"^[ \t]{0,3}(?:`{3,}|~{3,})"#)
 
     func highlight(_ textStorage: NSTextStorage?) {
         guard let textStorage else { return }
@@ -71,12 +71,42 @@ final class MarkdownHighlighter {
         apply(Self.inlineCodeRegex, in: text) { match in
             textStorage.addAttribute(.foregroundColor, value: NSColor.systemPurple, range: match.range)
         }
-        apply(Self.fencedCodeRegex, in: text) { match in
-            textStorage.setAttributes(self.baseAttributes, range: match.range)
-            textStorage.addAttribute(.foregroundColor, value: NSColor.systemPurple, range: match.range)
+        for range in fencedBlockRanges(in: text) {
+            textStorage.setAttributes(baseAttributes, range: range)
+            textStorage.addAttribute(.foregroundColor, value: NSColor.systemPurple, range: range)
         }
 
         textStorage.endEditing()
+    }
+
+    /// Single linear pass pairing ```/~~~ fence lines; an unclosed fence runs
+    /// to the end of the document (avoids the pathological backtracking a
+    /// multiline regex has on documents with orphan fences).
+    private func fencedBlockRanges(in text: NSString) -> [NSRange] {
+        var ranges: [NSRange] = []
+        var openLocation: Int?
+        var location = 0
+        while location < text.length {
+            let lineRange = text.lineRange(for: NSRange(location: location, length: 0))
+            let isFenceLine = Self.fenceLineRegex.firstMatch(
+                in: text as String,
+                options: [.anchored],
+                range: lineRange
+            ) != nil
+            if isFenceLine {
+                if let start = openLocation {
+                    ranges.append(NSRange(location: start, length: NSMaxRange(lineRange) - start))
+                    openLocation = nil
+                } else {
+                    openLocation = lineRange.location
+                }
+            }
+            location = NSMaxRange(lineRange)
+        }
+        if let start = openLocation {
+            ranges.append(NSRange(location: start, length: text.length - start))
+        }
+        return ranges
     }
 
     private func apply(_ regex: NSRegularExpression, in text: NSString, _ action: (NSTextCheckingResult) -> Void) {

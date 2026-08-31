@@ -19,7 +19,19 @@ struct MarkdownDocument: FileDocument {
         guard let data = configuration.file.regularFileContents else {
             throw CocoaError(.fileReadCorruptFile)
         }
-        text = String(decoding: data, as: UTF8.self)
+        text = try Self.decode(data)
+    }
+
+    /// Strict UTF-8 with Latin-1 fallback — never lossy, so a save can't
+    /// silently corrupt a file that came in another encoding.
+    static func decode(_ data: Data) throws -> String {
+        if let utf8 = String(data: data, encoding: .utf8) {
+            return utf8
+        }
+        if let latin1 = String(data: data, encoding: .isoLatin1) {
+            return latin1
+        }
+        throw CocoaError(.fileReadInapplicableStringEncoding)
     }
 
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
