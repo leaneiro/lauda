@@ -14,9 +14,13 @@ Markdown renderizado à direita, atualizando em tempo real enquanto você digita
 - **Preview caprichado** — headings, listas, tarefas (`- [ ]`), tabelas GFM,
   código, citações, imagens e links (abrem no navegador).
 - **Highlight no editor** — realce leve da sintaxe Markdown enquanto edita.
-- **Personalização** — em Ajustes (⌘,): fonte e tamanho do editor, fonte,
-  tamanho e entrelinha do preview.
-- **Light mode** — o app é desenhado para modo claro, sempre.
+- **Atalhos de escrita** — ⌘B/⌘I/⌘K (menu Formatar), Enter continua listas
+  (inclusive tarefas e numeradas), Tab/Shift-Tab indentam itens.
+- **Toques de conforto** — colar URL sobre uma seleção cria `[texto](url)`;
+  `->`/`<-` viram →/← fora de código; barra de status mostra "Salvo ✓".
+- **Personalização** — em Ajustes (⌘,): aparência (claro/escuro/automático,
+  claro por padrão), fonte e tamanho do editor, fonte, tamanho e entrelinha
+  do preview.
 - Documento nativo do macOS: abrir/salvar `.md`, autosave, undo, renomear pelo
   título da janela, arquivos recentes.
 

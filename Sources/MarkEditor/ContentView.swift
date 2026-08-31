@@ -17,6 +17,45 @@ extension FocusedValues {
     }
 }
 
+/// Bridges menu commands to the focused window's editor coordinator.
+final class EditorActions {
+    weak var coordinator: MarkdownTextView.Coordinator?
+
+    func toggleBold() { coordinator?.toggleInlineMarker("**") }
+    func toggleItalic() { coordinator?.toggleInlineMarker("*") }
+    func insertLink() { coordinator?.insertLink() }
+}
+
+struct EditorActionsKey: FocusedValueKey {
+    typealias Value = EditorActions
+}
+
+extension FocusedValues {
+    var editorActions: EditorActions? {
+        get { self[EditorActionsKey.self] }
+        set { self[EditorActionsKey.self] = newValue }
+    }
+}
+
+struct FormatCommands: Commands {
+    @FocusedValue(\.editorActions) private var editorActions
+
+    var body: some Commands {
+        CommandMenu("Formatar") {
+            Button("Negrito") { editorActions?.toggleBold() }
+                .keyboardShortcut("b")
+                .disabled(editorActions == nil)
+            Button("Itálico") { editorActions?.toggleItalic() }
+                .keyboardShortcut("i")
+                .disabled(editorActions == nil)
+            Divider()
+            Button("Adicionar Link") { editorActions?.insertLink() }
+                .keyboardShortcut("k")
+                .disabled(editorActions == nil)
+        }
+    }
+}
+
 struct ViewModeCommands: Commands {
     @FocusedBinding(\.viewMode) private var viewMode: ViewMode?
 
@@ -51,6 +90,9 @@ struct ContentView: View {
     @SceneStorage("viewMode") private var viewMode: ViewMode = .split
     @SceneStorage("splitFraction") private var splitFraction: Double = 0.5
     @State private var scrollSync = ScrollSync()
+    @State private var editorActions = EditorActions()
+    @State private var lastSavedText: String?
+    @State private var lastSaveDate: Date?
 
     private static let minPaneWidth: CGFloat = 280
 
@@ -59,7 +101,7 @@ struct ContentView: View {
             let totalWidth = geometry.size.width
             HStack(spacing: 0) {
                 if viewMode != .previewOnly {
-                    MarkdownTextView(text: $document.text, scrollSync: $scrollSync)
+                    MarkdownTextView(text: $document.text, scrollSync: $scrollSync, actions: editorActions)
                         .frame(width: viewMode == .split ? editorWidth(in: totalWidth) : totalWidth)
                 }
                 if viewMode == .split {
@@ -99,6 +141,21 @@ struct ContentView: View {
             }
         }
         .focusedSceneValue(\.viewMode, $viewMode)
+        .focusedSceneValue(\.editorActions, editorActions)
+        .onAppear {
+            if fileURL != nil {
+                lastSavedText = document.text
+            }
+        }
+        .onReceive(
+            NotificationCenter.default.publisher(for: .markdownDocumentDidSave)
+                .receive(on: RunLoop.main)
+        ) { notification in
+            guard let savedText = notification.userInfo?["text"] as? String,
+                  savedText == document.text else { return }
+            lastSavedText = savedText
+            lastSaveDate = Date()
+        }
     }
 
     private var statusBar: some View {
@@ -106,6 +163,7 @@ struct ContentView: View {
             Text("\(wordCount) palavras")
             Text("\(document.text.count) caracteres")
             Spacer()
+            saveStatusView
         }
         .font(.caption)
         .foregroundStyle(.secondary)
@@ -121,6 +179,30 @@ struct ContentView: View {
         document.text
             .split(whereSeparator: { $0.isWhitespace || $0.isNewline })
             .count
+    }
+
+    private var saveStatusView: some View {
+        let status = saveStatus
+        return HStack(spacing: 5) {
+            Image(systemName: status.icon)
+                .foregroundStyle(status.color)
+            Text(status.label)
+        }
+        .help("O macOS salva automaticamente; ⌘S salva na hora.")
+    }
+
+    private var saveStatus: (icon: String, label: String, color: Color) {
+        if fileURL == nil && lastSavedText == nil {
+            return ("circle.dotted", "Não salvo ainda", .secondary)
+        }
+        if document.text == lastSavedText {
+            if let date = lastSaveDate {
+                let time = date.formatted(date: .omitted, time: .shortened)
+                return ("checkmark.circle.fill", "Salvo · \(time)", .green)
+            }
+            return ("checkmark.circle.fill", "Salvo", .green)
+        }
+        return ("ellipsis.circle.fill", "Editando…", .orange)
     }
 
     /// Display width of the editor pane: the stored fraction, clamped so both

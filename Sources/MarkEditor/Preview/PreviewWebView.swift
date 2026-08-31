@@ -24,7 +24,7 @@ struct PreviewWebView: NSViewRepresentable {
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = context.coordinator
-        webView.underPageBackgroundColor = .white
+        webView.underPageBackgroundColor = .textBackgroundColor
         webView.allowsMagnification = true
 
         context.coordinator.webView = webView

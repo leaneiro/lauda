@@ -81,8 +81,9 @@ final class MarkdownHighlighter {
 
     /// Single linear pass pairing ```/~~~ fence lines; an unclosed fence runs
     /// to the end of the document (avoids the pathological backtracking a
-    /// multiline regex has on documents with orphan fences).
-    private func fencedBlockRanges(in text: NSString) -> [NSRange] {
+    /// multiline regex has on documents with orphan fences). Also used by the
+    /// editor to suppress typing substitutions inside code.
+    func fencedBlockRanges(in text: NSString) -> [NSRange] {
         var ranges: [NSRange] = []
         var openLocation: Int?
         var location = 0

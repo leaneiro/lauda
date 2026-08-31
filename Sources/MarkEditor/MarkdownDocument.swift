@@ -35,6 +35,20 @@ struct MarkdownDocument: FileDocument {
     }
 
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
-        FileWrapper(regularFileWithContents: Data(text.utf8))
+        let savedText = text
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(
+                name: .markdownDocumentDidSave,
+                object: nil,
+                userInfo: ["text": savedText]
+            )
+        }
+        return FileWrapper(regularFileWithContents: Data(text.utf8))
     }
+}
+
+extension Notification.Name {
+    /// Posted whenever a document's bytes are written (save or autosave), so
+    /// the status bar can show a friendly "Salvo" state.
+    static let markdownDocumentDidSave = Notification.Name("markdownDocumentDidSave")
 }

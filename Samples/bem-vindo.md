@@ -50,4 +50,13 @@ struct Saudacao {
 
 ---
 
-Ajuste as fontes em **MarkEditor → Ajustes…** (⌘,). Bom texto! ✍️
+## Dicas rápidas
+
+- **⌘B** negrito, *⌘I* itálico, ⌘K insere link (selecione um texto e cole
+  uma URL que ele vira link sozinho!)
+- Enter numa lista continua a lista; Tab/Shift-Tab indentam o item
+- Digite `->` e `<-` fora de código e vire → e ←
+- Aparência clara, escura ou automática em **Ajustes…** (⌘,)
+- O canto da barra de status mostra quando está tudo salvo ✓
+
+Bom texto! ✍️

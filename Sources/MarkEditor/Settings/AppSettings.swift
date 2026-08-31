@@ -6,6 +6,7 @@ enum SettingsKeys {
     static let previewFontName = "previewFontName"
     static let previewFontSize = "previewFontSize"
     static let previewLineHeight = "previewLineHeight"
+    static let appearanceMode = "appearanceMode"
 }
 
 enum SettingsDefaults {
@@ -14,6 +15,39 @@ enum SettingsDefaults {
     static let previewFontName = FontOption.systemSans
     static let previewFontSize = 16.0
     static let previewLineHeight = 1.65
+    static let appearanceMode = AppearanceMode.light.rawValue
+}
+
+enum AppearanceMode: String, CaseIterable, Identifiable {
+    case light
+    case dark
+    case auto
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .light: return "Claro"
+        case .dark: return "Escuro"
+        case .auto: return "Automático"
+        }
+    }
+
+    /// Sets the whole app's appearance; the preview follows via
+    /// `prefers-color-scheme` and the editor via semantic NSColors.
+    func apply() {
+        switch self {
+        case .light: NSApp.appearance = NSAppearance(named: .aqua)
+        case .dark: NSApp.appearance = NSAppearance(named: .darkAqua)
+        case .auto: NSApp.appearance = nil
+        }
+    }
+
+    static var stored: AppearanceMode {
+        let raw = UserDefaults.standard.string(forKey: SettingsKeys.appearanceMode)
+            ?? SettingsDefaults.appearanceMode
+        return AppearanceMode(rawValue: raw) ?? .light
+    }
 }
 
 /// Font identifiers stored in settings. Besides real family names, three

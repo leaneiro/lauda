@@ -6,9 +6,22 @@ struct SettingsView: View {
     @AppStorage(SettingsKeys.previewFontName) private var previewFontName = SettingsDefaults.previewFontName
     @AppStorage(SettingsKeys.previewFontSize) private var previewFontSize = SettingsDefaults.previewFontSize
     @AppStorage(SettingsKeys.previewLineHeight) private var previewLineHeight = SettingsDefaults.previewLineHeight
+    @AppStorage(SettingsKeys.appearanceMode) private var appearanceMode = SettingsDefaults.appearanceMode
 
     var body: some View {
         Form {
+            Section("Geral") {
+                Picker("Aparência", selection: $appearanceMode) {
+                    ForEach(AppearanceMode.allCases) { mode in
+                        Text(mode.label).tag(mode.rawValue)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .onChange(of: appearanceMode) {
+                    AppearanceMode.stored.apply()
+                }
+            }
+
             Section("Editor") {
                 fontPicker("Fonte", selection: $editorFontName)
                 sizeSlider("Tamanho", value: $editorFontSize, range: 10...24)
@@ -35,6 +48,8 @@ struct SettingsView: View {
                     previewFontName = SettingsDefaults.previewFontName
                     previewFontSize = SettingsDefaults.previewFontSize
                     previewLineHeight = SettingsDefaults.previewLineHeight
+                    appearanceMode = SettingsDefaults.appearanceMode
+                    AppearanceMode.stored.apply()
                 }
             }
         }

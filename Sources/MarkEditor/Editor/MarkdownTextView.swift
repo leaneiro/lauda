@@ -6,6 +6,7 @@ import AppKit
 struct MarkdownTextView: NSViewRepresentable {
     @Binding var text: String
     @Binding var scrollSync: ScrollSync
+    let actions: EditorActions
 
     @AppStorage(SettingsKeys.editorFontName) private var fontName = SettingsDefaults.editorFontName
     @AppStorage(SettingsKeys.editorFontSize) private var fontSize = SettingsDefaults.editorFontSize
@@ -15,8 +16,9 @@ struct MarkdownTextView: NSViewRepresentable {
     }
 
     func makeNSView(context: Context) -> NSScrollView {
-        let scrollView = NSTextView.scrollableTextView()
+        let scrollView = EditorTextView.scrollableTextView()
         let textView = scrollView.documentView as! NSTextView
+        actions.coordinator = context.coordinator
 
         textView.delegate = context.coordinator
         textView.isRichText = false
@@ -51,6 +53,7 @@ struct MarkdownTextView: NSViewRepresentable {
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         let coordinator = context.coordinator
         coordinator.parent = self
+        actions.coordinator = coordinator
         guard let textView = coordinator.textView else { return }
 
         if textView.string != text {
@@ -101,6 +104,226 @@ struct MarkdownTextView: NSViewRepresentable {
             guard !textView.hasMarkedText() else { return }
             parent.text = textView.string
             highlight()
+        }
+
+        // MARK: - Typing behaviors
+
+        func textView(_ textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+            switch commandSelector {
+            case #selector(NSResponder.insertNewline(_:)):
+                return handleNewline(textView)
+            case #selector(NSResponder.insertTab(_:)):
+                return handleIndent(textView, outdent: false)
+            case #selector(NSResponder.insertBacktab(_:)):
+                return handleIndent(textView, outdent: true)
+            default:
+                return false
+            }
+        }
+
+        func textView(
+            _ textView: NSTextView,
+            shouldChangeTextIn affectedRange: NSRange,
+            replacementString: String?
+        ) -> Bool {
+            guard let replacement = replacementString,
+                  !textView.hasMarkedText(),
+                  let substitution = TypingSubstitutions.substitution(
+                      in: textView.string as NSString,
+                      affectedRange: affectedRange,
+                      replacement: replacement
+                  ),
+                  !isInsideCode(at: affectedRange.location, textView: textView)
+            else { return true }
+
+            textView.insertText(substitution.replacement, replacementRange: substitution.range)
+            return false
+        }
+
+        /// Arrows shouldn't be substituted inside code (```blocks``` or `inline`),
+        /// where `->` is usually meant literally.
+        private func isInsideCode(at location: Int, textView: NSTextView) -> Bool {
+            let text = textView.string as NSString
+            for range in highlighter.fencedBlockRanges(in: text) where NSLocationInRange(location, range) {
+                return true
+            }
+            let lineRange = text.lineRange(for: NSRange(location: min(location, text.length), length: 0))
+            var backticks = 0
+            var index = lineRange.location
+            while index < location, index < text.length {
+                if text.character(at: index) == 0x60 { backticks += 1 }
+                index += 1
+            }
+            return backticks % 2 == 1
+        }
+
+        private func handleNewline(_ textView: NSTextView) -> Bool {
+            let selection = textView.selectedRange()
+            guard selection.length == 0 else { return false }
+            let text = textView.string as NSString
+            let lineRange = text.lineRange(for: NSRange(location: selection.location, length: 0))
+            var line = text.substring(with: lineRange)
+            if line.hasSuffix("\n") { line.removeLast() }
+
+            switch ListContinuation.newlineAction(
+                forLine: line,
+                caretOffset: selection.location - lineRange.location
+            ) {
+            case .none:
+                return false
+            case .endList(let prefixLength):
+                replaceText(
+                    in: NSRange(location: lineRange.location, length: prefixLength),
+                    with: "",
+                    selecting: NSRange(location: lineRange.location, length: 0)
+                )
+                return true
+            case .continueList(let insertion):
+                replaceText(
+                    in: selection,
+                    with: insertion,
+                    selecting: NSRange(
+                        location: selection.location + (insertion as NSString).length,
+                        length: 0
+                    )
+                )
+                return true
+            }
+        }
+
+        private func handleIndent(_ textView: NSTextView, outdent: Bool) -> Bool {
+            let selection = textView.selectedRange()
+            let text = textView.string as NSString
+            let lineRange = text.lineRange(for: NSRange(location: selection.location, length: 0))
+            var line = text.substring(with: lineRange)
+            if line.hasSuffix("\n") { line.removeLast() }
+
+            guard let info = ListContinuation.lineInfo(forLine: line),
+                  selection.location - lineRange.location <= info.prefixLength
+            else { return false }
+
+            if outdent {
+                var removable = 0
+                while removable < info.indentUnit,
+                      lineRange.location + removable < text.length {
+                    let character = text.character(at: lineRange.location + removable)
+                    if character == 0x20 { removable += 1 }
+                    else if character == 0x09 { removable += 1; break }
+                    else { break }
+                }
+                guard removable > 0 else { return true }
+                replaceText(
+                    in: NSRange(location: lineRange.location, length: removable),
+                    with: "",
+                    selecting: NSRange(
+                        location: max(selection.location - removable, lineRange.location),
+                        length: 0
+                    )
+                )
+            } else {
+                let spaces = String(repeating: " ", count: info.indentUnit)
+                replaceText(
+                    in: NSRange(location: lineRange.location, length: 0),
+                    with: spaces,
+                    selecting: NSRange(location: selection.location + info.indentUnit, length: 0)
+                )
+            }
+            return true
+        }
+
+        // MARK: - Formatting actions (⌘B / ⌘I / ⌘K)
+
+        func toggleInlineMarker(_ marker: String) {
+            guard let textView else { return }
+            let text = textView.string as NSString
+            var range = textView.selectedRange()
+            let markerLength = (marker as NSString).length
+
+            if range.length == 0 {
+                let wordRange = textView.selectionRange(
+                    forProposedRange: range,
+                    granularity: .selectByWord
+                )
+                let word = wordRange.length > 0 ? text.substring(with: wordRange) : ""
+                if word.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    replaceText(
+                        in: range,
+                        with: marker + marker,
+                        selecting: NSRange(location: range.location + markerLength, length: 0)
+                    )
+                    return
+                }
+                range = wordRange
+            }
+
+            let selected = text.substring(with: range)
+            let selectedLength = (selected as NSString).length
+
+            // Unwrap when the markers are inside the selection…
+            if selected.hasPrefix(marker), selected.hasSuffix(marker),
+               selectedLength >= markerLength * 2 + 1 {
+                let inner = (selected as NSString).substring(
+                    with: NSRange(location: markerLength, length: selectedLength - markerLength * 2)
+                )
+                replaceText(
+                    in: range,
+                    with: inner,
+                    selecting: NSRange(location: range.location, length: (inner as NSString).length)
+                )
+                return
+            }
+            // …or just outside it.
+            let before = NSRange(location: range.location - markerLength, length: markerLength)
+            let after = NSRange(location: NSMaxRange(range), length: markerLength)
+            if before.location >= 0, NSMaxRange(after) <= text.length,
+               text.substring(with: before) == marker, text.substring(with: after) == marker {
+                replaceText(
+                    in: NSRange(location: before.location, length: range.length + markerLength * 2),
+                    with: selected,
+                    selecting: NSRange(location: before.location, length: range.length)
+                )
+                return
+            }
+            // Otherwise wrap.
+            replaceText(
+                in: range,
+                with: marker + selected + marker,
+                selecting: NSRange(location: range.location + markerLength, length: range.length)
+            )
+        }
+
+        func insertLink() {
+            guard let textView else { return }
+            let text = textView.string as NSString
+            let range = textView.selectedRange()
+            let selected = range.length > 0 ? text.substring(with: range) : ""
+            let clipboard = NSPasteboard.general.string(forType: .string)?
+                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            let url = EditorTextView.isLikelyURL(clipboard) ? clipboard : ""
+
+            let replacement = "[\(selected)](\(url))"
+            let selectedLength = (selected as NSString).length
+            let newSelection: NSRange
+            if selected.isEmpty {
+                newSelection = NSRange(location: range.location + 1, length: 0)
+            } else if url.isEmpty {
+                newSelection = NSRange(location: range.location + selectedLength + 3, length: 0)
+            } else {
+                newSelection = NSRange(
+                    location: range.location + selectedLength + 3,
+                    length: (url as NSString).length
+                )
+            }
+            replaceText(in: range, with: replacement, selecting: newSelection)
+        }
+
+        private func replaceText(in range: NSRange, with replacement: String, selecting newSelection: NSRange) {
+            guard let textView,
+                  textView.shouldChangeText(in: range, replacementString: replacement)
+            else { return }
+            textView.textStorage?.replaceCharacters(in: range, with: replacement)
+            textView.didChangeText()
+            textView.setSelectedRange(newSelection)
         }
 
         func applyStyle(fontName: String, fontSize: Double) {
