@@ -57,38 +57,43 @@ struct PreviewWebView: NSViewRepresentable {
         private var lastMarkdown: String?
         private var lastStyle: (family: String, size: Double, lineHeight: Double)?
         private var lastScrollFraction: CGFloat = 0
-        private var pendingRender: DispatchWorkItem?
-        private var renderGeneration = 0
+        private var isRendering = false
+        private var needsRender = false
+        private var pendingHTML: String?
 
         // MARK: - Content
 
         func setMarkdown(_ markdown: String) {
             guard markdown != lastMarkdown else { return }
-            let isFirstRender = lastMarkdown == nil
             lastMarkdown = markdown
-
-            pendingRender?.cancel()
-            renderGeneration += 1
-            let generation = renderGeneration
-
-            let work = DispatchWorkItem { [weak self] in
-                let html = HTMLRenderer.render(markdown)
-                DispatchQueue.main.async {
-                    guard let self, self.renderGeneration == generation else { return }
-                    self.pushContent(html)
-                }
-            }
-            pendingRender = work
-            // No debounce on first render (opening a file); short debounce while typing.
-            let delay: TimeInterval = isFirstRender ? 0 : 0.15
-            DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + delay, execute: work)
+            needsRender = true
+            renderNextIfIdle()
         }
 
-        private var pendingHTML: String?
+        /// Renders immediately — no debounce — but never stacks work: while a
+        /// render/apply is in flight, newer text only marks it dirty, and the
+        /// latest text renders as soon as the current one finishes. Under a
+        /// typing burst this self-paces to whatever the machine sustains.
+        private func renderNextIfIdle() {
+            guard needsRender, !isRendering, let markdown = lastMarkdown else { return }
+            needsRender = false
+            isRendering = true
+            DispatchQueue.global(qos: .userInteractive).async { [weak self] in
+                let html = HTMLRenderer.render(markdown)
+                DispatchQueue.main.async {
+                    guard let self else { return }
+                    self.pushContent(html) {
+                        self.isRendering = false
+                        self.renderNextIfIdle()
+                    }
+                }
+            }
+        }
 
-        private func pushContent(_ html: String) {
+        private func pushContent(_ html: String, completion: @escaping () -> Void) {
             guard let webView, isReady else {
                 pendingHTML = html
+                completion()
                 return
             }
             webView.callAsyncJavaScript(
@@ -96,7 +101,7 @@ struct PreviewWebView: NSViewRepresentable {
                 arguments: ["html": html],
                 in: nil,
                 in: .page
-            ) { _ in }
+            ) { _ in completion() }
         }
 
         // MARK: - Style
@@ -156,7 +161,9 @@ struct PreviewWebView: NSViewRepresentable {
             }
             if let html = pendingHTML {
                 pendingHTML = nil
-                pushContent(html)
+                pushContent(html) { [weak self] in
+                    self?.renderNextIfIdle()
+                }
             }
         }
 

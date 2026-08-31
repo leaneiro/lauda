@@ -93,9 +93,29 @@ enum PreviewTemplate {
     // one are echoes (or reflows), not the user scrolling the preview.
     let suppressScrollEventsUntil = 0;
 
+    // Block-level DOM diff: only blocks that actually changed are replaced,
+    // so typing repaints one paragraph instead of relaying the whole page.
+    // Parsing via a detached div's innerHTML keeps <script> tags inert.
     function setContent(html) {
         suppressScrollEventsUntil = Date.now() + 200;
-        document.getElementById("content").innerHTML = html;
+        const container = document.getElementById("content");
+        const parsed = document.createElement("div");
+        parsed.innerHTML = html;
+
+        const oldBlocks = Array.from(container.children);
+        const newBlocks = Array.from(parsed.children);
+        const common = Math.min(oldBlocks.length, newBlocks.length);
+        for (let i = 0; i < common; i++) {
+            if (!oldBlocks[i].isEqualNode(newBlocks[i])) {
+                container.replaceChild(newBlocks[i], oldBlocks[i]);
+            }
+        }
+        for (let i = oldBlocks.length - 1; i >= common; i--) {
+            container.removeChild(oldBlocks[i]);
+        }
+        for (let i = common; i < newBlocks.length; i++) {
+            container.appendChild(newBlocks[i]);
+        }
     }
     function setStyle(family, size, lineHeight) {
         const style = document.documentElement.style;
