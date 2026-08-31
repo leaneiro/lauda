@@ -41,23 +41,37 @@ struct ContentView: View {
     let fileURL: URL?
 
     @SceneStorage("viewMode") private var viewMode: ViewMode = .split
+    @SceneStorage("splitFraction") private var splitFraction: Double = 0.5
     @State private var editorScrollFraction: CGFloat = 0
 
+    private static let minPaneWidth: CGFloat = 280
+
     var body: some View {
-        HSplitView {
-            if viewMode != .previewOnly {
-                MarkdownTextView(text: $document.text, scrollFraction: $editorScrollFraction)
-                    .frame(minWidth: 320, maxWidth: .infinity, maxHeight: .infinity)
-            }
-            if viewMode != .editorOnly {
-                PreviewWebView(
-                    markdown: document.text,
-                    baseURL: fileURL?.deletingLastPathComponent(),
-                    scrollFraction: editorScrollFraction
-                )
-                .frame(minWidth: 320, maxWidth: .infinity, maxHeight: .infinity)
+        GeometryReader { geometry in
+            let totalWidth = geometry.size.width
+            HStack(spacing: 0) {
+                if viewMode != .previewOnly {
+                    MarkdownTextView(text: $document.text, scrollFraction: $editorScrollFraction)
+                        .frame(width: viewMode == .split ? editorWidth(in: totalWidth) : totalWidth)
+                }
+                if viewMode == .split {
+                    SplitDivider(
+                        fraction: $splitFraction,
+                        totalWidth: totalWidth,
+                        minPaneWidth: Self.minPaneWidth
+                    )
+                }
+                if viewMode != .editorOnly {
+                    PreviewWebView(
+                        markdown: document.text,
+                        baseURL: fileURL?.deletingLastPathComponent(),
+                        scrollFraction: editorScrollFraction
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
             }
         }
+        .coordinateSpace(name: "split")
         .frame(minWidth: 700, minHeight: 440)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             statusBar
@@ -99,5 +113,59 @@ struct ContentView: View {
         document.text
             .split(whereSeparator: { $0.isWhitespace || $0.isNewline })
             .count
+    }
+
+    /// Display width of the editor pane: the stored fraction, clamped so both
+    /// panes keep a usable width when the window shrinks (the stored value is
+    /// untouched, so enlarging the window restores the user's position).
+    private func editorWidth(in totalWidth: CGFloat) -> CGFloat {
+        (totalWidth - SplitDivider.thickness)
+            * SplitDivider.clamp(splitFraction, totalWidth: totalWidth, minPaneWidth: Self.minPaneWidth)
+    }
+}
+
+/// Draggable pane divider. The stored fraction survives view-mode switches
+/// (⌘1/⌘2/⌘3), so split view always comes back where the user left it.
+struct SplitDivider: View {
+    @Binding var fraction: Double
+    let totalWidth: CGFloat
+    let minPaneWidth: CGFloat
+
+    static let thickness: CGFloat = 1
+    private static let hitAreaWidth: CGFloat = 11
+
+    static func clamp(_ fraction: Double, totalWidth: CGFloat, minPaneWidth: CGFloat) -> Double {
+        guard totalWidth > minPaneWidth * 2 else { return 0.5 }
+        let minFraction = minPaneWidth / totalWidth
+        return min(max(fraction, minFraction), 1 - minFraction)
+    }
+
+    var body: some View {
+        Rectangle()
+            .fill(Color(nsColor: .separatorColor))
+            .frame(width: Self.thickness)
+            .frame(maxHeight: .infinity)
+            .overlay {
+                Color.clear
+                    .frame(width: Self.hitAreaWidth)
+                    .contentShape(Rectangle())
+                    .onHover { hovering in
+                        if hovering {
+                            NSCursor.resizeLeftRight.push()
+                        } else {
+                            NSCursor.pop()
+                        }
+                    }
+                    .gesture(
+                        DragGesture(minimumDistance: 0, coordinateSpace: .named("split"))
+                            .onChanged { value in
+                                fraction = Self.clamp(
+                                    value.location.x / totalWidth,
+                                    totalWidth: totalWidth,
+                                    minPaneWidth: minPaneWidth
+                                )
+                            }
+                    )
+            }
     }
 }
