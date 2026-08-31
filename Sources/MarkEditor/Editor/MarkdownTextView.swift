@@ -1,0 +1,116 @@
+import SwiftUI
+import AppKit
+
+/// Plain-text markdown editor: NSTextView in a scroll view, with lightweight
+/// syntax highlighting and scroll-position reporting for preview sync.
+struct MarkdownTextView: NSViewRepresentable {
+    @Binding var text: String
+    @Binding var scrollFraction: CGFloat
+
+    @AppStorage(SettingsKeys.editorFontName) private var fontName = SettingsDefaults.editorFontName
+    @AppStorage(SettingsKeys.editorFontSize) private var fontSize = SettingsDefaults.editorFontSize
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(parent: self)
+    }
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let scrollView = NSTextView.scrollableTextView()
+        let textView = scrollView.documentView as! NSTextView
+
+        textView.delegate = context.coordinator
+        textView.isRichText = false
+        textView.allowsUndo = true
+        textView.usesFindBar = true
+        textView.isIncrementalSearchingEnabled = true
+        textView.isAutomaticQuoteSubstitutionEnabled = false
+        textView.isAutomaticDashSubstitutionEnabled = false
+        textView.isAutomaticTextReplacementEnabled = false
+        textView.isAutomaticSpellingCorrectionEnabled = false
+        textView.isContinuousSpellCheckingEnabled = false
+        textView.smartInsertDeleteEnabled = false
+        textView.textContainerInset = NSSize(width: 24, height: 20)
+        textView.drawsBackground = true
+        textView.backgroundColor = .textBackgroundColor
+
+        textView.string = text
+        context.coordinator.textView = textView
+        context.coordinator.applyStyle(fontName: fontName, fontSize: fontSize)
+
+        scrollView.contentView.postsBoundsChangedNotifications = true
+        NotificationCenter.default.addObserver(
+            context.coordinator,
+            selector: #selector(Coordinator.scrollViewBoundsDidChange(_:)),
+            name: NSView.boundsDidChangeNotification,
+            object: scrollView.contentView
+        )
+
+        return scrollView
+    }
+
+    func updateNSView(_ scrollView: NSScrollView, context: Context) {
+        let coordinator = context.coordinator
+        coordinator.parent = self
+        guard let textView = coordinator.textView else { return }
+
+        if textView.string != text {
+            textView.string = text
+            coordinator.highlight()
+        }
+        if coordinator.appliedFontName != fontName || coordinator.appliedFontSize != fontSize {
+            coordinator.applyStyle(fontName: fontName, fontSize: fontSize)
+        }
+    }
+
+    static func dismantleNSView(_ nsView: NSScrollView, coordinator: Coordinator) {
+        NotificationCenter.default.removeObserver(coordinator)
+    }
+
+    final class Coordinator: NSObject, NSTextViewDelegate {
+        var parent: MarkdownTextView
+        weak var textView: NSTextView?
+        private(set) var appliedFontName: String?
+        private(set) var appliedFontSize: Double?
+        private let highlighter = MarkdownHighlighter()
+
+        init(parent: MarkdownTextView) {
+            self.parent = parent
+        }
+
+        func textDidChange(_ notification: Notification) {
+            guard let textView else { return }
+            parent.text = textView.string
+            highlight()
+        }
+
+        func applyStyle(fontName: String, fontSize: Double) {
+            guard let textView else { return }
+            appliedFontName = fontName
+            appliedFontSize = fontSize
+
+            let font = FontOption.nsFont(for: fontName, size: fontSize)
+            highlighter.baseFont = font
+            textView.typingAttributes = highlighter.baseAttributes
+            highlight()
+        }
+
+        func highlight() {
+            guard let textView else { return }
+            highlighter.highlight(textView.textStorage)
+        }
+
+        @objc func scrollViewBoundsDidChange(_ notification: Notification) {
+            guard let clipView = notification.object as? NSClipView,
+                  let documentView = clipView.documentView else { return }
+
+            let maxOffset = documentView.frame.height - clipView.bounds.height
+            let fraction = maxOffset > 0 ? clipView.bounds.origin.y / maxOffset : 0
+            let clamped = min(max(fraction, 0), 1)
+
+            guard abs(clamped - parent.scrollFraction) > 0.001 else { return }
+            DispatchQueue.main.async { [weak self] in
+                self?.parent.scrollFraction = clamped
+            }
+        }
+    }
+}
