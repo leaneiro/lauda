@@ -89,7 +89,12 @@ enum PreviewTemplate {
     <body>
     <article id="content"></article>
     <script>
+    // Timestamp of the last programmatic change; scroll events shortly after
+    // one are echoes (or reflows), not the user scrolling the preview.
+    let suppressScrollEventsUntil = 0;
+
     function setContent(html) {
+        suppressScrollEventsUntil = Date.now() + 200;
         document.getElementById("content").innerHTML = html;
     }
     function setStyle(family, size, lineHeight) {
@@ -100,10 +105,18 @@ enum PreviewTemplate {
     }
     function setScrollFraction(fraction) {
         const max = document.documentElement.scrollHeight - window.innerHeight;
-        if (max > 0) {
-            window.scrollTo(0, fraction * max);
-        }
+        if (max <= 0) { return; }
+        const target = fraction * max;
+        if (Math.abs(target - window.scrollY) < 2) { return; }
+        suppressScrollEventsUntil = Date.now() + 200;
+        window.scrollTo(0, target);
     }
+    window.addEventListener("scroll", () => {
+        if (Date.now() < suppressScrollEventsUntil) { return; }
+        const max = document.documentElement.scrollHeight - window.innerHeight;
+        const fraction = max > 0 ? Math.min(Math.max(window.scrollY / max, 0), 1) : 0;
+        window.webkit.messageHandlers.previewScrolled.postMessage(fraction);
+    }, { passive: true });
     </script>
     </body>
     </html>

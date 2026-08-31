@@ -7,7 +7,7 @@ import WebKit
 struct PreviewWebView: NSViewRepresentable {
     let markdown: String
     let baseURL: URL?
-    let scrollFraction: CGFloat
+    @Binding var scrollSync: ScrollSync
 
     @AppStorage(SettingsKeys.previewFontName) private var fontName = SettingsDefaults.previewFontName
     @AppStorage(SettingsKeys.previewFontSize) private var fontSize = SettingsDefaults.previewFontSize
@@ -20,6 +20,7 @@ struct PreviewWebView: NSViewRepresentable {
     func makeNSView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
         configuration.setURLSchemeHandler(context.coordinator.schemeHandler, forURLScheme: DocumentSchemeHandler.scheme)
+        configuration.userContentController.add(context.coordinator, name: "previewScrolled")
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = context.coordinator
@@ -36,13 +37,19 @@ struct PreviewWebView: NSViewRepresentable {
 
     func updateNSView(_ webView: WKWebView, context: Context) {
         let coordinator = context.coordinator
+        coordinator.parent = self
         coordinator.schemeHandler.baseDirectory = baseURL
         coordinator.setStyle(fontFamily: FontOption.cssFamily(for: fontName), size: fontSize, lineHeight: lineHeight)
         coordinator.setMarkdown(markdown)
-        coordinator.setScrollFraction(scrollFraction)
+        coordinator.syncScroll(scrollSync)
     }
 
-    final class Coordinator: NSObject, WKNavigationDelegate {
+    static func dismantleNSView(_ webView: WKWebView, coordinator: Coordinator) {
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "previewScrolled")
+    }
+
+    final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
+        var parent: PreviewWebView?
         weak var webView: WKWebView?
         let schemeHandler = DocumentSchemeHandler()
 
@@ -106,18 +113,37 @@ struct PreviewWebView: NSViewRepresentable {
             ) { _ in }
         }
 
-        // MARK: - Scroll sync (editor → preview)
+        // MARK: - Scroll sync (bidirectional)
 
-        func setScrollFraction(_ fraction: CGFloat) {
-            guard abs(fraction - lastScrollFraction) > 0.0005 else { return }
-            lastScrollFraction = fraction
+        func syncScroll(_ sync: ScrollSync) {
+            // Track preview-sourced positions so a later editor push compares
+            // against where the preview actually is, then only follow the editor.
+            if sync.source == .preview {
+                lastScrollFraction = sync.fraction
+                return
+            }
+            guard abs(sync.fraction - lastScrollFraction) > 0.0005 else { return }
+            lastScrollFraction = sync.fraction
             guard let webView, isReady else { return }
             webView.callAsyncJavaScript(
                 "setScrollFraction(fraction)",
-                arguments: ["fraction": Double(fraction)],
+                arguments: ["fraction": Double(sync.fraction)],
                 in: nil,
                 in: .page
             ) { _ in }
+        }
+
+        // MARK: - WKScriptMessageHandler (preview → editor)
+
+        func userContentController(
+            _ userContentController: WKUserContentController,
+            didReceive message: WKScriptMessage
+        ) {
+            guard message.name == "previewScrolled",
+                  let fraction = message.body as? Double else { return }
+            let clamped = CGFloat(min(max(fraction, 0), 1))
+            lastScrollFraction = clamped
+            parent?.scrollSync = ScrollSync(fraction: clamped, source: .preview)
         }
 
         // MARK: - WKNavigationDelegate

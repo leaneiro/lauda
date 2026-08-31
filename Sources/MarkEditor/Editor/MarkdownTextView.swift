@@ -5,7 +5,7 @@ import AppKit
 /// syntax highlighting and scroll-position reporting for preview sync.
 struct MarkdownTextView: NSViewRepresentable {
     @Binding var text: String
-    @Binding var scrollFraction: CGFloat
+    @Binding var scrollSync: ScrollSync
 
     @AppStorage(SettingsKeys.editorFontName) private var fontName = SettingsDefaults.editorFontName
     @AppStorage(SettingsKeys.editorFontSize) private var fontSize = SettingsDefaults.editorFontSize
@@ -65,6 +65,9 @@ struct MarkdownTextView: NSViewRepresentable {
         if coordinator.appliedFontName != fontName || coordinator.appliedFontSize != fontSize {
             coordinator.applyStyle(fontName: fontName, fontSize: fontSize)
         }
+        if scrollSync.source == .preview {
+            coordinator.applyRemoteScroll(fraction: scrollSync.fraction)
+        }
     }
 
     static func dismantleNSView(_ nsView: NSScrollView, coordinator: Coordinator) {
@@ -116,18 +119,42 @@ struct MarkdownTextView: NSViewRepresentable {
             highlighter.highlight(textView.textStorage)
         }
 
+        private var isApplyingRemoteScroll = false
+
         @objc func scrollViewBoundsDidChange(_ notification: Notification) {
-            guard let clipView = notification.object as? NSClipView,
+            guard !isApplyingRemoteScroll,
+                  let clipView = notification.object as? NSClipView,
                   let documentView = clipView.documentView else { return }
 
             let maxOffset = documentView.frame.height - clipView.bounds.height
             let fraction = maxOffset > 0 ? clipView.bounds.origin.y / maxOffset : 0
             let clamped = min(max(fraction, 0), 1)
 
-            guard abs(clamped - parent.scrollFraction) > 0.001 else { return }
+            guard abs(clamped - parent.scrollSync.fraction) > 0.001 else { return }
             DispatchQueue.main.async { [weak self] in
-                self?.parent.scrollFraction = clamped
+                self?.parent.scrollSync = ScrollSync(fraction: clamped, source: .editor)
             }
+        }
+
+        /// Scrolls the editor to follow the preview. Compares against the live
+        /// position (not a cached value) and suppresses the resulting bounds
+        /// notification so the movement doesn't echo back to the preview.
+        func applyRemoteScroll(fraction: CGFloat) {
+            guard let textView,
+                  let scrollView = textView.enclosingScrollView,
+                  let documentView = scrollView.documentView else { return }
+
+            let clipView = scrollView.contentView
+            let maxOffset = documentView.frame.height - clipView.bounds.height
+            guard maxOffset > 0 else { return }
+
+            let currentFraction = clipView.bounds.origin.y / maxOffset
+            guard abs(fraction - currentFraction) > 0.001 else { return }
+
+            isApplyingRemoteScroll = true
+            clipView.scroll(to: NSPoint(x: clipView.bounds.origin.x, y: fraction * maxOffset))
+            scrollView.reflectScrolledClipView(clipView)
+            isApplyingRemoteScroll = false
         }
     }
 }

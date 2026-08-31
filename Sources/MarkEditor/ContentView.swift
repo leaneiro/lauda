@@ -36,13 +36,21 @@ struct ViewModeCommands: Commands {
     }
 }
 
+/// Shared scroll position between the panes. `source` marks which pane the
+/// user scrolled, so the other pane follows and echoes are ignored.
+struct ScrollSync: Equatable {
+    enum Source { case editor, preview }
+    var fraction: CGFloat = 0
+    var source: Source = .editor
+}
+
 struct ContentView: View {
     @Binding var document: MarkdownDocument
     let fileURL: URL?
 
     @SceneStorage("viewMode") private var viewMode: ViewMode = .split
     @SceneStorage("splitFraction") private var splitFraction: Double = 0.5
-    @State private var editorScrollFraction: CGFloat = 0
+    @State private var scrollSync = ScrollSync()
 
     private static let minPaneWidth: CGFloat = 280
 
@@ -51,7 +59,7 @@ struct ContentView: View {
             let totalWidth = geometry.size.width
             HStack(spacing: 0) {
                 if viewMode != .previewOnly {
-                    MarkdownTextView(text: $document.text, scrollFraction: $editorScrollFraction)
+                    MarkdownTextView(text: $document.text, scrollSync: $scrollSync)
                         .frame(width: viewMode == .split ? editorWidth(in: totalWidth) : totalWidth)
                 }
                 if viewMode == .split {
@@ -65,7 +73,7 @@ struct ContentView: View {
                     PreviewWebView(
                         markdown: document.text,
                         baseURL: fileURL?.deletingLastPathComponent(),
-                        scrollFraction: editorScrollFraction
+                        scrollSync: $scrollSync
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
