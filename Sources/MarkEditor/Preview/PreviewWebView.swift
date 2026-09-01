@@ -101,7 +101,10 @@ struct PreviewWebView: NSViewRepresentable {
                 arguments: ["html": html],
                 in: nil,
                 in: .page
-            ) { _ in completion() }
+            ) { [weak self] _ in
+                self?.flushPendingScroll()
+                completion()
+            }
         }
 
         // MARK: - Style
@@ -120,6 +123,8 @@ struct PreviewWebView: NSViewRepresentable {
 
         // MARK: - Scroll sync (bidirectional)
 
+        private var pendingScrollFraction: CGFloat?
+
         func syncScroll(_ sync: ScrollSync) {
             // Track preview-sourced positions so a later editor push compares
             // against where the preview actually is, then only follow the editor.
@@ -127,12 +132,33 @@ struct PreviewWebView: NSViewRepresentable {
                 lastScrollFraction = sync.fraction
                 return
             }
+            guard let webView, isReady else {
+                // Template (or content) not loaded yet — e.g. this pane was just
+                // (re)created by a view-mode switch. Remember the position and
+                // apply it once the content lands.
+                pendingScrollFraction = sync.fraction
+                return
+            }
             guard abs(sync.fraction - lastScrollFraction) > 0.0005 else { return }
             lastScrollFraction = sync.fraction
-            guard let webView, isReady else { return }
             webView.callAsyncJavaScript(
                 "setScrollFraction(fraction)",
                 arguments: ["fraction": Double(sync.fraction)],
+                in: nil,
+                in: .page
+            ) { _ in }
+        }
+
+        /// Applies a scroll that arrived before the page/content was ready —
+        /// runs after a content push completes, so the page has its height.
+        private func flushPendingScroll() {
+            guard let fraction = pendingScrollFraction else { return }
+            pendingScrollFraction = nil
+            guard let webView, isReady else { return }
+            lastScrollFraction = fraction
+            webView.callAsyncJavaScript(
+                "setScrollFraction(fraction)",
+                arguments: ["fraction": Double(fraction)],
                 in: nil,
                 in: .page
             ) { _ in }
