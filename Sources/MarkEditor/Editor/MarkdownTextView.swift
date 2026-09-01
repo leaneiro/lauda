@@ -16,8 +16,27 @@ struct MarkdownTextView: NSViewRepresentable {
     }
 
     func makeNSView(context: Context) -> NSScrollView {
-        let scrollView = EditorTextView.scrollableTextView()
-        let textView = scrollView.documentView as! NSTextView
+        // TextKit 1 stack, assembled by hand: its layout is exact rather than
+        // viewport-estimated, which keeps the scroll position rock-steady when
+        // attributes change (TextKit 2 estimation caused jumps and blank runs).
+        let textStorage = NSTextStorage()
+        let layoutManager = NSLayoutManager()
+        textStorage.addLayoutManager(layoutManager)
+        let textContainer = NSTextContainer(size: NSSize(width: 0, height: CGFloat.greatestFiniteMagnitude))
+        textContainer.widthTracksTextView = true
+        layoutManager.addTextContainer(textContainer)
+
+        let textView = EditorTextView(frame: .zero, textContainer: textContainer)
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.autoresizingMask = [.width]
+        textView.minSize = .zero
+        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+
+        let scrollView = NSScrollView()
+        scrollView.borderType = .noBorder
+        scrollView.hasVerticalScroller = true
+        scrollView.documentView = textView
         actions.coordinator = context.coordinator
 
         textView.delegate = context.coordinator
@@ -56,7 +75,9 @@ struct MarkdownTextView: NSViewRepresentable {
         actions.coordinator = coordinator
         guard let textView = coordinator.textView else { return }
 
-        if textView.string != text {
+        // Never replace text mid-IME-composition: the marked text makes the
+        // strings differ, and resetting would kill the accent being composed.
+        if textView.string != text, !textView.hasMarkedText() {
             let selection = textView.selectedRange()
             textView.string = text
             let length = (text as NSString).length
@@ -103,8 +124,41 @@ struct MarkdownTextView: NSViewRepresentable {
             // uncommitted marked text; committing fires textDidChange again.
             guard !textView.hasMarkedText() else { return }
             parent.text = textView.string
-            highlight()
+            highlightAfterEdit()
             scheduleCaretComfortScroll(textView)
+        }
+
+        /// Restyles only the edited neighborhood. A full restyle happens only
+        /// when the number of fence lines changes (a ``` was added/removed,
+        /// which recolors everything below it) — rare enough not to matter.
+        private var lastFenceCount = 0
+        private var lastEditedRange: NSRange?
+
+        private func highlightAfterEdit() {
+            guard let textView, let storage = textView.textStorage else { return }
+            let text = textView.string as NSString
+            let fences = highlighter.fencedBlockRanges(in: text)
+            guard fences.count == lastFenceCount else {
+                lastFenceCount = fences.count
+                highlighter.highlight(storage, fenceRanges: fences)
+                return
+            }
+
+            let caret = min(textView.selectedRange().location, text.length)
+            var region = text.lineRange(for: NSRange(location: caret, length: 0))
+            if region.location > 0 {
+                region = NSUnionRange(
+                    region,
+                    text.lineRange(for: NSRange(location: region.location - 1, length: 0))
+                )
+            }
+            if let edited = lastEditedRange {
+                lastEditedRange = nil
+                let location = min(edited.location, text.length)
+                let length = min(edited.length, text.length - location)
+                region = NSUnionRange(region, NSRange(location: location, length: length))
+            }
+            highlighter.highlight(storage, in: region, fenceRanges: fences)
         }
 
         /// NSTextView autoscrolls only enough to put the caret at the very
@@ -173,6 +227,14 @@ struct MarkdownTextView: NSViewRepresentable {
             shouldChangeTextIn affectedRange: NSRange,
             replacementString: String?
         ) -> Bool {
+            // Remember where the edit lands so the incremental highlight can
+            // cover multi-line changes (paste, undo) beyond the caret's line.
+            if let replacement = replacementString {
+                lastEditedRange = NSRange(
+                    location: affectedRange.location,
+                    length: (replacement as NSString).length
+                )
+            }
             guard let replacement = replacementString,
                   !textView.hasMarkedText(),
                   let substitution = TypingSubstitutions.substitution(
@@ -387,7 +449,9 @@ struct MarkdownTextView: NSViewRepresentable {
 
         func highlight() {
             guard let textView else { return }
-            highlighter.highlight(textView.textStorage)
+            let fences = highlighter.fencedBlockRanges(in: textView.string as NSString)
+            lastFenceCount = fences.count
+            highlighter.highlight(textView.textStorage, fenceRanges: fences)
         }
 
         private var isApplyingRemoteScroll = false
