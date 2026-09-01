@@ -234,6 +234,13 @@ struct MarkdownTextView: NSViewRepresentable {
                     location: affectedRange.location,
                     length: (replacement as NSString).length
                 )
+                // Word-level undo: typing normally coalesces into one giant
+                // undo group; breaking at each whitespace makes ⌘Z step back
+                // word by word instead of wiping the whole typing session.
+                if replacement.count == 1, let character = replacement.first,
+                   character.isWhitespace || character.isNewline {
+                    textView.breakUndoCoalescing()
+                }
             }
             guard let replacement = replacementString,
                   !textView.hasMarkedText(),
@@ -427,11 +434,14 @@ struct MarkdownTextView: NSViewRepresentable {
         }
 
         private func replaceText(in range: NSRange, with replacement: String, selecting newSelection: NSRange) {
-            guard let textView,
-                  textView.shouldChangeText(in: range, replacementString: replacement)
-            else { return }
+            guard let textView else { return }
+            // Programmatic edits (formatting, list continuation) get their own
+            // undo step, separate from surrounding typing.
+            textView.breakUndoCoalescing()
+            guard textView.shouldChangeText(in: range, replacementString: replacement) else { return }
             textView.textStorage?.replaceCharacters(in: range, with: replacement)
             textView.didChangeText()
+            textView.breakUndoCoalescing()
             textView.setSelectedRange(newSelection)
         }
 
