@@ -7,6 +7,7 @@ enum SettingsKeys {
     static let previewFontSize = "previewFontSize"
     static let previewLineHeight = "previewLineHeight"
     static let appearanceMode = "appearanceMode"
+    static let previewWideMode = "previewWideMode"
 }
 
 enum SettingsDefaults {

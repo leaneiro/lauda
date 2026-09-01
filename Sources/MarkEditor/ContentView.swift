@@ -89,6 +89,7 @@ struct ContentView: View {
 
     @SceneStorage("viewMode") private var viewMode: ViewMode = .split
     @SceneStorage("splitFraction") private var splitFraction: Double = 0.5
+    @AppStorage(SettingsKeys.previewWideMode) private var previewWideMode = false
     @State private var scrollSync = ScrollSync()
     @State private var editorActions = EditorActions()
     @State private var lastSavedText: String?
@@ -115,7 +116,8 @@ struct ContentView: View {
                     PreviewWebView(
                         markdown: document.text,
                         baseURL: fileURL?.deletingLastPathComponent(),
-                        scrollSync: $scrollSync
+                        scrollSync: $scrollSync,
+                        wide: viewMode == .previewOnly && previewWideMode
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
@@ -138,6 +140,15 @@ struct ContentView: View {
                 }
                 .pickerStyle(.segmented)
                 .labelStyle(.iconOnly)
+            }
+            ToolbarItem(placement: .automatic) {
+                if viewMode == .previewOnly {
+                    Toggle(isOn: $previewWideMode) {
+                        Label("Largura ampla", systemImage: "arrow.left.and.right.square")
+                    }
+                    .toggleStyle(.button)
+                    .help("Alterna entre largura confortável e ampla")
+                }
             }
         }
         .focusedSceneValue(\.viewMode, $viewMode)

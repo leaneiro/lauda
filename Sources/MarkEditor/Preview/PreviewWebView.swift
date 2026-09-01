@@ -8,6 +8,7 @@ struct PreviewWebView: NSViewRepresentable {
     let markdown: String
     let baseURL: URL?
     @Binding var scrollSync: ScrollSync
+    let wide: Bool
 
     @AppStorage(SettingsKeys.previewFontName) private var fontName = SettingsDefaults.previewFontName
     @AppStorage(SettingsKeys.previewFontSize) private var fontSize = SettingsDefaults.previewFontSize
@@ -40,6 +41,7 @@ struct PreviewWebView: NSViewRepresentable {
         coordinator.parent = self
         coordinator.schemeHandler.baseDirectory = baseURL
         coordinator.setStyle(fontFamily: FontOption.cssFamily(for: fontName), size: fontSize, lineHeight: lineHeight)
+        coordinator.setWide(wide)
         coordinator.setMarkdown(markdown)
         coordinator.syncScroll(scrollSync)
     }
@@ -121,6 +123,22 @@ struct PreviewWebView: NSViewRepresentable {
             ) { _ in }
         }
 
+        // MARK: - Wide layout (preview-only mode)
+
+        private var lastWide: Bool?
+
+        func setWide(_ wide: Bool) {
+            guard wide != lastWide else { return }
+            lastWide = wide
+            guard let webView, isReady else { return }
+            webView.callAsyncJavaScript(
+                "document.body.classList.toggle('wide', wide)",
+                arguments: ["wide": wide],
+                in: nil,
+                in: .page
+            ) { _ in }
+        }
+
         // MARK: - Scroll sync (bidirectional)
 
         private var pendingScrollFraction: CGFloat?
@@ -184,6 +202,10 @@ struct PreviewWebView: NSViewRepresentable {
             if let style = lastStyle {
                 lastStyle = nil
                 setStyle(fontFamily: style.family, size: style.size, lineHeight: style.lineHeight)
+            }
+            if let wide = lastWide {
+                lastWide = nil
+                setWide(wide)
             }
             if let html = pendingHTML {
                 pendingHTML = nil
