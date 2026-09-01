@@ -16,6 +16,10 @@ mkdir -p "$APP_PATH/Contents/MacOS" "$APP_PATH/Contents/Resources"
 cp Support/Info.plist "$APP_PATH/Contents/Info.plist"
 cp "$BIN_PATH" "$APP_PATH/Contents/MacOS/MarkEditor"
 
+# Stamp the build with the git hash so "Sobre o MarkEditor" identifies it.
+GIT_HASH="$(git rev-parse --short HEAD 2>/dev/null || echo dev)"
+/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $GIT_HASH" "$APP_PATH/Contents/Info.plist"
+
 if [[ -f Resources/AppIcon.icns ]]; then
     cp Resources/AppIcon.icns "$APP_PATH/Contents/Resources/AppIcon.icns"
 fi
