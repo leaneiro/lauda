@@ -180,17 +180,17 @@ struct PreviewWebView: NSViewRepresentable {
         private var pendingScrollFraction: CGFloat?
 
         func syncScroll(_ sync: ScrollSync) {
+            // Template (or content) not loaded yet — e.g. this pane was just
+            // (re)created by a view-mode switch. Remember the position and
+            // apply it once the content lands, whichever pane scrolled last.
+            guard let webView, isReady else {
+                pendingScrollFraction = sync.fraction
+                return
+            }
             // Track preview-sourced positions so a later editor push compares
             // against where the preview actually is, then only follow the editor.
             if sync.source == .preview {
                 lastScrollFraction = sync.fraction
-                return
-            }
-            guard let webView, isReady else {
-                // Template (or content) not loaded yet — e.g. this pane was just
-                // (re)created by a view-mode switch. Remember the position and
-                // apply it once the content lands.
-                pendingScrollFraction = sync.fraction
                 return
             }
             guard abs(sync.fraction - lastScrollFraction) > 0.0005 else { return }

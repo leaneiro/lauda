@@ -57,6 +57,10 @@ struct MarkdownTextView: NSViewRepresentable {
         textView.string = text
         context.coordinator.textView = textView
         context.coordinator.applyStyle(fontName: fontName, fontSize: fontSize)
+        context.coordinator.needsScrollRestore = true
+        DispatchQueue.main.async { [weak coordinator = context.coordinator] in
+            coordinator?.restoreScrollIfNeeded()
+        }
 
         scrollView.contentView.postsBoundsChangedNotifications = true
         NotificationCenter.default.addObserver(
@@ -73,6 +77,7 @@ struct MarkdownTextView: NSViewRepresentable {
         let coordinator = context.coordinator
         coordinator.parent = self
         actions.coordinator = coordinator
+        coordinator.restoreScrollIfNeeded()
         guard let textView = coordinator.textView else { return }
 
         // Never replace text mid-IME-composition: the marked text makes the
@@ -573,10 +578,77 @@ struct MarkdownTextView: NSViewRepresentable {
 
         private var isApplyingRemoteScroll = false
 
+        /// A freshly created pane starts at the top (view-mode switches
+        /// recreate panes). Until real layout exists and the shared position
+        /// is reapplied, ignore the spurious layout-driven scroll events —
+        /// publishing them would drag the other pane to the top too.
+        var needsScrollRestore = false
+        private var restoreAttempts = 0
+        private var lastClipSize: NSSize?
+
+        func restoreScrollIfNeeded() {
+            guard needsScrollRestore else { return }
+            guard let textView,
+                  let scrollView = textView.enclosingScrollView,
+                  textView.window != nil,
+                  scrollView.contentView.bounds.width > 0,
+                  scrollView.contentView.bounds.height > 0 else {
+                // Not laid out yet — keep retrying briefly so the pane doesn't
+                // sit at the top waiting for an event that may never come.
+                restoreAttempts += 1
+                if restoreAttempts < 80 {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.025) { [weak self] in
+                        self?.restoreScrollIfNeeded()
+                    }
+                } else {
+                    needsScrollRestore = false
+                }
+                return
+            }
+
+            needsScrollRestore = false
+            restoreAttempts = 0
+            anchorToSharedFraction()
+        }
+
+        /// Positions the pane at the shared scroll fraction (used both when a
+        /// recreated pane comes up and when a resize re-flows the text).
+        private func anchorToSharedFraction() {
+            guard let textView,
+                  let scrollView = textView.enclosingScrollView else { return }
+            if let layoutManager = textView.layoutManager, let container = textView.textContainer {
+                layoutManager.ensureLayout(for: container)
+            }
+            let clipView = scrollView.contentView
+            lastClipSize = clipView.bounds.size
+            let maxOffset = textView.frame.height - clipView.bounds.height
+            guard maxOffset > 0 else { return }
+            isApplyingRemoteScroll = true
+            clipView.scroll(to: NSPoint(
+                x: clipView.bounds.origin.x,
+                y: (parent.scrollSync.fraction * maxOffset).rounded()
+            ))
+            scrollView.reflectScrolledClipView(clipView)
+            isApplyingRemoteScroll = false
+        }
+
         @objc func scrollViewBoundsDidChange(_ notification: Notification) {
+            if needsScrollRestore {
+                restoreScrollIfNeeded()
+                return
+            }
             guard !isApplyingRemoteScroll,
                   let clipView = notification.object as? NSClipView,
                   let documentView = clipView.documentView else { return }
+
+            // A pane resize (divider drag, mode switch) re-flows the text and
+            // shifts what fraction the same offset means. Re-anchor to the
+            // shared position instead of publishing the drifted value.
+            if let lastSize = lastClipSize, lastSize != clipView.bounds.size {
+                anchorToSharedFraction()
+                return
+            }
+            lastClipSize = clipView.bounds.size
 
             let maxOffset = documentView.frame.height - clipView.bounds.height
             let fraction = maxOffset > 0 ? clipView.bounds.origin.y / maxOffset : 0

@@ -214,6 +214,11 @@ enum PreviewTemplate {
         }
         return [findState.index + 1, findState.marks.length];
     }
+    // Resizes re-flow content and can fire scroll events with drifted
+    // positions — those are not the user scrolling.
+    window.addEventListener("resize", () => {
+        suppressScrollEventsUntil = Date.now() + 300;
+    });
     window.addEventListener("scroll", () => {
         if (Date.now() < suppressScrollEventsUntil) { return; }
         const max = document.documentElement.scrollHeight - window.innerHeight;
