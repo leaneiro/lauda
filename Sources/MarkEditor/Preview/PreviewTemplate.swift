@@ -117,8 +117,8 @@ enum PreviewTemplate {
     hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem auto; }
     img { max-width: 100%; border-radius: 6px; }
     ::selection { background: var(--selection); }
-    mark.find-hit { background: rgba(255, 214, 10, 0.35); color: inherit; border-radius: 2px; padding: 0; }
-    mark.find-hit.current { background: #ffd60a; color: #1d1d1f; }
+    mark.find-hit { background: rgba(255, 214, 10, 0.30); color: inherit; border-radius: 2px; padding: 0; }
+    mark.find-hit.current { background: #ff9f0a; color: #1d1d1f; }
     </style>
     </head>
     <body>

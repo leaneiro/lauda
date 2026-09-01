@@ -525,16 +525,18 @@ struct MarkdownTextView: NSViewRepresentable {
         private func applyFindHighlights(scrollToCurrent: Bool) {
             guard let textView, let layoutManager = textView.layoutManager else { return }
             removeFindHighlights()
+            // Current match: strong orange, clearly distinct from the pale
+            // yellow of the other matches (yellow-on-yellow was too subtle).
             for (index, range) in findMatches.enumerated() {
                 if index == findCurrentIndex {
                     layoutManager.addTemporaryAttribute(
-                        .backgroundColor, value: NSColor.findHighlightColor, forCharacterRange: range)
+                        .backgroundColor, value: NSColor.systemOrange, forCharacterRange: range)
                     layoutManager.addTemporaryAttribute(
                         .foregroundColor, value: NSColor.black, forCharacterRange: range)
                 } else {
                     layoutManager.addTemporaryAttribute(
                         .backgroundColor,
-                        value: NSColor.findHighlightColor.withAlphaComponent(0.3),
+                        value: NSColor.systemYellow.withAlphaComponent(0.22),
                         forCharacterRange: range)
                 }
             }

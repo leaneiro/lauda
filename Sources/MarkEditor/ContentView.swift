@@ -451,14 +451,17 @@ struct FindBar: View {
             .buttonStyle(.borderless)
             .help("Fechar (Esc)")
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 7)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 9))
-        .overlay(
-            RoundedRectangle(cornerRadius: 9)
-                .strokeBorder(Color(nsColor: .separatorColor), lineWidth: 1)
+        .padding(.horizontal, 11)
+        .padding(.vertical, 8)
+        .background(
+            Color(nsColor: .controlBackgroundColor),
+            in: RoundedRectangle(cornerRadius: 10)
         )
-        .shadow(color: .black.opacity(0.12), radius: 8, y: 2)
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .strokeBorder(Color(nsColor: .separatorColor).opacity(0.6), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.16), radius: 10, y: 3)
         .padding(12)
         .onAppear { isFocused = true }
     }
