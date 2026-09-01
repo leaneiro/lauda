@@ -143,12 +143,12 @@ struct ContentView: View {
             }
             ToolbarItem(placement: .automatic) {
                 if viewMode == .previewOnly {
-                    Picker("Largura do conteúdo", selection: $previewWidthLevel) {
-                        ForEach(PreviewWidth.allCases) { width in
-                            Text(width.label).tag(width.rawValue)
-                        }
+                    Button {
+                        previewWidthLevel = effectivePreviewWidth.next.rawValue
+                    } label: {
+                        Label("Largura do conteúdo", systemImage: effectivePreviewWidth.symbol)
                     }
-                    .help("Largura da coluna de conteúdo")
+                    .help("Largura: \(effectivePreviewWidth.label) — clique para alternar")
                 }
             }
         }
