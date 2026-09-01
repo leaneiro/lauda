@@ -1,4 +1,7 @@
-.PHONY: app run dev icon clean
+.PHONY: app run dev icon dmg clean
+
+dmg:
+	Scripts/make-dmg.sh
 
 app:
 	Scripts/build-app.sh release
