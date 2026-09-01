@@ -104,19 +104,29 @@ struct MarkdownTextView: NSViewRepresentable {
             guard !textView.hasMarkedText() else { return }
             parent.text = textView.string
             highlight()
-            keepCaretInComfortZone(textView)
-        }
-
-        func textViewDidChangeSelection(_ notification: Notification) {
-            guard let textView, !textView.hasMarkedText() else { return }
-            keepCaretInComfortZone(textView)
+            scheduleCaretComfortScroll(textView)
         }
 
         /// NSTextView autoscrolls only enough to put the caret at the very
-        /// bottom edge, which hides where you're typing. When the caret gets
-        /// close to the bottom, scroll so a few lines of breathing room stay
-        /// below it (the extra bottom padding makes this work at document end).
+        /// bottom edge, which hides where you're typing. When typing brings
+        /// the caret past the threshold, scroll one clean step so a few lines
+        /// of breathing room stay below it. Runs on the next runloop tick so
+        /// layout (and the text view's own autoscroll) have settled first —
+        /// measuring earlier gives stale caret positions and causes jitter.
         private var caretMargin: CGFloat = 60
+        private var caretScrollScheduled = false
+
+        private func scheduleCaretComfortScroll(_ textView: NSTextView) {
+            guard !caretScrollScheduled else { return }
+            caretScrollScheduled = true
+            DispatchQueue.main.async { [weak self, weak textView] in
+                guard let self else { return }
+                self.caretScrollScheduled = false
+                if let textView {
+                    self.keepCaretInComfortZone(textView)
+                }
+            }
+        }
 
         private func keepCaretInComfortZone(_ textView: NSTextView) {
             let selection = textView.selectedRange()
@@ -132,10 +142,12 @@ struct MarkdownTextView: NSViewRepresentable {
             guard caretRect.maxY > visible.maxY - caretMargin else { return }
 
             let clipView = scrollView.contentView
-            let target = caretRect.maxY + caretMargin - clipView.bounds.height
+            let target = (caretRect.maxY + caretMargin - clipView.bounds.height).rounded()
             let maxOffset = max(textView.frame.height - clipView.bounds.height, 0)
             let clamped = min(max(target, 0), maxOffset)
-            guard abs(clamped - clipView.bounds.origin.y) > 0.5 else { return }
+            // Only ever reveal space below the caret — scrolling up here could
+            // push the line being edited out of view.
+            guard clamped > clipView.bounds.origin.y + 0.5 else { return }
 
             clipView.scroll(to: NSPoint(x: clipView.bounds.origin.x, y: clamped))
             scrollView.reflectScrolledClipView(clipView)
