@@ -1,8 +1,22 @@
 import AppKit
 
-/// NSTextView subclass adding smart link paste: pasting a URL over selected
-/// text turns the selection into `[texto](url)`.
+/// NSTextView subclass adding smart link paste (pasting a URL over selected
+/// text turns the selection into `[texto](url)`) and asymmetric padding so
+/// the document ends with breathing room below the last line.
 final class EditorTextView: NSTextView {
+    static let topPadding: CGFloat = 20
+    static let bottomPadding: CGFloat = 64
+    /// textContainerInset splits its height equally between top and bottom;
+    /// overriding textContainerOrigin pins the top back to topPadding, which
+    /// leaves the remainder as extra space after the last line.
+    static var insetHeight: CGFloat { (topPadding + bottomPadding) / 2 }
+
+    override var textContainerOrigin: NSPoint {
+        var origin = super.textContainerOrigin
+        origin.y = Self.topPadding
+        return origin
+    }
+
     override func paste(_ sender: Any?) {
         let selection = selectedRange()
         if selection.length > 0,

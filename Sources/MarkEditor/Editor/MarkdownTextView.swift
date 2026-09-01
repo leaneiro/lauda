@@ -31,7 +31,7 @@ struct MarkdownTextView: NSViewRepresentable {
         textView.isAutomaticSpellingCorrectionEnabled = false
         textView.isContinuousSpellCheckingEnabled = false
         textView.smartInsertDeleteEnabled = false
-        textView.textContainerInset = NSSize(width: 24, height: 20)
+        textView.textContainerInset = NSSize(width: 24, height: EditorTextView.insetHeight)
         textView.drawsBackground = true
         textView.backgroundColor = .textBackgroundColor
 
@@ -104,6 +104,41 @@ struct MarkdownTextView: NSViewRepresentable {
             guard !textView.hasMarkedText() else { return }
             parent.text = textView.string
             highlight()
+            keepCaretInComfortZone(textView)
+        }
+
+        func textViewDidChangeSelection(_ notification: Notification) {
+            guard let textView, !textView.hasMarkedText() else { return }
+            keepCaretInComfortZone(textView)
+        }
+
+        /// NSTextView autoscrolls only enough to put the caret at the very
+        /// bottom edge, which hides where you're typing. When the caret gets
+        /// close to the bottom, scroll so a few lines of breathing room stay
+        /// below it (the extra bottom padding makes this work at document end).
+        private var caretMargin: CGFloat = 60
+
+        private func keepCaretInComfortZone(_ textView: NSTextView) {
+            let selection = textView.selectedRange()
+            guard selection.length == 0,
+                  let window = textView.window,
+                  let scrollView = textView.enclosingScrollView else { return }
+
+            let screenRect = textView.firstRect(forCharacterRange: selection, actualRange: nil)
+            guard screenRect != .zero else { return }
+            let caretRect = textView.convert(window.convertFromScreen(screenRect), from: nil)
+
+            let visible = textView.visibleRect
+            guard caretRect.maxY > visible.maxY - caretMargin else { return }
+
+            let clipView = scrollView.contentView
+            let target = caretRect.maxY + caretMargin - clipView.bounds.height
+            let maxOffset = max(textView.frame.height - clipView.bounds.height, 0)
+            let clamped = min(max(target, 0), maxOffset)
+            guard abs(clamped - clipView.bounds.origin.y) > 0.5 else { return }
+
+            clipView.scroll(to: NSPoint(x: clipView.bounds.origin.x, y: clamped))
+            scrollView.reflectScrolledClipView(clipView)
         }
 
         // MARK: - Typing behaviors
@@ -334,6 +369,7 @@ struct MarkdownTextView: NSViewRepresentable {
             let font = FontOption.nsFont(for: fontName, size: fontSize)
             highlighter.baseFont = font
             textView.typingAttributes = highlighter.baseAttributes
+            caretMargin = NSLayoutManager().defaultLineHeight(for: font) * 1.25 * 3
             highlight()
         }
 
