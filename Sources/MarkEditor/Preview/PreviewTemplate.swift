@@ -117,6 +117,8 @@ enum PreviewTemplate {
     hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem auto; }
     img { max-width: 100%; border-radius: 6px; }
     ::selection { background: var(--selection); }
+    mark.find-hit { background: rgba(255, 214, 10, 0.35); color: inherit; border-radius: 2px; padding: 0; }
+    mark.find-hit.current { background: #ffd60a; color: #1d1d1f; }
     </style>
     </head>
     <body>
@@ -163,6 +165,54 @@ enum PreviewTemplate {
         if (Math.abs(target - window.scrollY) < 2) { return; }
         suppressScrollEventsUntil = Date.now() + 200;
         window.scrollTo(0, target);
+    }
+    // In-page find: wraps matches in <mark> so we can count and step through.
+    let findState = { query: "", marks: [], index: -1 };
+    function findClear() {
+        for (const mark of findState.marks) {
+            const parent = mark.parentNode;
+            if (parent) {
+                parent.replaceChild(document.createTextNode(mark.textContent), mark);
+                parent.normalize();
+            }
+        }
+        findState = { query: "", marks: [], index: -1 };
+    }
+    function findRun(query, forward, restart) {
+        if (restart || query !== findState.query) {
+            findClear();
+            findState.query = query;
+            if (!query) { return [0, 0]; }
+            const lowered = query.toLowerCase();
+            const walker = document.createTreeWalker(
+                document.getElementById("content"), NodeFilter.SHOW_TEXT);
+            const nodes = [];
+            while (walker.nextNode()) { nodes.push(walker.currentNode); }
+            for (const node of nodes) {
+                let current = node;
+                let position;
+                while ((position = current.textContent.toLowerCase().indexOf(lowered)) !== -1) {
+                    const match = current.splitText(position);
+                    const rest = match.splitText(query.length);
+                    const mark = document.createElement("mark");
+                    mark.className = "find-hit";
+                    match.parentNode.replaceChild(mark, match);
+                    mark.appendChild(match);
+                    findState.marks.push(mark);
+                    current = rest;
+                }
+            }
+            findState.index = findState.marks.length ? 0 : -1;
+        } else if (findState.marks.length) {
+            findState.index = (findState.index + (forward ? 1 : -1) + findState.marks.length)
+                % findState.marks.length;
+        }
+        findState.marks.forEach((mark, i) => mark.classList.toggle("current", i === findState.index));
+        if (findState.index >= 0) {
+            suppressScrollEventsUntil = Date.now() + 200;
+            findState.marks[findState.index].scrollIntoView({ block: "center" });
+        }
+        return [findState.index + 1, findState.marks.length];
     }
     window.addEventListener("scroll", () => {
         if (Date.now() < suppressScrollEventsUntil) { return; }

@@ -26,14 +26,28 @@ final class EditorActions {
     func toggleItalic() { coordinator?.toggleInlineMarker("*") }
     func insertLink() { coordinator?.insertLink() }
     func performFind(_ action: NSTextFinder.Action) { coordinator?.performFindAction(action) }
+    func findUpdate(_ query: String) -> (current: Int, total: Int) {
+        coordinator?.findUpdate(query) ?? (0, 0)
+    }
+    func findStep(forward: Bool) -> (current: Int, total: Int) {
+        coordinator?.findStep(forward: forward) ?? (0, 0)
+    }
+    func findClear() { coordinator?.findClear() }
 }
 
-/// Bridges the preview find bar to the focused window's preview coordinator.
+/// Bridges the find bar to the focused window's preview coordinator.
 final class PreviewActions {
     weak var coordinator: PreviewWebView.Coordinator?
 
-    func find(_ query: String, forward: Bool) { coordinator?.find(query, forward: forward) }
-    func clearFindSelection() { coordinator?.clearFindSelection() }
+    func find(_ query: String, forward: Bool, restart: Bool, completion: @escaping (Int, Int) -> Void) {
+        if let coordinator {
+            coordinator.find(query, forward: forward, restart: restart, completion: completion)
+        } else {
+            completion(0, 0)
+        }
+    }
+
+    func clearFind() { coordinator?.clearFind() }
 }
 
 /// Find commands routed per view mode: editor find bar when the editor is
@@ -147,8 +161,10 @@ struct ContentView: View {
     @State private var previewActions = PreviewActions()
     @State private var lastSavedText: String?
     @State private var lastSaveDate: Date?
-    @State private var previewFindPresented = false
-    @State private var previewFindQuery = ""
+    @State private var findPresented = false
+    @State private var findQuery = ""
+    @State private var findCurrent = 0
+    @State private var findTotal = 0
 
     private static let minPaneWidth: CGFloat = 280
 
@@ -168,29 +184,39 @@ struct ContentView: View {
                     )
                 }
                 if viewMode != .editorOnly {
-                    ZStack(alignment: .topTrailing) {
-                        PreviewWebView(
-                            markdown: document.text,
-                            baseURL: fileURL?.deletingLastPathComponent(),
-                            scrollSync: $scrollSync,
-                            contentWidthRem: effectivePreviewWidth.rem,
-                            actions: previewActions
-                        )
-                        if previewFindPresented && viewMode == .previewOnly {
-                            PreviewFindBar(
-                                query: $previewFindQuery,
-                                onNext: { previewFind(forward: true) },
-                                onPrevious: { previewFind(forward: false) },
-                                onClose: closePreviewFind
-                            )
-                        }
-                    }
+                    PreviewWebView(
+                        markdown: document.text,
+                        baseURL: fileURL?.deletingLastPathComponent(),
+                        scrollSync: $scrollSync,
+                        contentWidthRem: effectivePreviewWidth.rem,
+                        actions: previewActions
+                    )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
         }
         .coordinateSpace(name: "split")
+        .overlay(alignment: .topTrailing) {
+            if findPresented {
+                FindBar(
+                    query: $findQuery,
+                    current: findCurrent,
+                    total: findTotal,
+                    onQueryChanged: { runFind() },
+                    onNext: { stepFind(forward: true) },
+                    onPrevious: { stepFind(forward: false) },
+                    onClose: closeFind
+                )
+            }
+        }
         .frame(minWidth: 700, minHeight: 440)
+        .onChange(of: viewMode) {
+            guard findPresented else { return }
+            // The panes are recreated on mode switches — re-target the search.
+            editorActions.findClear()
+            previewActions.clearFind()
+            DispatchQueue.main.async { runFind() }
+        }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             statusBar
         }
@@ -222,8 +248,8 @@ struct ContentView: View {
         .focusedSceneValue(\.editorActions, editorActions)
         .focusedSceneValue(\.findActions, FindActions(
             find: startFind,
-            findNext: { findStep(forward: true) },
-            findPrevious: { findStep(forward: false) },
+            findNext: { stepFind(forward: true) },
+            findPrevious: { stepFind(forward: false) },
             replace: startReplace
         ))
         .onAppear {
@@ -259,44 +285,74 @@ struct ContentView: View {
         }
     }
 
-    // MARK: - Find routing
+    // MARK: - Find routing (unified bar, all modes)
 
     private func startFind() {
-        if viewMode == .previewOnly {
-            previewFindPresented = true
-        } else {
-            editorActions.performFind(.showFindInterface)
+        findPresented = true
+        editorActions.coordinator?.findCountsChanged = { current, total in
+            DispatchQueue.main.async {
+                findCurrent = current
+                findTotal = total
+            }
+        }
+        if !findQuery.isEmpty {
+            runFind()
         }
     }
 
-    private func findStep(forward: Bool) {
+    private func runFind() {
+        guard findPresented else { return }
+        guard !findQuery.isEmpty else {
+            findCurrent = 0
+            findTotal = 0
+            editorActions.findClear()
+            previewActions.clearFind()
+            return
+        }
         if viewMode == .previewOnly {
-            if previewFindPresented {
-                previewFind(forward: forward)
-            } else {
-                previewFindPresented = true
+            previewActions.find(findQuery, forward: true, restart: true) { current, total in
+                findCurrent = current
+                findTotal = total
             }
         } else {
-            editorActions.performFind(forward ? .nextMatch : .previousMatch)
+            let counts = editorActions.findUpdate(findQuery)
+            findCurrent = counts.current
+            findTotal = counts.total
+        }
+    }
+
+    private func stepFind(forward: Bool) {
+        guard findPresented, !findQuery.isEmpty else {
+            startFind()
+            return
+        }
+        if viewMode == .previewOnly {
+            previewActions.find(findQuery, forward: forward, restart: false) { current, total in
+                findCurrent = current
+                findTotal = total
+            }
+        } else {
+            let counts = editorActions.findStep(forward: forward)
+            findCurrent = counts.current
+            findTotal = counts.total
         }
     }
 
     private func startReplace() {
         if viewMode == .previewOnly {
-            previewFindPresented = true
+            startFind()
         } else {
+            closeFind()
             editorActions.performFind(.showReplaceInterface)
         }
     }
 
-    private func previewFind(forward: Bool) {
-        guard !previewFindQuery.isEmpty else { return }
-        previewActions.find(previewFindQuery, forward: forward)
-    }
-
-    private func closePreviewFind() {
-        previewFindPresented = false
-        previewActions.clearFindSelection()
+    private func closeFind() {
+        findPresented = false
+        findCurrent = 0
+        findTotal = 0
+        editorActions.findClear()
+        previewActions.clearFind()
     }
 
     /// Width level applies only in full-preview mode; other modes stay normal.
@@ -344,9 +400,12 @@ struct ContentView: View {
     }
 }
 
-/// Floating find bar over the preview (⌘3 mode), backed by WKWebView.find.
-struct PreviewFindBar: View {
+/// Unified floating find bar — same look and position in every view mode.
+struct FindBar: View {
     @Binding var query: String
+    let current: Int
+    let total: Int
+    var onQueryChanged: () -> Void
     var onNext: () -> Void
     var onPrevious: () -> Void
     var onClose: () -> Void
@@ -359,22 +418,31 @@ struct PreviewFindBar: View {
                 .foregroundStyle(.secondary)
             TextField("Localizar", text: $query)
                 .textFieldStyle(.plain)
-                .frame(width: 180)
+                .frame(width: 170)
                 .focused($isFocused)
                 .onSubmit(onNext)
                 .onExitCommand(perform: onClose)
                 .onChange(of: query) {
-                    if !query.isEmpty { onNext() }
+                    onQueryChanged()
                 }
+            if !query.isEmpty {
+                Text(total > 0 ? "\(current)/\(total)" : "0")
+                    .font(.caption)
+                    .monospacedDigit()
+                    .foregroundStyle(total > 0 ? Color.secondary : Color.red)
+                    .frame(minWidth: 34)
+            }
             Button(action: onPrevious) {
                 Image(systemName: "chevron.left")
             }
             .buttonStyle(.borderless)
+            .disabled(total == 0)
             .help("Anterior (⇧⌘G)")
             Button(action: onNext) {
                 Image(systemName: "chevron.right")
             }
             .buttonStyle(.borderless)
+            .disabled(total == 0)
             .help("Seguinte (⌘G)")
             Button(action: onClose) {
                 Image(systemName: "xmark.circle.fill")

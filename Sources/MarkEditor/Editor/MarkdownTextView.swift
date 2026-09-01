@@ -125,6 +125,7 @@ struct MarkdownTextView: NSViewRepresentable {
             guard !textView.hasMarkedText() else { return }
             parent.text = textView.string
             highlightAfterEdit()
+            refreshFindAfterEdit()
             scheduleCaretComfortScroll(textView)
         }
 
@@ -445,13 +446,108 @@ struct MarkdownTextView: NSViewRepresentable {
             textView.setSelectedRange(newSelection)
         }
 
-        /// Drives the native find bar (⌘F/⌘G/⌥⌘F menu commands).
+        /// Drives the native find bar (used for ⌥⌘F replace).
         func performFindAction(_ action: NSTextFinder.Action) {
             guard let textView else { return }
             let sender = NSMenuItem()
             sender.tag = action.rawValue
             textView.window?.makeFirstResponder(textView)
             textView.performTextFinderAction(sender)
+        }
+
+        // MARK: - Find engine (unified find bar)
+
+        private(set) var findQuery = ""
+        private var findMatches: [NSRange] = []
+        private var findCurrentIndex = -1
+        /// Notifies the find bar when counts change due to typing.
+        var findCountsChanged: ((Int, Int) -> Void)?
+
+        /// Recomputes matches and jumps to the first one at/after the caret.
+        func findUpdate(_ query: String) -> (current: Int, total: Int) {
+            findQuery = query
+            recomputeFindMatches()
+            if findMatches.isEmpty {
+                findCurrentIndex = -1
+            } else {
+                let caret = textView?.selectedRange().location ?? 0
+                findCurrentIndex = findMatches.firstIndex { $0.location >= caret } ?? 0
+            }
+            applyFindHighlights(scrollToCurrent: true)
+            return (findCurrentIndex + 1, findMatches.count)
+        }
+
+        func findStep(forward: Bool) -> (current: Int, total: Int) {
+            guard !findMatches.isEmpty else { return (0, 0) }
+            findCurrentIndex = (findCurrentIndex + (forward ? 1 : -1) + findMatches.count)
+                % findMatches.count
+            applyFindHighlights(scrollToCurrent: true)
+            return (findCurrentIndex + 1, findMatches.count)
+        }
+
+        func findClear() {
+            findQuery = ""
+            findMatches = []
+            findCurrentIndex = -1
+            removeFindHighlights()
+        }
+
+        /// Edits shift match ranges; recompute and repaint (without scrolling).
+        fileprivate func refreshFindAfterEdit() {
+            guard !findQuery.isEmpty else { return }
+            recomputeFindMatches()
+            if findMatches.isEmpty {
+                findCurrentIndex = -1
+            } else {
+                findCurrentIndex = min(max(findCurrentIndex, 0), findMatches.count - 1)
+            }
+            applyFindHighlights(scrollToCurrent: false)
+            findCountsChanged?(findCurrentIndex + 1, findMatches.count)
+        }
+
+        private func recomputeFindMatches() {
+            findMatches = []
+            guard let textView, !findQuery.isEmpty else { return }
+            let text = textView.string as NSString
+            var location = 0
+            while location < text.length {
+                let range = text.range(
+                    of: findQuery,
+                    options: [.caseInsensitive],
+                    range: NSRange(location: location, length: text.length - location)
+                )
+                guard range.location != NSNotFound else { break }
+                findMatches.append(range)
+                location = range.location + max(range.length, 1)
+            }
+        }
+
+        private func applyFindHighlights(scrollToCurrent: Bool) {
+            guard let textView, let layoutManager = textView.layoutManager else { return }
+            removeFindHighlights()
+            for (index, range) in findMatches.enumerated() {
+                if index == findCurrentIndex {
+                    layoutManager.addTemporaryAttribute(
+                        .backgroundColor, value: NSColor.findHighlightColor, forCharacterRange: range)
+                    layoutManager.addTemporaryAttribute(
+                        .foregroundColor, value: NSColor.black, forCharacterRange: range)
+                } else {
+                    layoutManager.addTemporaryAttribute(
+                        .backgroundColor,
+                        value: NSColor.findHighlightColor.withAlphaComponent(0.3),
+                        forCharacterRange: range)
+                }
+            }
+            if scrollToCurrent, findCurrentIndex >= 0 {
+                textView.scrollRangeToVisible(findMatches[findCurrentIndex])
+            }
+        }
+
+        private func removeFindHighlights() {
+            guard let textView, let layoutManager = textView.layoutManager else { return }
+            let fullRange = NSRange(location: 0, length: (textView.string as NSString).length)
+            layoutManager.removeTemporaryAttribute(.backgroundColor, forCharacterRange: fullRange)
+            layoutManager.removeTemporaryAttribute(.foregroundColor, forCharacterRange: fullRange)
         }
 
         func applyStyle(fontName: String, fontSize: Double) {

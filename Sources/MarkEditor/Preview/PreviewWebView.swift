@@ -143,17 +143,36 @@ struct PreviewWebView: NSViewRepresentable {
 
         // MARK: - Find in preview (⌘3 mode)
 
-        func find(_ query: String, forward: Bool) {
-            guard let webView, isReady, !query.isEmpty else { return }
-            let configuration = WKFindConfiguration()
-            configuration.backwards = !forward
-            configuration.caseSensitive = false
-            configuration.wraps = true
-            webView.find(query, configuration: configuration) { _ in }
+        func find(
+            _ query: String,
+            forward: Bool,
+            restart: Bool,
+            completion: @escaping (Int, Int) -> Void
+        ) {
+            guard let webView, isReady else {
+                completion(0, 0)
+                return
+            }
+            webView.callAsyncJavaScript(
+                "return findRun(query, forward, restart)",
+                arguments: ["query": query, "forward": forward, "restart": restart],
+                in: nil,
+                in: .page
+            ) { result in
+                if case .success(let value) = result,
+                   let counts = value as? [Any], counts.count == 2,
+                   let current = (counts[0] as? NSNumber)?.intValue,
+                   let total = (counts[1] as? NSNumber)?.intValue {
+                    completion(current, total)
+                } else {
+                    completion(0, 0)
+                }
+            }
         }
 
-        func clearFindSelection() {
-            webView?.evaluateJavaScript("window.getSelection().removeAllRanges()") { _, _ in }
+        func clearFind() {
+            guard let webView, isReady else { return }
+            webView.callAsyncJavaScript("findClear()", arguments: [:], in: nil, in: .page) { _ in }
         }
 
         // MARK: - Scroll sync (bidirectional)
