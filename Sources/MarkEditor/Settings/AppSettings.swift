@@ -34,14 +34,6 @@ enum PreviewWidth: Int, CaseIterable, Identifiable {
         }
     }
 
-    var symbol: String {
-        switch self {
-        case .normal: return "arrow.right.and.line.vertical.and.arrow.left"
-        case .medium: return "arrow.left.and.right"
-        case .wide: return "arrow.left.and.line.vertical.and.arrow.right"
-        }
-    }
-
     var next: PreviewWidth {
         PreviewWidth(rawValue: (rawValue + 1) % Self.allCases.count) ?? .normal
     }

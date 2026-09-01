@@ -238,9 +238,10 @@ struct ContentView: View {
                     Button {
                         previewWidthLevel = effectivePreviewWidth.next.rawValue
                     } label: {
-                        Label("Largura do conteúdo", systemImage: effectivePreviewWidth.symbol)
+                        WidthLevelIcon(level: effectivePreviewWidth)
                     }
-                    .help("Largura: \(effectivePreviewWidth.label) — clique para alternar")
+                    .help("Largura do texto: \(effectivePreviewWidth.label) — próxima: \(effectivePreviewWidth.next.label)")
+                    .accessibilityLabel("Largura do texto: \(effectivePreviewWidth.label)")
                 }
             }
         }
@@ -397,6 +398,35 @@ struct ContentView: View {
     private func editorWidth(in totalWidth: CGFloat) -> CGFloat {
         (totalWidth - SplitDivider.thickness)
             * SplitDivider.clamp(splitFraction, totalWidth: totalWidth, minPaneWidth: Self.minPaneWidth)
+    }
+}
+
+/// Toolbar glyph for the preview width level: a page outline whose inner
+/// "text column" grows with the level, animating between states so the
+/// cycle is visible at a glance.
+struct WidthLevelIcon: View {
+    let level: PreviewWidth
+
+    private var columnWidth: CGFloat {
+        switch level {
+        case .normal: return 6
+        case .medium: return 10
+        case .wide: return 14
+        }
+    }
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 3.5)
+                .strokeBorder(.secondary, lineWidth: 1.2)
+                .frame(width: 19, height: 14)
+            RoundedRectangle(cornerRadius: 1.5)
+                .fill(.secondary)
+                .frame(width: columnWidth, height: 8)
+        }
+        .frame(width: 22, height: 16)
+        .animation(.spring(response: 0.28, dampingFraction: 0.75), value: level)
+        .contentShape(Rectangle())
     }
 }
 
