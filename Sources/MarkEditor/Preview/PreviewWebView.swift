@@ -9,6 +9,7 @@ struct PreviewWebView: NSViewRepresentable {
     let baseURL: URL?
     @Binding var scrollSync: ScrollSync
     let contentWidthRem: Double
+    let actions: PreviewActions
 
     @AppStorage(SettingsKeys.previewFontName) private var fontName = SettingsDefaults.previewFontName
     @AppStorage(SettingsKeys.previewFontSize) private var fontSize = SettingsDefaults.previewFontSize
@@ -39,6 +40,7 @@ struct PreviewWebView: NSViewRepresentable {
     func updateNSView(_ webView: WKWebView, context: Context) {
         let coordinator = context.coordinator
         coordinator.parent = self
+        actions.coordinator = coordinator
         coordinator.schemeHandler.baseDirectory = baseURL
         coordinator.setStyle(fontFamily: FontOption.cssFamily(for: fontName), size: fontSize, lineHeight: lineHeight)
         coordinator.setContentWidth(contentWidthRem)
@@ -137,6 +139,21 @@ struct PreviewWebView: NSViewRepresentable {
                 in: nil,
                 in: .page
             ) { _ in }
+        }
+
+        // MARK: - Find in preview (⌘3 mode)
+
+        func find(_ query: String, forward: Bool) {
+            guard let webView, isReady, !query.isEmpty else { return }
+            let configuration = WKFindConfiguration()
+            configuration.backwards = !forward
+            configuration.caseSensitive = false
+            configuration.wraps = true
+            webView.find(query, configuration: configuration) { _ in }
+        }
+
+        func clearFindSelection() {
+            webView?.evaluateJavaScript("window.getSelection().removeAllRanges()") { _, _ in }
         }
 
         // MARK: - Scroll sync (bidirectional)

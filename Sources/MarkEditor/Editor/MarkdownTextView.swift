@@ -445,6 +445,15 @@ struct MarkdownTextView: NSViewRepresentable {
             textView.setSelectedRange(newSelection)
         }
 
+        /// Drives the native find bar (⌘F/⌘G/⌥⌘F menu commands).
+        func performFindAction(_ action: NSTextFinder.Action) {
+            guard let textView else { return }
+            let sender = NSMenuItem()
+            sender.tag = action.rawValue
+            textView.window?.makeFirstResponder(textView)
+            textView.performTextFinderAction(sender)
+        }
+
         func applyStyle(fontName: String, fontSize: Double) {
             guard let textView else { return }
             appliedFontName = fontName

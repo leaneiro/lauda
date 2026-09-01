@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 enum ViewMode: Int {
     case editorOnly
@@ -24,6 +25,57 @@ final class EditorActions {
     func toggleBold() { coordinator?.toggleInlineMarker("**") }
     func toggleItalic() { coordinator?.toggleInlineMarker("*") }
     func insertLink() { coordinator?.insertLink() }
+    func performFind(_ action: NSTextFinder.Action) { coordinator?.performFindAction(action) }
+}
+
+/// Bridges the preview find bar to the focused window's preview coordinator.
+final class PreviewActions {
+    weak var coordinator: PreviewWebView.Coordinator?
+
+    func find(_ query: String, forward: Bool) { coordinator?.find(query, forward: forward) }
+    func clearFindSelection() { coordinator?.clearFindSelection() }
+}
+
+/// Find commands routed per view mode: editor find bar when the editor is
+/// visible; a floating find bar over the preview in preview-only mode.
+struct FindActions {
+    var find: () -> Void
+    var findNext: () -> Void
+    var findPrevious: () -> Void
+    var replace: () -> Void
+}
+
+struct FindActionsKey: FocusedValueKey {
+    typealias Value = FindActions
+}
+
+extension FocusedValues {
+    var findActions: FindActions? {
+        get { self[FindActionsKey.self] }
+        set { self[FindActionsKey.self] = newValue }
+    }
+}
+
+struct FindCommands: Commands {
+    @FocusedValue(\.findActions) private var findActions
+
+    var body: some Commands {
+        CommandGroup(after: .textEditing) {
+            Divider()
+            Button("Localizar…") { findActions?.find() }
+                .keyboardShortcut("f")
+                .disabled(findActions == nil)
+            Button("Localizar Seguinte") { findActions?.findNext() }
+                .keyboardShortcut("g")
+                .disabled(findActions == nil)
+            Button("Localizar Anterior") { findActions?.findPrevious() }
+                .keyboardShortcut("g", modifiers: [.command, .shift])
+                .disabled(findActions == nil)
+            Button("Localizar e Substituir…") { findActions?.replace() }
+                .keyboardShortcut("f", modifiers: [.command, .option])
+                .disabled(findActions == nil)
+        }
+    }
 }
 
 struct EditorActionsKey: FocusedValueKey {
@@ -92,8 +144,11 @@ struct ContentView: View {
     @AppStorage(SettingsKeys.previewWidthLevel) private var previewWidthLevel = PreviewWidth.normal.rawValue
     @State private var scrollSync = ScrollSync()
     @State private var editorActions = EditorActions()
+    @State private var previewActions = PreviewActions()
     @State private var lastSavedText: String?
     @State private var lastSaveDate: Date?
+    @State private var previewFindPresented = false
+    @State private var previewFindQuery = ""
 
     private static let minPaneWidth: CGFloat = 280
 
@@ -113,12 +168,23 @@ struct ContentView: View {
                     )
                 }
                 if viewMode != .editorOnly {
-                    PreviewWebView(
-                        markdown: document.text,
-                        baseURL: fileURL?.deletingLastPathComponent(),
-                        scrollSync: $scrollSync,
-                        contentWidthRem: effectivePreviewWidth.rem
-                    )
+                    ZStack(alignment: .topTrailing) {
+                        PreviewWebView(
+                            markdown: document.text,
+                            baseURL: fileURL?.deletingLastPathComponent(),
+                            scrollSync: $scrollSync,
+                            contentWidthRem: effectivePreviewWidth.rem,
+                            actions: previewActions
+                        )
+                        if previewFindPresented && viewMode == .previewOnly {
+                            PreviewFindBar(
+                                query: $previewFindQuery,
+                                onNext: { previewFind(forward: true) },
+                                onPrevious: { previewFind(forward: false) },
+                                onClose: closePreviewFind
+                            )
+                        }
+                    }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
@@ -154,6 +220,12 @@ struct ContentView: View {
         }
         .focusedSceneValue(\.viewMode, $viewMode)
         .focusedSceneValue(\.editorActions, editorActions)
+        .focusedSceneValue(\.findActions, FindActions(
+            find: startFind,
+            findNext: { findStep(forward: true) },
+            findPrevious: { findStep(forward: false) },
+            replace: startReplace
+        ))
         .onAppear {
             if fileURL != nil {
                 lastSavedText = document.text
@@ -185,6 +257,46 @@ struct ContentView: View {
         .overlay(alignment: .top) {
             Divider()
         }
+    }
+
+    // MARK: - Find routing
+
+    private func startFind() {
+        if viewMode == .previewOnly {
+            previewFindPresented = true
+        } else {
+            editorActions.performFind(.showFindInterface)
+        }
+    }
+
+    private func findStep(forward: Bool) {
+        if viewMode == .previewOnly {
+            if previewFindPresented {
+                previewFind(forward: forward)
+            } else {
+                previewFindPresented = true
+            }
+        } else {
+            editorActions.performFind(forward ? .nextMatch : .previousMatch)
+        }
+    }
+
+    private func startReplace() {
+        if viewMode == .previewOnly {
+            previewFindPresented = true
+        } else {
+            editorActions.performFind(.showReplaceInterface)
+        }
+    }
+
+    private func previewFind(forward: Bool) {
+        guard !previewFindQuery.isEmpty else { return }
+        previewActions.find(previewFindQuery, forward: forward)
+    }
+
+    private func closePreviewFind() {
+        previewFindPresented = false
+        previewActions.clearFindSelection()
     }
 
     /// Width level applies only in full-preview mode; other modes stay normal.
@@ -229,6 +341,58 @@ struct ContentView: View {
     private func editorWidth(in totalWidth: CGFloat) -> CGFloat {
         (totalWidth - SplitDivider.thickness)
             * SplitDivider.clamp(splitFraction, totalWidth: totalWidth, minPaneWidth: Self.minPaneWidth)
+    }
+}
+
+/// Floating find bar over the preview (⌘3 mode), backed by WKWebView.find.
+struct PreviewFindBar: View {
+    @Binding var query: String
+    var onNext: () -> Void
+    var onPrevious: () -> Void
+    var onClose: () -> Void
+
+    @FocusState private var isFocused: Bool
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.secondary)
+            TextField("Localizar", text: $query)
+                .textFieldStyle(.plain)
+                .frame(width: 180)
+                .focused($isFocused)
+                .onSubmit(onNext)
+                .onExitCommand(perform: onClose)
+                .onChange(of: query) {
+                    if !query.isEmpty { onNext() }
+                }
+            Button(action: onPrevious) {
+                Image(systemName: "chevron.left")
+            }
+            .buttonStyle(.borderless)
+            .help("Anterior (⇧⌘G)")
+            Button(action: onNext) {
+                Image(systemName: "chevron.right")
+            }
+            .buttonStyle(.borderless)
+            .help("Seguinte (⌘G)")
+            Button(action: onClose) {
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.borderless)
+            .help("Fechar (Esc)")
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 9))
+        .overlay(
+            RoundedRectangle(cornerRadius: 9)
+                .strokeBorder(Color(nsColor: .separatorColor), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.12), radius: 8, y: 2)
+        .padding(12)
+        .onAppear { isFocused = true }
     }
 }
 
