@@ -7,7 +7,32 @@ enum SettingsKeys {
     static let previewFontSize = "previewFontSize"
     static let previewLineHeight = "previewLineHeight"
     static let appearanceMode = "appearanceMode"
-    static let previewWideMode = "previewWideMode"
+    static let previewWidthLevel = "previewWidthLevel"
+}
+
+/// Content-column width for the preview in full-preview mode (⌘3).
+enum PreviewWidth: Int, CaseIterable, Identifiable {
+    case normal
+    case medium
+    case wide
+
+    var id: Int { rawValue }
+
+    var label: String {
+        switch self {
+        case .normal: return "Normal"
+        case .medium: return "Médio"
+        case .wide: return "Amplo"
+        }
+    }
+
+    var rem: Double {
+        switch self {
+        case .normal: return 46
+        case .medium: return 66
+        case .wide: return 90
+        }
+    }
 }
 
 enum SettingsDefaults {

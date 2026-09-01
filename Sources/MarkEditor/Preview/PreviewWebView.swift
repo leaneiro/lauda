@@ -8,7 +8,7 @@ struct PreviewWebView: NSViewRepresentable {
     let markdown: String
     let baseURL: URL?
     @Binding var scrollSync: ScrollSync
-    let wide: Bool
+    let contentWidthRem: Double
 
     @AppStorage(SettingsKeys.previewFontName) private var fontName = SettingsDefaults.previewFontName
     @AppStorage(SettingsKeys.previewFontSize) private var fontSize = SettingsDefaults.previewFontSize
@@ -41,7 +41,7 @@ struct PreviewWebView: NSViewRepresentable {
         coordinator.parent = self
         coordinator.schemeHandler.baseDirectory = baseURL
         coordinator.setStyle(fontFamily: FontOption.cssFamily(for: fontName), size: fontSize, lineHeight: lineHeight)
-        coordinator.setWide(wide)
+        coordinator.setContentWidth(contentWidthRem)
         coordinator.setMarkdown(markdown)
         coordinator.syncScroll(scrollSync)
     }
@@ -123,17 +123,17 @@ struct PreviewWebView: NSViewRepresentable {
             ) { _ in }
         }
 
-        // MARK: - Wide layout (preview-only mode)
+        // MARK: - Content width (preview-only mode levels)
 
-        private var lastWide: Bool?
+        private var lastContentWidthRem: Double?
 
-        func setWide(_ wide: Bool) {
-            guard wide != lastWide else { return }
-            lastWide = wide
+        func setContentWidth(_ rem: Double) {
+            guard rem != lastContentWidthRem else { return }
+            lastContentWidthRem = rem
             guard let webView, isReady else { return }
             webView.callAsyncJavaScript(
-                "document.body.classList.toggle('wide', wide)",
-                arguments: ["wide": wide],
+                "document.documentElement.style.setProperty('--article-max', rem + 'rem')",
+                arguments: ["rem": rem],
                 in: nil,
                 in: .page
             ) { _ in }
@@ -203,9 +203,9 @@ struct PreviewWebView: NSViewRepresentable {
                 lastStyle = nil
                 setStyle(fontFamily: style.family, size: style.size, lineHeight: style.lineHeight)
             }
-            if let wide = lastWide {
-                lastWide = nil
-                setWide(wide)
+            if let widthRem = lastContentWidthRem {
+                lastContentWidthRem = nil
+                setContentWidth(widthRem)
             }
             if let html = pendingHTML {
                 pendingHTML = nil

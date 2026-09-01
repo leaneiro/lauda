@@ -89,7 +89,7 @@ struct ContentView: View {
 
     @SceneStorage("viewMode") private var viewMode: ViewMode = .split
     @SceneStorage("splitFraction") private var splitFraction: Double = 0.5
-    @AppStorage(SettingsKeys.previewWideMode) private var previewWideMode = false
+    @AppStorage(SettingsKeys.previewWidthLevel) private var previewWidthLevel = PreviewWidth.normal.rawValue
     @State private var scrollSync = ScrollSync()
     @State private var editorActions = EditorActions()
     @State private var lastSavedText: String?
@@ -117,7 +117,7 @@ struct ContentView: View {
                         markdown: document.text,
                         baseURL: fileURL?.deletingLastPathComponent(),
                         scrollSync: $scrollSync,
-                        wide: viewMode == .previewOnly && previewWideMode
+                        contentWidthRem: effectivePreviewWidth.rem
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
@@ -143,11 +143,12 @@ struct ContentView: View {
             }
             ToolbarItem(placement: .automatic) {
                 if viewMode == .previewOnly {
-                    Toggle(isOn: $previewWideMode) {
-                        Label("Largura ampla", systemImage: "arrow.left.and.right.square")
+                    Picker("Largura do conteúdo", selection: $previewWidthLevel) {
+                        ForEach(PreviewWidth.allCases) { width in
+                            Text(width.label).tag(width.rawValue)
+                        }
                     }
-                    .toggleStyle(.button)
-                    .help("Alterna entre largura confortável e ampla")
+                    .help("Largura da coluna de conteúdo")
                 }
             }
         }
@@ -184,6 +185,12 @@ struct ContentView: View {
         .overlay(alignment: .top) {
             Divider()
         }
+    }
+
+    /// Width level applies only in full-preview mode; other modes stay normal.
+    private var effectivePreviewWidth: PreviewWidth {
+        guard viewMode == .previewOnly else { return .normal }
+        return PreviewWidth(rawValue: previewWidthLevel) ?? .normal
     }
 
     private var wordCount: Int {

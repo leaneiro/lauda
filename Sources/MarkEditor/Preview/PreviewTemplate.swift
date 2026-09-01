@@ -57,13 +57,10 @@ enum PreviewTemplate {
         word-wrap: break-word;
     }
     article {
-        max-width: 46rem;
+        max-width: var(--article-max, 46rem);
         margin: 0 auto;
         padding: 3rem 2.75rem 6rem;
         transition: max-width 0.25s ease;
-    }
-    body.wide article {
-        max-width: 90rem;
     }
     h1, h2, h3, h4, h5, h6 {
         line-height: 1.25;
