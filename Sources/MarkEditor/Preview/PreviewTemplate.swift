@@ -1,12 +1,8 @@
 import Foundation
 
 enum PreviewTemplate {
-    static let html = """
-    <!DOCTYPE html>
-    <html lang="pt-BR">
-    <head>
-    <meta charset="utf-8">
-    <style>
+    /// Stylesheet shared by the live preview and exported documents.
+    static let styles = """
     :root {
         --pfont: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
         --psize: 16px;
@@ -119,6 +115,23 @@ enum PreviewTemplate {
     ::selection { background: var(--selection); }
     mark.find-hit { background: rgba(255, 214, 10, 0.30); color: inherit; border-radius: 2px; padding: 0; }
     mark.find-hit.current { background: #ff9f0a; color: #1d1d1f; }
+    @media print {
+        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        article { max-width: none; padding: 0; }
+        pre { white-space: pre-wrap; word-break: break-word; overflow-x: visible; }
+        pre, table, blockquote, img { break-inside: avoid; }
+        h1, h2, h3, h4 { break-after: avoid; }
+        a { color: inherit; text-decoration: underline; }
+    }
+    """
+
+    static let html = """
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+    <meta charset="utf-8">
+    <style>
+    \(styles)
     </style>
     </head>
     <body>
@@ -229,4 +242,37 @@ enum PreviewTemplate {
     </body>
     </html>
     """
+
+    /// Self-contained document (no scripts) for HTML/PDF export, styled like
+    /// the preview and honoring the user's preview font settings.
+    static func standalone(
+        title: String,
+        bodyHTML: String,
+        fontFamily: String,
+        fontSize: Double,
+        lineHeight: Double
+    ) -> String {
+        """
+        <!DOCTYPE html>
+        <html lang="pt-BR">
+        <head>
+        <meta charset="utf-8">
+        <title>\(HTMLRenderer.escape(title))</title>
+        <style>
+        \(styles)
+        :root {
+            --pfont: \(fontFamily);
+            --psize: \(fontSize)px;
+            --plh: \(lineHeight);
+        }
+        </style>
+        </head>
+        <body>
+        <article id="content">
+        \(bodyHTML)
+        </article>
+        </body>
+        </html>
+        """
+    }
 }

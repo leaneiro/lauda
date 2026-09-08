@@ -70,6 +70,38 @@ extension FocusedValues {
     }
 }
 
+/// Export commands routed to the focused window's document.
+struct ExportActions {
+    var exportHTML: () -> Void
+    var exportPDF: () -> Void
+}
+
+struct ExportActionsKey: FocusedValueKey {
+    typealias Value = ExportActions
+}
+
+extension FocusedValues {
+    var exportActions: ExportActions? {
+        get { self[ExportActionsKey.self] }
+        set { self[ExportActionsKey.self] = newValue }
+    }
+}
+
+struct ExportCommands: Commands {
+    @FocusedValue(\.exportActions) private var exportActions
+
+    var body: some Commands {
+        CommandGroup(after: .importExport) {
+            Button("Exportar como PDF…") { exportActions?.exportPDF() }
+                .keyboardShortcut("e", modifiers: [.command, .shift])
+                .disabled(exportActions == nil)
+            Button("Exportar como HTML…") { exportActions?.exportHTML() }
+                .keyboardShortcut("e", modifiers: [.command, .option, .shift])
+                .disabled(exportActions == nil)
+        }
+    }
+}
+
 struct FindCommands: Commands {
     @FocusedValue(\.findActions) private var findActions
 
@@ -247,6 +279,10 @@ struct ContentView: View {
         }
         .focusedSceneValue(\.viewMode, $viewMode)
         .focusedSceneValue(\.editorActions, editorActions)
+        .focusedSceneValue(\.exportActions, ExportActions(
+            exportHTML: exportHTML,
+            exportPDF: exportPDF
+        ))
         .focusedSceneValue(\.findActions, FindActions(
             find: startFind,
             findNext: { stepFind(forward: true) },
@@ -284,6 +320,29 @@ struct ContentView: View {
         .overlay(alignment: .top) {
             Divider()
         }
+    }
+
+    // MARK: - Export
+
+    private var exportTitle: String {
+        fileURL?.deletingPathExtension().lastPathComponent ?? "Documento"
+    }
+
+    private func exportHTML() {
+        DocumentExporter.promptAndExportHTML(
+            markdown: document.text,
+            title: exportTitle,
+            baseDirectory: fileURL?.deletingLastPathComponent()
+        )
+    }
+
+    private func exportPDF() {
+        DocumentExporter.promptAndExportPDF(
+            markdown: document.text,
+            title: exportTitle,
+            baseDirectory: fileURL?.deletingLastPathComponent(),
+            window: NSApp.keyWindow ?? NSApp.mainWindow
+        )
     }
 
     // MARK: - Find routing (unified bar, all modes)

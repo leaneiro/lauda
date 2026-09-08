@@ -14,6 +14,8 @@ Markdown renderizado à direita, atualizando em tempo real enquanto você digita
 - **Preview caprichado** — headings, listas, tarefas (`- [ ]`), tabelas GFM,
   código, citações, imagens e links (abrem no navegador).
 - **Highlight no editor** — realce leve da sintaxe Markdown enquanto edita.
+- **Exportar** — HTML standalone com o visual do preview (⌥⇧⌘E) e PDF
+  paginado (⇧⌘E), no menu Arquivo.
 - **Atalhos de escrita** — ⌘B/⌘I/⌘K (menu Formatar), Enter continua listas
   (inclusive tarefas e numeradas), Tab/Shift-Tab indentam itens.
 - **Toques de conforto** — colar URL sobre uma seleção cria `[texto](url)`;

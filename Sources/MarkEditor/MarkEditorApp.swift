@@ -10,6 +10,7 @@ struct MarkEditorApp: App {
         }
         .defaultSize(width: 1200, height: 800)
         .commands {
+            ExportCommands()
             FormatCommands()
             FindCommands()
             ViewModeCommands()
