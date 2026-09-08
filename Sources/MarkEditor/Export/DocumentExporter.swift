@@ -21,7 +21,7 @@ final class DocumentExporter: NSObject, WKNavigationDelegate {
 
         return PreviewTemplate.standalone(
             title: title,
-            bodyHTML: HTMLRenderer.render(markdown),
+            bodyHTML: HTMLRenderer.renderForPrint(markdown),
             fontFamily: FontOption.cssFamily(for: fontName),
             fontSize: fontSize,
             lineHeight: lineHeight

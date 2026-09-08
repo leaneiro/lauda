@@ -31,6 +31,15 @@ final class ExportTests: XCTestCase {
         XCTAssertTrue(html.contains("<title>a &lt; b &amp; &quot;c&quot;</title>"))
     }
 
+    func testRenderForPrintWrapsHeadingsWithProbe() {
+        let html = HTMLRenderer.renderForPrint("# Título\n\nParágrafo.\n\n## Outro\n\nMais texto.")
+        XCTAssertTrue(html.contains("<div class=\"keep-with-next\"><h1>Título</h1>\n<div class=\"keep-probe\"></div></div>"), "got: \(html)")
+        XCTAssertTrue(html.contains("<div class=\"keep-with-next\"><h2>Outro</h2>\n<div class=\"keep-probe\"></div></div>"), "got: \(html)")
+        XCTAssertTrue(html.contains("<p>Parágrafo.</p>"))
+        // O render normal (preview) não ganha wrappers.
+        XCTAssertFalse(HTMLRenderer.render("# Título").contains("keep-with-next"))
+    }
+
     func testStandaloneHTMLUsesDefaultsWhenUnset() {
         let html = DocumentExporter.standaloneHTML(markdown: "- item", title: "Doc")
         XCTAssertTrue(html.contains("<li>item</li>"))

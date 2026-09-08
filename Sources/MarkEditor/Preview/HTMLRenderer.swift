@@ -11,6 +11,26 @@ struct HTMLRenderer: MarkupVisitor {
         return renderer.visit(document)
     }
 
+    /// Print-oriented rendering: each top-level heading is wrapped together
+    /// with an invisible probe that reserves a couple of lines below it.
+    /// `break-inside: avoid` on the wrapper then pushes the heading to the
+    /// next page instead of leaving it orphaned at the bottom (WebKit's print
+    /// engine ignores `break-after: avoid`, so this is the reliable route).
+    static func renderForPrint(_ markdown: String) -> String {
+        let document = Document(parsing: markdown)
+        var renderer = HTMLRenderer()
+        var html = ""
+        for child in document.children {
+            let piece = renderer.visit(child)
+            if child is Heading {
+                html += "<div class=\"keep-with-next\">\(piece)<div class=\"keep-probe\"></div></div>\n"
+            } else {
+                html += piece
+            }
+        }
+        return html
+    }
+
     // MARK: - Escaping
 
     static func escape(_ string: String) -> String {

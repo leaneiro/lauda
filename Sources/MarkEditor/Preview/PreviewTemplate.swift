@@ -121,6 +121,12 @@ enum PreviewTemplate {
         pre { white-space: pre-wrap; word-break: break-word; overflow-x: visible; }
         pre, table, blockquote, img { break-inside: avoid; }
         h1, h2, h3, h4 { break-after: avoid; }
+        p { orphans: 3; widows: 3; }
+        /* Keep-with-next: the probe reserves ~2.5 lines below the heading
+           inside an unbreakable wrapper; the negative margin gives the space
+           back so following content flows normally. */
+        .keep-with-next { break-inside: avoid; margin-bottom: -4rem; }
+        .keep-with-next .keep-probe { height: 4rem; }
         a { color: inherit; text-decoration: underline; }
     }
     """
