@@ -196,7 +196,24 @@ struct ContentView: View {
     @Binding var document: MarkdownDocument
     let fileURL: URL?
 
-    @SceneStorage("viewMode") private var viewMode: ViewMode = .split
+    /// Per-window mode; -1 means "not chosen yet" so a brand-new window
+    /// inherits the last mode used anywhere (restored windows keep theirs).
+    @SceneStorage("viewMode") private var storedViewMode: Int = -1
+    @AppStorage(SettingsKeys.lastViewMode) private var lastViewMode = ViewMode.split.rawValue
+
+    private var viewMode: ViewMode {
+        ViewMode(rawValue: storedViewMode >= 0 ? storedViewMode : lastViewMode) ?? .split
+    }
+
+    private var viewModeBinding: Binding<ViewMode> {
+        Binding(
+            get: { viewMode },
+            set: { newMode in
+                storedViewMode = newMode.rawValue
+                lastViewMode = newMode.rawValue
+            }
+        )
+    }
     @SceneStorage("splitFraction") private var splitFraction: Double = 0.5
     @AppStorage(SettingsKeys.previewWidthLevel) private var previewWidthLevel = PreviewWidth.normal.rawValue
     @State private var scrollSync = ScrollSync()
@@ -265,7 +282,7 @@ struct ContentView: View {
         }
         .toolbar {
             ToolbarItem(placement: .principal) {
-                Picker("Modo de exibição", selection: $viewMode) {
+                Picker("Modo de exibição", selection: viewModeBinding) {
                     Label("Somente editor", systemImage: "doc.plaintext")
                         .tag(ViewMode.editorOnly)
                     Label("Editor e visualização", systemImage: "rectangle.split.2x1")
@@ -288,7 +305,7 @@ struct ContentView: View {
                 }
             }
         }
-        .focusedSceneValue(\.viewMode, $viewMode)
+        .focusedSceneValue(\.viewMode, viewModeBinding)
         .focusedSceneValue(\.editorActions, editorActions)
         .focusedSceneValue(\.exportActions, ExportActions(
             exportHTML: exportHTML,
@@ -303,6 +320,11 @@ struct ContentView: View {
         .onAppear {
             if fileURL != nil {
                 lastSavedText = document.text
+            }
+            // Materialize the inherited mode so this window stops following
+            // the global once it's on screen.
+            if storedViewMode < 0 {
+                storedViewMode = lastViewMode
             }
         }
         .onReceive(

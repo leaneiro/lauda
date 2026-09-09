@@ -8,6 +8,7 @@ enum SettingsKeys {
     static let previewLineHeight = "previewLineHeight"
     static let appearanceMode = "appearanceMode"
     static let previewWidthLevel = "previewWidthLevel"
+    static let lastViewMode = "lastViewMode"
 }
 
 /// Content-column width for the preview in full-preview mode (⌘3).
