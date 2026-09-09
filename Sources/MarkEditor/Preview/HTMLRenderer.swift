@@ -49,8 +49,13 @@ struct HTMLRenderer: MarkupVisitor {
     }
 
     /// Blocks styled with `break-inside: avoid` in the print stylesheet.
+    /// Long code blocks are allowed to flow across pages, so only compact
+    /// ones travel glued to their heading.
     private static func avoidsInnerBreaks(_ markup: Markup) -> Bool {
-        markup is CodeBlock || markup is Markdown.Table || markup is BlockQuote
+        if let codeBlock = markup as? CodeBlock {
+            return lineCount(of: codeBlock) <= compactCodeBlockLineLimit
+        }
+        return markup is Markdown.Table || markup is BlockQuote
     }
 
     // MARK: - Escaping
@@ -105,11 +110,23 @@ struct HTMLRenderer: MarkupVisitor {
         "<code>\(Self.escape(inlineCode.code))</code>"
     }
 
+    /// Code blocks up to this many lines never split across PDF pages (small
+    /// enough that moving them whole costs little); longer ones flow freely,
+    /// which avoids large end-of-page gaps.
+    static let compactCodeBlockLineLimit = 6
+
+    static func lineCount(of codeBlock: CodeBlock) -> Int {
+        let lines = codeBlock.code.components(separatedBy: "\n").count
+        return codeBlock.code.hasSuffix("\n") ? lines - 1 : lines
+    }
+
     mutating func visitCodeBlock(_ codeBlock: CodeBlock) -> String {
+        let keepClass = Self.lineCount(of: codeBlock) <= Self.compactCodeBlockLineLimit
+            ? " class=\"keep\"" : ""
         let languageClass = codeBlock.language.map { " class=\"language-\(Self.escape($0))\"" } ?? ""
         let body = CodeHighlighter.highlight(codeBlock.code, language: codeBlock.language)
             ?? Self.escape(codeBlock.code)
-        return "<pre><code\(languageClass)>\(body)</code></pre>\n"
+        return "<pre\(keepClass)><code\(languageClass)>\(body)</code></pre>\n"
     }
 
     mutating func visitLink(_ link: Markdown.Link) -> String {

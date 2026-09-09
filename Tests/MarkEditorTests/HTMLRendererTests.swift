@@ -22,13 +22,19 @@ final class HTMLRendererTests: XCTestCase {
 
     func testCodeBlockWithLanguageIsEscapedAndHighlighted() {
         let html = HTMLRenderer.render("```swift\nlet x = a < b\n```")
-        XCTAssertTrue(html.hasPrefix("<pre><code class=\"language-swift\">"), "got: \(html)")
+        XCTAssertTrue(html.hasPrefix("<pre class=\"keep\"><code class=\"language-swift\">"), "got: \(html)")
         XCTAssertTrue(html.contains("<span class=\"hl-kw\">let</span> x = a &lt; b"), "got: \(html)")
     }
 
     func testCodeBlockWithoutLanguageStaysPlain() {
         let html = HTMLRenderer.render("```\nlet x = a < b\n```")
-        XCTAssertEqual(html, "<pre><code>let x = a &lt; b\n</code></pre>\n")
+        XCTAssertEqual(html, "<pre class=\"keep\"><code>let x = a &lt; b\n</code></pre>\n")
+    }
+
+    func testLongCodeBlockIsAllowedToBreakAcrossPages() {
+        let code = (1...10).map { "let v\($0) = \($0)" }.joined(separator: "\n")
+        let html = HTMLRenderer.render("```swift\n\(code)\n```")
+        XCTAssertTrue(html.hasPrefix("<pre><code"), "bloco longo não leva class=keep — got: \(html.prefix(60))")
     }
 
     func testLink() {

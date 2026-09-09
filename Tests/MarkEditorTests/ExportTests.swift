@@ -40,13 +40,21 @@ final class ExportTests: XCTestCase {
         XCTAssertFalse(HTMLRenderer.render("# Título").contains("keep-with-next"))
     }
 
-    func testRenderForPrintGroupsHeadingWithUnbreakableBlock() {
+    func testRenderForPrintGroupsHeadingWithCompactCodeBlock() {
         let html = HTMLRenderer.renderForPrint("## Código\n\n```swift\nlet x = 1\n```\n\nTexto depois.")
-        // Título + bloco de código viajam juntos, sem sonda.
-        XCTAssertTrue(html.contains("<div class=\"keep-with-next\"><h2>Código</h2>\n<pre>"), "got: \(html)")
+        // Título + bloco curto viajam juntos, sem sonda.
+        XCTAssertTrue(html.contains("<div class=\"keep-with-next\"><h2>Código</h2>\n<pre class=\"keep\">"), "got: \(html)")
         XCTAssertFalse(html.contains("<h2>Código</h2>\n<div class=\"keep-probe\">"), "got: \(html)")
         XCTAssertTrue(html.contains("</pre>\n</div>"), "got: \(html)")
         XCTAssertTrue(html.contains("<p>Texto depois.</p>"))
+    }
+
+    func testRenderForPrintUsesProbeBeforeLongCodeBlock() {
+        let code = (1...10).map { "let v\($0) = \($0)" }.joined(separator: "\n")
+        let html = HTMLRenderer.renderForPrint("## Código\n\n```swift\n\(code)\n```")
+        // Bloco longo pode quebrar: título fica com a sonda e o pre flui livre.
+        XCTAssertTrue(html.contains("<div class=\"keep-with-next keep-pad\"><h2>Código</h2>\n<div class=\"keep-probe\"></div></div>"), "got: \(html)")
+        XCTAssertTrue(html.contains("<pre><code"), "got: \(html)")
     }
 
     func testStandaloneHTMLUsesDefaultsWhenUnset() {

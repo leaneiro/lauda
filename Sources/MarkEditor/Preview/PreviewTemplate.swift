@@ -130,8 +130,16 @@ enum PreviewTemplate {
     @media print {
         body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         article { max-width: none; padding: 0; }
-        pre { white-space: pre-wrap; word-break: break-word; overflow-x: visible; }
-        pre, table, blockquote, img { break-inside: avoid; }
+        pre {
+            white-space: pre-wrap;
+            word-break: break-word;
+            overflow-x: visible;
+            orphans: 3;
+            widows: 3;
+            -webkit-box-decoration-break: clone;
+            box-decoration-break: clone;
+        }
+        pre.keep, table, blockquote, img { break-inside: avoid; }
         h1, h2, h3, h4 { break-after: avoid; }
         p { orphans: 3; widows: 3; }
         /* Keep-with-next: headings travel with what follows. Before ordinary
