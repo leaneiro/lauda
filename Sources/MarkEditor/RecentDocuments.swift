@@ -56,3 +56,76 @@ enum RecentDocuments {
         }
     }
 }
+
+/// Owns the "Abrir Recente" submenu, building it from our store: AppKit's
+/// built-in one can't be customized (it shows a lone "Limpar Menu" even when
+/// empty). Re-attaches whenever the menu bar starts tracking, because SwiftUI
+/// may rebuild the main menu at any time.
+final class RecentMenuController: NSObject, NSMenuDelegate {
+    static let shared = RecentMenuController()
+    private let menu = NSMenu()
+
+    func install() {
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(menuDidBeginTracking(_:)),
+            name: NSMenu.didBeginTrackingNotification, object: nil)
+        attach()
+    }
+
+    @objc private func menuDidBeginTracking(_ notification: Notification) {
+        guard (notification.object as? NSMenu) === NSApp.mainMenu else { return }
+        attach()
+    }
+
+    private func attach() {
+        guard let recentItem = NSApp.mainMenu?.items
+            .compactMap(\.submenu)
+            .flatMap(\.items)
+            .first(where: { $0.title.contains("Recente") || $0.title.contains("Recent") })
+        else { return }
+        if recentItem.submenu !== menu {
+            menu.title = recentItem.title
+            menu.delegate = self
+            recentItem.submenu = menu
+        }
+    }
+
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        menu.removeAllItems()
+        let urls = RecentDocuments.storedURLs()
+            .filter { FileManager.default.fileExists(atPath: $0.path) }
+
+        guard !urls.isEmpty else {
+            menu.addItem(NSMenuItem(title: "Nenhum documento recente", action: nil, keyEquivalent: ""))
+            return
+        }
+        for url in urls {
+            let item = NSMenuItem(
+                title: url.lastPathComponent,
+                action: #selector(openRecent(_:)),
+                keyEquivalent: ""
+            )
+            item.target = self
+            item.representedObject = url
+            let icon = NSWorkspace.shared.icon(forFile: url.path)
+            icon.size = NSSize(width: 16, height: 16)
+            item.image = icon
+            menu.addItem(item)
+        }
+        menu.addItem(.separator())
+        let clear = NSMenuItem(title: "Limpar Menu", action: #selector(clearMenu(_:)), keyEquivalent: "")
+        clear.target = self
+        menu.addItem(clear)
+    }
+
+    @objc private func openRecent(_ sender: NSMenuItem) {
+        guard let url = sender.representedObject as? URL else { return }
+        NSDocumentController.shared.openDocument(withContentsOf: url, display: true) { _, _, _ in }
+    }
+
+    @objc private func clearMenu(_ sender: Any?) {
+        RecentDocuments.clear()
+        NSDocumentController.shared.clearRecentDocuments(nil)
+    }
+
+}

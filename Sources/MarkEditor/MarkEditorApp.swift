@@ -25,10 +25,12 @@ struct MarkEditorApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         RecentDocuments.resyncSystemList()
+        RecentMenuController.shared.install()
         NotificationCenter.default.addObserver(
             self, selector: #selector(windowWillClose(_:)),
             name: NSWindow.willCloseNotification, object: nil)
     }
+
 
     /// AppKit re-adds a document to the recents when its window closes —
     /// even right after "Limpar Menu". Closing a doc that's still in our
