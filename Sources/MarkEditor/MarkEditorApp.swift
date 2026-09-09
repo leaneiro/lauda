@@ -10,6 +10,7 @@ struct MarkEditorApp: App {
         }
         .defaultSize(width: 1200, height: 800)
         .commands {
+            FileCommands()
             ExportCommands()
             FormatCommands()
             FindCommands()
@@ -25,12 +26,42 @@ struct MarkEditorApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         RecentDocuments.resyncSystemList()
-        RecentMenuController.shared.install()
         NotificationCenter.default.addObserver(
             self, selector: #selector(windowWillClose(_:)),
             name: NSWindow.willCloseNotification, object: nil)
+        // FileCommands owns Novo/Abrir/Abrir Recente; DocumentGroup still
+        // injects its own Abrir/Abrir Recente in a group SwiftUI doesn't let
+        // us replace — hide them, re-applying whenever the menu bar is used
+        // (SwiftUI can rebuild it and undo the hiding).
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(menuDidBeginTracking(_:)),
+            name: NSMenu.didBeginTrackingNotification, object: nil)
+        DispatchQueue.main.async { self.hideNativeOpenItems() }
     }
 
+
+
+    @objc private func menuDidBeginTracking(_ notification: Notification) {
+        guard (notification.object as? NSMenu) === NSApp.mainMenu else { return }
+        hideNativeOpenItems()
+    }
+
+    private func hideNativeOpenItems() {
+        guard let fileMenu = NSApp.mainMenu?.items
+            .first(where: { $0.title.contains("Arquivo") || $0.title.contains("File") })?.submenu
+        else { return }
+        for (index, item) in fileMenu.items.enumerated() {
+            let isNativeOpen = item.action == #selector(NSDocumentController.openDocument(_:))
+                && item.target == nil
+            let isNativeRecents = (item.submenu?.delegate)
+                .map { String(describing: type(of: $0)).contains("NSDocumentController") } ?? false
+            guard isNativeOpen || isNativeRecents else { continue }
+            item.isHidden = true
+            if index > 0, fileMenu.items[index - 1].isSeparatorItem {
+                fileMenu.items[index - 1].isHidden = true
+            }
+        }
+    }
 
     /// AppKit re-adds a document to the recents when its window closes —
     /// even right after "Limpar Menu". Closing a doc that's still in our
@@ -55,7 +86,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         RecentDocuments.clear()
         NSDocumentController.shared.clearRecentDocuments(sender)
     }
-
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         // Light-first by default; the user can pick Escuro/Automático in Ajustes.
