@@ -20,9 +20,15 @@ final class HTMLRendererTests: XCTestCase {
         XCTAssertTrue(html.contains("a &lt; b &amp; c &gt; d"))
     }
 
-    func testCodeBlockWithLanguageIsEscaped() {
+    func testCodeBlockWithLanguageIsEscapedAndHighlighted() {
         let html = HTMLRenderer.render("```swift\nlet x = a < b\n```")
-        XCTAssertEqual(html, "<pre><code class=\"language-swift\">let x = a &lt; b\n</code></pre>\n")
+        XCTAssertTrue(html.hasPrefix("<pre><code class=\"language-swift\">"), "got: \(html)")
+        XCTAssertTrue(html.contains("<span class=\"hl-kw\">let</span> x = a &lt; b"), "got: \(html)")
+    }
+
+    func testCodeBlockWithoutLanguageStaysPlain() {
+        let html = HTMLRenderer.render("```\nlet x = a < b\n```")
+        XCTAssertEqual(html, "<pre><code>let x = a &lt; b\n</code></pre>\n")
     }
 
     func testLink() {

@@ -21,6 +21,10 @@ enum PreviewTemplate {
         --selection: #b6d7ff;
         --row-even: #fbfcfd;
         --quote-border: #d0d7de;
+        --hl-kw: #cf222e;
+        --hl-str: #0a3069;
+        --hl-com: #6e7781;
+        --hl-num: #0550ae;
     }
     @media (prefers-color-scheme: dark) {
         :root {
@@ -37,6 +41,10 @@ enum PreviewTemplate {
             --selection: #3b5b80;
             --row-even: #232327;
             --quote-border: #47474f;
+            --hl-kw: #ff7b72;
+            --hl-str: #a5d6ff;
+            --hl-com: #8b949e;
+            --hl-num: #79c0ff;
         }
     }
     * { box-sizing: border-box; }
@@ -90,6 +98,10 @@ enum PreviewTemplate {
         line-height: 1.5;
     }
     pre code { background: none; padding: 0; font-size: 0.85em; }
+    .hl-kw { color: var(--hl-kw); }
+    .hl-str { color: var(--hl-str); }
+    .hl-com { color: var(--hl-com); font-style: italic; }
+    .hl-num { color: var(--hl-num); }
     blockquote {
         margin: 1.2em 0;
         padding: 0.1em 1.25em;

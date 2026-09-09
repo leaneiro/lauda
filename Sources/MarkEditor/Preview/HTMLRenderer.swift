@@ -85,7 +85,9 @@ struct HTMLRenderer: MarkupVisitor {
 
     mutating func visitCodeBlock(_ codeBlock: CodeBlock) -> String {
         let languageClass = codeBlock.language.map { " class=\"language-\(Self.escape($0))\"" } ?? ""
-        return "<pre><code\(languageClass)>\(Self.escape(codeBlock.code))</code></pre>\n"
+        let body = CodeHighlighter.highlight(codeBlock.code, language: codeBlock.language)
+            ?? Self.escape(codeBlock.code)
+        return "<pre><code\(languageClass)>\(body)</code></pre>\n"
     }
 
     mutating func visitLink(_ link: Markdown.Link) -> String {
