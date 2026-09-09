@@ -23,6 +23,10 @@ struct MarkEditorApp: App {
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        RecentDocuments.seedSystemMenu()
+    }
+
     func applicationWillFinishLaunching(_ notification: Notification) {
         // Light-first by default; the user can pick Escuro/Automático in Ajustes.
         AppearanceMode.stored.apply()

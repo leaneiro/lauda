@@ -318,13 +318,20 @@ struct ContentView: View {
             replace: startReplace
         ))
         .onAppear {
-            if fileURL != nil {
+            if let fileURL {
                 lastSavedText = document.text
+                RecentDocuments.note(fileURL)
             }
             // Materialize the inherited mode so this window stops following
             // the global once it's on screen.
             if storedViewMode < 0 {
                 storedViewMode = lastViewMode
+            }
+        }
+        .onChange(of: fileURL) {
+            // First save of a new document (Save As) lands here.
+            if let fileURL {
+                RecentDocuments.note(fileURL)
             }
         }
         .onReceive(
