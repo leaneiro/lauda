@@ -23,6 +23,10 @@ enum RecentDocuments {
         url.resolvingSymlinksInPath().standardizedFileURL.path
     }
 
+    static func clear(defaults: UserDefaults = .standard) {
+        defaults.removeObject(forKey: key)
+    }
+
     static func storedURLs(defaults: UserDefaults = .standard) -> [URL] {
         let bookmarks = defaults.array(forKey: key) as? [Data] ?? []
         return bookmarks.compactMap { data in
@@ -36,9 +40,16 @@ enum RecentDocuments {
         }
     }
 
-    /// Re-registers the persisted list with the system — oldest first, so the
-    /// most recent document ends up on top of the menu.
-    static func seedSystemMenu(defaults: UserDefaults = .standard) {
+    static func contains(_ url: URL, defaults: UserDefaults = .standard) -> Bool {
+        let canonical = canonicalPath(of: url)
+        return storedURLs(defaults: defaults).contains { canonicalPath(of: $0) == canonical }
+    }
+
+    /// Makes the system list mirror ours — oldest first, so the most recent
+    /// ends on top. Our store is the single source of truth because AppKit
+    /// re-adds documents on window close/quit even after "Limpar Menu".
+    static func resyncSystemList(defaults: UserDefaults = .standard) {
+        NSDocumentController.shared.clearRecentDocuments(nil)
         for url in storedURLs(defaults: defaults).reversed()
         where FileManager.default.fileExists(atPath: url.path) {
             NSDocumentController.shared.noteNewRecentDocumentURL(url)
