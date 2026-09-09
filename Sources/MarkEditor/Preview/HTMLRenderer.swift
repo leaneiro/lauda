@@ -19,16 +19,38 @@ struct HTMLRenderer: MarkupVisitor {
     static func renderForPrint(_ markdown: String) -> String {
         let document = Document(parsing: markdown)
         var renderer = HTMLRenderer()
+        let children = Array(document.children)
         var html = ""
-        for child in document.children {
-            let piece = renderer.visit(child)
-            if child is Heading {
-                html += "<div class=\"keep-with-next\">\(piece)<div class=\"keep-probe\"></div></div>\n"
+        var index = 0
+        while index < children.count {
+            guard children[index] is Heading else {
+                html += renderer.visit(children[index])
+                index += 1
+                continue
+            }
+            var group = renderer.visit(children[index])
+            index += 1
+            while index < children.count, children[index] is Heading {
+                group += renderer.visit(children[index])
+                index += 1
+            }
+            if index < children.count, Self.avoidsInnerBreaks(children[index]) {
+                // The next block is itself unbreakable (pre/table/quote): if it
+                // doesn't fit it would jump to the next page alone, stranding
+                // the heading above an empty gap — so they travel as one unit.
+                group += renderer.visit(children[index])
+                index += 1
+                html += "<div class=\"keep-with-next\">\(group)</div>\n"
             } else {
-                html += piece
+                html += "<div class=\"keep-with-next keep-pad\">\(group)<div class=\"keep-probe\"></div></div>\n"
             }
         }
         return html
+    }
+
+    /// Blocks styled with `break-inside: avoid` in the print stylesheet.
+    private static func avoidsInnerBreaks(_ markup: Markup) -> Bool {
+        markup is CodeBlock || markup is Markdown.Table || markup is BlockQuote
     }
 
     // MARK: - Escaping

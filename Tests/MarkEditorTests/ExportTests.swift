@@ -33,11 +33,20 @@ final class ExportTests: XCTestCase {
 
     func testRenderForPrintWrapsHeadingsWithProbe() {
         let html = HTMLRenderer.renderForPrint("# Título\n\nParágrafo.\n\n## Outro\n\nMais texto.")
-        XCTAssertTrue(html.contains("<div class=\"keep-with-next\"><h1>Título</h1>\n<div class=\"keep-probe\"></div></div>"), "got: \(html)")
-        XCTAssertTrue(html.contains("<div class=\"keep-with-next\"><h2>Outro</h2>\n<div class=\"keep-probe\"></div></div>"), "got: \(html)")
+        XCTAssertTrue(html.contains("<div class=\"keep-with-next keep-pad\"><h1>Título</h1>\n<div class=\"keep-probe\"></div></div>"), "got: \(html)")
+        XCTAssertTrue(html.contains("<div class=\"keep-with-next keep-pad\"><h2>Outro</h2>\n<div class=\"keep-probe\"></div></div>"), "got: \(html)")
         XCTAssertTrue(html.contains("<p>Parágrafo.</p>"))
         // O render normal (preview) não ganha wrappers.
         XCTAssertFalse(HTMLRenderer.render("# Título").contains("keep-with-next"))
+    }
+
+    func testRenderForPrintGroupsHeadingWithUnbreakableBlock() {
+        let html = HTMLRenderer.renderForPrint("## Código\n\n```swift\nlet x = 1\n```\n\nTexto depois.")
+        // Título + bloco de código viajam juntos, sem sonda.
+        XCTAssertTrue(html.contains("<div class=\"keep-with-next\"><h2>Código</h2>\n<pre>"), "got: \(html)")
+        XCTAssertFalse(html.contains("<h2>Código</h2>\n<div class=\"keep-probe\">"), "got: \(html)")
+        XCTAssertTrue(html.contains("</pre>\n</div>"), "got: \(html)")
+        XCTAssertTrue(html.contains("<p>Texto depois.</p>"))
     }
 
     func testStandaloneHTMLUsesDefaultsWhenUnset() {

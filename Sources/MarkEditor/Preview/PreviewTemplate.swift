@@ -134,11 +134,13 @@ enum PreviewTemplate {
         pre, table, blockquote, img { break-inside: avoid; }
         h1, h2, h3, h4 { break-after: avoid; }
         p { orphans: 3; widows: 3; }
-        /* Keep-with-next: the probe reserves ~2.5 lines below the heading
-           inside an unbreakable wrapper; the negative margin gives the space
-           back so following content flows normally. */
-        .keep-with-next { break-inside: avoid; margin-bottom: -4rem; }
-        .keep-with-next .keep-probe { height: 4rem; }
+        /* Keep-with-next: headings travel with what follows. Before ordinary
+           text, a probe reserves ~2.5 lines (the negative margin gives the
+           space back); before an unbreakable block (pre/table/quote) the
+           wrapper contains the whole block instead. */
+        .keep-with-next { break-inside: avoid; }
+        .keep-pad { margin-bottom: -4rem; }
+        .keep-probe { height: 4rem; }
         a { color: inherit; text-decoration: underline; }
     }
     """
