@@ -173,6 +173,17 @@ struct ViewModeCommands: Commands {
     }
 }
 
+/// Estimated reading time for the status bar (~200 words per minute).
+enum ReadingTime {
+    static let wordsPerMinute = 200
+
+    static func label(forWordCount wordCount: Int) -> String? {
+        guard wordCount > 0 else { return nil }
+        let minutes = Int((Double(wordCount) / Double(wordsPerMinute)).rounded())
+        return minutes < 1 ? "menos de 1 min de leitura" : "~\(minutes) min de leitura"
+    }
+}
+
 /// Shared scroll position between the panes. `source` marks which pane the
 /// user scrolled, so the other pane follows and echoes are ignored.
 struct ScrollSync: Equatable {
@@ -309,6 +320,9 @@ struct ContentView: View {
         HStack(spacing: 16) {
             Text("\(wordCount) palavras")
             Text("\(document.text.count) caracteres")
+            if let readingTime = ReadingTime.label(forWordCount: wordCount) {
+                Text(readingTime)
+            }
             Spacer()
             saveStatusView
         }
