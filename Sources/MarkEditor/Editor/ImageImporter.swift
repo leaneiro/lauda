@@ -1,0 +1,78 @@
+import AppKit
+
+/// Brings images into the document's folder so they can be referenced with
+/// relative markdown paths (which the preview and exports already resolve).
+enum ImageImporter {
+    static let imageExtensions: Set<String> = [
+        "png", "jpg", "jpeg", "gif", "webp", "bmp", "tiff", "tif", "heic", "avif", "svg",
+    ]
+
+    static func isImageFile(_ url: URL) -> Bool {
+        imageExtensions.contains(url.pathExtension.lowercased())
+    }
+
+    /// Copies an image into `directory` (unless it already lives inside it)
+    /// and returns the path to reference in markdown, relative to `directory`.
+    static func importImage(from source: URL, into directory: URL) -> String? {
+        let base = directory.resolvingSymlinksInPath().standardizedFileURL
+        let canonicalSource = source.resolvingSymlinksInPath().standardizedFileURL
+
+        // Already inside the document's folder: just reference it.
+        if canonicalSource.path == base.path.appending("/").appending(canonicalSource.lastPathComponent)
+            || canonicalSource.path.hasPrefix(base.path + "/") {
+            return String(canonicalSource.path.dropFirst(base.path.count + 1))
+        }
+
+        let destination = uniqueDestination(for: source.lastPathComponent, in: directory)
+        do {
+            try FileManager.default.copyItem(at: source, to: destination)
+            return destination.lastPathComponent
+        } catch {
+            return nil
+        }
+    }
+
+    /// Saves raw image data (e.g. a pasted screenshot) as PNG and returns the
+    /// file name.
+    static func saveImageData(_ data: Data, in directory: URL, now: Date = Date()) -> String? {
+        guard let pngData = pngData(from: data) else { return nil }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMdd-HHmmss"
+        let name = "imagem-\(formatter.string(from: now)).png"
+        let destination = uniqueDestination(for: name, in: directory)
+        do {
+            try pngData.write(to: destination)
+            return destination.lastPathComponent
+        } catch {
+            return nil
+        }
+    }
+
+    /// Appends -2, -3… before the extension when the name is taken.
+    static func uniqueDestination(for name: String, in directory: URL) -> URL {
+        let baseName = (name as NSString).deletingPathExtension
+        let ext = (name as NSString).pathExtension
+        var candidate = directory.appendingPathComponent(name)
+        var counter = 2
+        while FileManager.default.fileExists(atPath: candidate.path) {
+            let numbered = ext.isEmpty ? "\(baseName)-\(counter)" : "\(baseName)-\(counter).\(ext)"
+            candidate = directory.appendingPathComponent(numbered)
+            counter += 1
+        }
+        return candidate
+    }
+
+    /// Markdown for a list of relative paths, percent-encoding what URLs need.
+    static func markdown(forRelativePaths paths: [String]) -> String {
+        paths.map { path in
+            let encoded = path.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? path
+            return "![](\(encoded))"
+        }
+        .joined(separator: "\n\n")
+    }
+
+    private static func pngData(from data: Data) -> Data? {
+        guard let representation = NSBitmapImageRep(data: data) else { return nil }
+        return representation.representation(using: .png, properties: [:])
+    }
+}

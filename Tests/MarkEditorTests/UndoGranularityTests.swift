@@ -11,7 +11,8 @@ final class UndoGranularityTests: XCTestCase {
         let view = MarkdownTextView(
             text: .constant(""),
             scrollSync: .constant(ScrollSync()),
-            actions: EditorActions()
+            actions: EditorActions(),
+            fileURL: nil
         )
         let coordinator = view.makeCoordinator()
         let textView = NSTextView()

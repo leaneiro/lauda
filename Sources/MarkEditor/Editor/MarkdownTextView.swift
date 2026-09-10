@@ -7,6 +7,7 @@ struct MarkdownTextView: NSViewRepresentable {
     @Binding var text: String
     @Binding var scrollSync: ScrollSync
     let actions: EditorActions
+    let fileURL: URL?
 
     @AppStorage(SettingsKeys.editorFontName) private var fontName = SettingsDefaults.editorFontName
     @AppStorage(SettingsKeys.editorFontSize) private var fontSize = SettingsDefaults.editorFontSize
@@ -555,6 +556,50 @@ struct MarkdownTextView: NSViewRepresentable {
             let fullRange = NSRange(location: 0, length: (textView.string as NSString).length)
             layoutManager.removeTemporaryAttribute(.backgroundColor, forCharacterRange: fullRange)
             layoutManager.removeTemporaryAttribute(.foregroundColor, forCharacterRange: fullRange)
+        }
+
+        // MARK: - Image insertion (drag & drop / paste)
+
+        /// Imports image files into the document's folder and inserts the
+        /// relative markdown at `index` (or the caret). Returns true when the
+        /// event was consumed.
+        func insertImageFiles(_ urls: [URL], at index: Int?) -> Bool {
+            guard let directory = documentDirectory() else { return true }
+            let paths = urls.compactMap { ImageImporter.importImage(from: $0, into: directory) }
+            guard !paths.isEmpty else { return false }
+            insertImageMarkdown(paths, at: index)
+            return true
+        }
+
+        /// Saves pasted raw image data (e.g. a screenshot) as PNG in the
+        /// document's folder and inserts the markdown at the caret.
+        func insertPastedImageData(_ data: Data) -> Bool {
+            guard let directory = documentDirectory() else { return true }
+            guard let name = ImageImporter.saveImageData(data, in: directory) else { return false }
+            insertImageMarkdown([name], at: nil)
+            return true
+        }
+
+        private func documentDirectory() -> URL? {
+            if let fileURL = parent.fileURL {
+                return fileURL.deletingLastPathComponent()
+            }
+            let alert = NSAlert()
+            alert.messageText = "Salve o documento primeiro"
+            alert.informativeText = "Imagens são copiadas para a pasta do documento — salve o arquivo para ele ter uma."
+            alert.runModal()
+            return nil
+        }
+
+        private func insertImageMarkdown(_ paths: [String], at index: Int?) {
+            guard let textView else { return }
+            let markdown = ImageImporter.markdown(forRelativePaths: paths)
+            let range = index.map { NSRange(location: $0, length: 0) } ?? textView.selectedRange()
+            replaceText(
+                in: range,
+                with: markdown,
+                selecting: NSRange(location: range.location + (markdown as NSString).length, length: 0)
+            )
         }
 
         func applyStyle(fontName: String, fontSize: Double) {

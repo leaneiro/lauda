@@ -17,7 +17,52 @@ final class EditorTextView: NSTextView {
         return origin
     }
 
+    // MARK: - Image drag & drop
+
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        imageFileURLs(from: sender.draggingPasteboard).isEmpty
+            ? super.draggingEntered(sender) : .copy
+    }
+
+    override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
+        imageFileURLs(from: sender.draggingPasteboard).isEmpty
+            ? super.draggingUpdated(sender) : .copy
+    }
+
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        let images = imageFileURLs(from: sender.draggingPasteboard)
+        if !images.isEmpty, let coordinator = delegate as? MarkdownTextView.Coordinator {
+            let point = convert(sender.draggingLocation, from: nil)
+            let index = characterIndexForInsertion(at: point)
+            return coordinator.insertImageFiles(images, at: index)
+        }
+        return super.performDragOperation(sender)
+    }
+
+    private func imageFileURLs(from pasteboard: NSPasteboard) -> [URL] {
+        let urls = pasteboard.readObjects(
+            forClasses: [NSURL.self],
+            options: [.urlReadingFileURLsOnly: true]
+        ) as? [URL] ?? []
+        return urls.filter(ImageImporter.isImageFile)
+    }
+
+    // MARK: - Paste (images, then smart link)
+
     override func paste(_ sender: Any?) {
+        // Image paste: only when there's no text on the pasteboard (a copied
+        // image file from the Finder, or a screenshot's raw data).
+        if NSPasteboard.general.string(forType: .string) == nil,
+           let coordinator = delegate as? MarkdownTextView.Coordinator {
+            let images = imageFileURLs(from: NSPasteboard.general)
+            if !images.isEmpty {
+                if coordinator.insertImageFiles(images, at: nil) { return }
+            } else if let data = NSPasteboard.general.data(forType: .png)
+                        ?? NSPasteboard.general.data(forType: .tiff) {
+                if coordinator.insertPastedImageData(data) { return }
+            }
+        }
+
         let selection = selectedRange()
         if selection.length > 0,
            let clipboard = NSPasteboard.general.string(forType: .string)?

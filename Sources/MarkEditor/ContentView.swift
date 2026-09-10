@@ -233,7 +233,12 @@ struct ContentView: View {
             let totalWidth = geometry.size.width
             HStack(spacing: 0) {
                 if viewMode != .previewOnly {
-                    MarkdownTextView(text: $document.text, scrollSync: $scrollSync, actions: editorActions)
+                    MarkdownTextView(
+                        text: $document.text,
+                        scrollSync: $scrollSync,
+                        actions: editorActions,
+                        fileURL: fileURL
+                    )
                         .frame(width: viewMode == .split ? editorWidth(in: totalWidth) : totalWidth)
                 }
                 if viewMode == .split {
@@ -357,7 +362,7 @@ struct ContentView: View {
         }
         .font(.caption)
         .foregroundStyle(.secondary)
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 20)
         .padding(.vertical, 5)
         .background(.bar)
         .overlay(alignment: .top) {
