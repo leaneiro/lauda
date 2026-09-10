@@ -305,7 +305,7 @@ struct ContentView: View {
                     } label: {
                         WidthLevelIcon(level: effectivePreviewWidth)
                     }
-                    .help("Largura do texto: \(effectivePreviewWidth.label) — próxima: \(effectivePreviewWidth.next.label)")
+                    .help("Largura do texto: \(effectivePreviewWidth.label). Próxima: \(effectivePreviewWidth.next.label)")
                     .accessibilityLabel("Largura do texto: \(effectivePreviewWidth.label)")
                 }
             }

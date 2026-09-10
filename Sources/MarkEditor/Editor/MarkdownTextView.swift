@@ -586,7 +586,7 @@ struct MarkdownTextView: NSViewRepresentable {
             }
             let alert = NSAlert()
             alert.messageText = "Salve o documento primeiro"
-            alert.informativeText = "Imagens são copiadas para a pasta do documento — salve o arquivo para ele ter uma."
+            alert.informativeText = "As imagens são copiadas para a pasta do documento, então salve o arquivo antes de adicionar imagens."
             alert.runModal()
             return nil
         }

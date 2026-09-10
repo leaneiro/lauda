@@ -27,7 +27,7 @@ cp -R build/MarkEditor.app "$STAGING/"
 ln -s /Applications "$STAGING/Applications"
 
 cat > "$STAGING/Como instalar.txt" <<'EOF'
-MarkEditor — como instalar
+Como instalar o MarkEditor
 
 1. Arraste o MarkEditor para a pasta Applications (Aplicativos).
 2. Abra o MarkEditor a partir da pasta Aplicativos.
