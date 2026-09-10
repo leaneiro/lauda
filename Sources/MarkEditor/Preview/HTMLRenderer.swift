@@ -210,8 +210,10 @@ struct HTMLRenderer: MarkupVisitor {
         return html
     }
 
+    /// Every Enter is a visible line break (GitHub-comment / Obsidian style),
+    /// rather than CommonMark's default of folding it into a space.
     mutating func visitSoftBreak(_ softBreak: SoftBreak) -> String {
-        "\n"
+        "<br>\n"
     }
 
     mutating func visitLineBreak(_ lineBreak: LineBreak) -> String {

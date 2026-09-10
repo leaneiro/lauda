@@ -89,6 +89,30 @@ final class HTMLRendererTests: XCTestCase {
         XCTAssertTrue(html.contains("<br>"), "got: \(html)")
     }
 
+    func testSingleEnterBecomesLineBreak() {
+        XCTAssertEqual(
+            HTMLRenderer.render("primeira linha\nsegunda linha"),
+            "<p>primeira linha<br>\nsegunda linha</p>\n"
+        )
+    }
+
+    func testBlankLineStillStartsNewParagraph() {
+        XCTAssertEqual(
+            HTMLRenderer.render("um\n\ndois"),
+            "<p>um</p>\n<p>dois</p>\n"
+        )
+    }
+
+    func testSingleEnterInsideListItemBecomesLineBreak() {
+        let html = HTMLRenderer.render("- item\n  continuação")
+        XCTAssertTrue(html.contains("<li>item<br>\ncontinuação</li>"), "got: \(html)")
+    }
+
+    func testCodeBlockKeepsPlainNewlines() {
+        let html = HTMLRenderer.render("```\na\nb\n```")
+        XCTAssertFalse(html.contains("<br>"), "got: \(html)")
+    }
+
     func testRawHTMLPassesThrough() {
         let html = HTMLRenderer.render("<div>bloco</div>")
         XCTAssertTrue(html.contains("<div>bloco</div>"), "got: \(html)")
