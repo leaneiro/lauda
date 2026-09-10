@@ -40,10 +40,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NotificationCenter.default.addObserver(
             self, selector: #selector(menuDidAddItem(_:)),
             name: NSMenu.didAddItemNotification, object: nil)
+        // Key-window changes (e.g. the Open panel) make SwiftUI swap in a
+        // rebuilt menu bar — another moment the natives can resurface.
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(scheduleHidePass),
+            name: NSWindow.didBecomeKeyNotification, object: nil)
+        mainMenuObservation = NSApp.observe(\.mainMenu) { [weak self] _, _ in
+            self?.scheduleHidePass()
+        }
         DispatchQueue.main.async { self.hideNativeOpenItems() }
     }
-
-
 
     @objc private func menuDidBeginTracking(_ notification: Notification) {
         guard (notification.object as? NSMenu) === NSApp.mainMenu else { return }
@@ -51,14 +57,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private var hidePassScheduled = false
+    private var mainMenuObservation: NSKeyValueObservation?
+
 
     @objc private func menuDidAddItem(_ notification: Notification) {
-        // Menu builds add many items in a burst; coalesce into one pass that
-        // runs after the build settles (items get configured post-insertion).
+        scheduleHidePass()
+    }
+
+    /// Coalesced double pass: one right after the current build settles
+    /// (items get configured post-insertion) and a late one to win any race
+    /// with SwiftUI installing a freshly rebuilt menu bar.
+    @objc private func scheduleHidePass() {
         guard !hidePassScheduled else { return }
         hidePassScheduled = true
         DispatchQueue.main.async {
             self.hidePassScheduled = false
+            self.hideNativeOpenItems()
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
             self.hideNativeOpenItems()
         }
     }
