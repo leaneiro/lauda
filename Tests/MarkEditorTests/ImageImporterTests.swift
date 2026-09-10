@@ -84,6 +84,60 @@ final class ImageImporterTests: XCTestCase {
         )
     }
 
+    private func makePasteboard() -> NSPasteboard {
+        let pasteboard = NSPasteboard(name: NSPasteboard.Name("teste-\(UUID().uuidString)"))
+        pasteboard.clearContents()
+        return pasteboard
+    }
+
+    /// Reproduces a real Finder ⌘C: file URL + file name as text + icon TIFF.
+    func testFinderCopyIsTreatedAsImageFileDespiteTextAndIcon() throws {
+        let image = try makePNG("foto.png")
+        let pasteboard = makePasteboard()
+        pasteboard.writeObjects([image as NSURL])
+        pasteboard.setString(image.lastPathComponent, forType: .string)
+        pasteboard.setData(try Data(contentsOf: image), forType: .tiff)
+
+        XCTAssertEqual(ImageImporter.pasteIntent(for: pasteboard), .imageFiles([image]))
+    }
+
+    func testScreenshotDataIsTreatedAsImage() throws {
+        let data = try Data(contentsOf: try makePNG("shot.png"))
+        let pasteboard = makePasteboard()
+        pasteboard.setData(data, forType: .tiff)
+
+        XCTAssertEqual(ImageImporter.pasteIntent(for: pasteboard), .imageData(data))
+    }
+
+    func testPlainTextIsNotAnImage() {
+        let pasteboard = makePasteboard()
+        pasteboard.setString("só um texto", forType: .string)
+        XCTAssertEqual(ImageImporter.pasteIntent(for: pasteboard), .notAnImage)
+    }
+
+    func testRichContentWithTextAndImageStaysText() throws {
+        let data = try Data(contentsOf: try makePNG("web.png"))
+        let pasteboard = makePasteboard()
+        pasteboard.setString("trecho copiado de um site", forType: .string)
+        pasteboard.setData(data, forType: .tiff)
+        XCTAssertEqual(ImageImporter.pasteIntent(for: pasteboard), .notAnImage)
+    }
+
+    func testNonImageFileIsNotAnImage() throws {
+        let doc = directory.appendingPathComponent("notas.md")
+        try "x".write(to: doc, atomically: true, encoding: .utf8)
+        let pasteboard = makePasteboard()
+        pasteboard.writeObjects([doc as NSURL])
+        XCTAssertEqual(ImageImporter.pasteIntent(for: pasteboard), .notAnImage)
+    }
+
+    func testTextThatLooksLikeAPathIsNotAnImage() throws {
+        let image = try makePNG("caminho.png")
+        let pasteboard = makePasteboard()
+        pasteboard.setString(image.path, forType: .string)
+        XCTAssertEqual(ImageImporter.pasteIntent(for: pasteboard), .notAnImage)
+    }
+
     @MainActor
     func testCoordinatorInsertsImageMarkdownAtCaret() throws {
         let documentURL = directory.appendingPathComponent("notas.md")

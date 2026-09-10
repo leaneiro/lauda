@@ -50,16 +50,14 @@ final class EditorTextView: NSTextView {
     // MARK: - Paste (images, then smart link)
 
     override func paste(_ sender: Any?) {
-        // Image paste: only when there's no text on the pasteboard (a copied
-        // image file from the Finder, or a screenshot's raw data).
-        if NSPasteboard.general.string(forType: .string) == nil,
-           let coordinator = delegate as? MarkdownTextView.Coordinator {
-            let images = imageFileURLs(from: NSPasteboard.general)
-            if !images.isEmpty {
-                if coordinator.insertImageFiles(images, at: nil) { return }
-            } else if let data = NSPasteboard.general.data(forType: .png)
-                        ?? NSPasteboard.general.data(forType: .tiff) {
+        if let coordinator = delegate as? MarkdownTextView.Coordinator {
+            switch ImageImporter.pasteIntent(for: .general) {
+            case .imageFiles(let urls):
+                if coordinator.insertImageFiles(urls, at: nil) { return }
+            case .imageData(let data):
                 if coordinator.insertPastedImageData(data) { return }
+            case .notAnImage:
+                break
             }
         }
 

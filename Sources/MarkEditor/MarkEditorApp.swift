@@ -28,6 +28,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NotificationCenter.default.addObserver(
             self, selector: #selector(windowWillClose(_:)),
             name: NSWindow.willCloseNotification, object: nil)
+
     }
 
     /// AppKit re-adds a document to the recents when its window closes —
