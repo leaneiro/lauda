@@ -36,6 +36,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NotificationCenter.default.addObserver(
             self, selector: #selector(menuDidBeginTracking(_:)),
             name: NSMenu.didBeginTrackingNotification, object: nil)
+        // Any menu rebuild re-adds the native items; catch it at the source.
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(menuDidAddItem(_:)),
+            name: NSMenu.didAddItemNotification, object: nil)
         DispatchQueue.main.async { self.hideNativeOpenItems() }
     }
 
@@ -44,6 +48,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func menuDidBeginTracking(_ notification: Notification) {
         guard (notification.object as? NSMenu) === NSApp.mainMenu else { return }
         hideNativeOpenItems()
+    }
+
+    private var hidePassScheduled = false
+
+    @objc private func menuDidAddItem(_ notification: Notification) {
+        // Menu builds add many items in a burst; coalesce into one pass that
+        // runs after the build settles (items get configured post-insertion).
+        guard !hidePassScheduled else { return }
+        hidePassScheduled = true
+        DispatchQueue.main.async {
+            self.hidePassScheduled = false
+            self.hideNativeOpenItems()
+        }
     }
 
     private func hideNativeOpenItems() {
