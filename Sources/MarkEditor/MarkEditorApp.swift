@@ -28,8 +28,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NotificationCenter.default.addObserver(
             self, selector: #selector(windowWillClose(_:)),
             name: NSWindow.willCloseNotification, object: nil)
-
-
     }
 
     /// AppKit re-adds a document to the recents when its window closes —
@@ -55,7 +53,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         RecentDocuments.clear()
         NSDocumentController.shared.clearRecentDocuments(sender)
     }
-
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         // Light-first by default; the user can pick Escuro/Automático in Ajustes.
