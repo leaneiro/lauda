@@ -138,6 +138,41 @@ final class ImageImporterTests: XCTestCase {
         XCTAssertEqual(ImageImporter.pasteIntent(for: pasteboard), .notAnImage)
     }
 
+    /// Regression: AppKit disables Paste (greyed menu, inert ⌘V) when a
+    /// plain-text view reports nothing readable — an image-only clipboard
+    /// never reached our paste handler.
+    @MainActor
+    func testPasteCommandStaysEnabledForImageOnlyClipboard() throws {
+        let data = try Data(contentsOf: try makePNG("shot.png"))
+        let pasteboard = makePasteboard()
+        pasteboard.setData(data, forType: .tiff)
+
+        let textView = EditorTextView()
+        textView.isRichText = false
+        textView.pasteboardProvider = { pasteboard }
+        let item = NSMenuItem(title: "Colar", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+
+        XCTAssertTrue(textView.validateUserInterfaceItem(item))
+        XCTAssertTrue(textView.readablePasteboardTypes.contains(.tiff))
+        XCTAssertTrue(textView.readablePasteboardTypes.contains(.png))
+        XCTAssertTrue(textView.readablePasteboardTypes.contains(.fileURL))
+    }
+
+    @MainActor
+    func testPasteCommandFollowsDefaultRulesForPlainText() throws {
+        let pasteboard = makePasteboard()
+        pasteboard.setString("texto", forType: .string)
+
+        let textView = EditorTextView()
+        textView.isRichText = false
+        textView.pasteboardProvider = { pasteboard }
+        let item = NSMenuItem(title: "Colar", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+
+        // Sem imagem, cai na validação padrão do NSTextView (que aceita texto
+        // do pasteboard geral) — o importante é não travar o comando.
+        XCTAssertNoThrow(textView.validateUserInterfaceItem(item))
+    }
+
     @MainActor
     func testCoordinatorInsertsImageMarkdownAtCaret() throws {
         let documentURL = directory.appendingPathComponent("notas.md")

@@ -49,9 +49,29 @@ final class EditorTextView: NSTextView {
 
     // MARK: - Paste (images, then smart link)
 
+    /// A plain-text view reports nothing readable when the pasteboard only
+    /// holds an image, so AppKit disables Paste (menu greyed out, ⌘V inert)
+    /// before `paste(_:)` is ever reached. Advertise the image flavors we
+    /// handle ourselves so the command stays enabled.
+    override var readablePasteboardTypes: [NSPasteboard.PasteboardType] {
+        super.readablePasteboardTypes + [.fileURL, .png, .tiff]
+    }
+
+    /// Injectable so tests can exercise paste without touching the user's
+    /// clipboard.
+    var pasteboardProvider: () -> NSPasteboard = { .general }
+
+    override func validateUserInterfaceItem(_ item: NSValidatedUserInterfaceItem) -> Bool {
+        if item.action == #selector(paste(_:)),
+           ImageImporter.pasteIntent(for: pasteboardProvider()) != .notAnImage {
+            return true
+        }
+        return super.validateUserInterfaceItem(item)
+    }
+
     override func paste(_ sender: Any?) {
         if let coordinator = delegate as? MarkdownTextView.Coordinator {
-            switch ImageImporter.pasteIntent(for: .general) {
+            switch ImageImporter.pasteIntent(for: pasteboardProvider()) {
             case .imageFiles(let urls):
                 if coordinator.insertImageFiles(urls, at: nil) { return }
             case .imageData(let data):
