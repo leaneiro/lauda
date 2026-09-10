@@ -14,6 +14,7 @@ struct PreviewWebView: NSViewRepresentable {
     @AppStorage(SettingsKeys.previewFontName) private var fontName = SettingsDefaults.previewFontName
     @AppStorage(SettingsKeys.previewFontSize) private var fontSize = SettingsDefaults.previewFontSize
     @AppStorage(SettingsKeys.previewLineHeight) private var lineHeight = SettingsDefaults.previewLineHeight
+    @AppStorage(SettingsKeys.strictLineBreaks) private var strictLineBreaks = SettingsDefaults.strictLineBreaks
 
     func makeCoordinator() -> Coordinator {
         Coordinator()
@@ -44,7 +45,7 @@ struct PreviewWebView: NSViewRepresentable {
         coordinator.schemeHandler.baseDirectory = baseURL
         coordinator.setStyle(fontFamily: FontOption.cssFamily(for: fontName), size: fontSize, lineHeight: lineHeight)
         coordinator.setContentWidth(contentWidthRem)
-        coordinator.setMarkdown(markdown)
+        coordinator.setMarkdown(markdown, strictLineBreaks: strictLineBreaks)
         coordinator.syncScroll(scrollSync)
     }
 
@@ -67,9 +68,13 @@ struct PreviewWebView: NSViewRepresentable {
 
         // MARK: - Content
 
-        func setMarkdown(_ markdown: String) {
-            guard markdown != lastMarkdown else { return }
+        private var lastStrictLineBreaks = SettingsDefaults.strictLineBreaks
+
+        func setMarkdown(_ markdown: String, strictLineBreaks: Bool) {
+            // Toggling the setting must re-render even when the text is unchanged.
+            guard markdown != lastMarkdown || strictLineBreaks != lastStrictLineBreaks else { return }
             lastMarkdown = markdown
+            lastStrictLineBreaks = strictLineBreaks
             needsRender = true
             renderNextIfIdle()
         }
@@ -80,10 +85,11 @@ struct PreviewWebView: NSViewRepresentable {
         /// typing burst this self-paces to whatever the machine sustains.
         private func renderNextIfIdle() {
             guard needsRender, !isRendering, let markdown = lastMarkdown else { return }
+            let strictLineBreaks = lastStrictLineBreaks
             needsRender = false
             isRendering = true
             DispatchQueue.global(qos: .userInteractive).async { [weak self] in
-                let html = HTMLRenderer.render(markdown)
+                let html = HTMLRenderer.render(markdown, strictLineBreaks: strictLineBreaks)
                 DispatchQueue.main.async {
                     guard let self else { return }
                     self.pushContent(html) {

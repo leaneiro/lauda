@@ -5,9 +5,13 @@ import Markdown
 struct HTMLRenderer: MarkupVisitor {
     typealias Result = String
 
-    static func render(_ markdown: String) -> String {
+    /// CommonMark behavior: a single Enter inside a paragraph folds into a
+    /// space. Off by default, where every Enter is a visible line break.
+    var strictLineBreaks = false
+
+    static func render(_ markdown: String, strictLineBreaks: Bool = false) -> String {
         let document = Document(parsing: markdown)
-        var renderer = HTMLRenderer()
+        var renderer = HTMLRenderer(strictLineBreaks: strictLineBreaks)
         return renderer.visit(document)
     }
 
@@ -16,9 +20,9 @@ struct HTMLRenderer: MarkupVisitor {
     /// `break-inside: avoid` on the wrapper then pushes the heading to the
     /// next page instead of leaving it orphaned at the bottom (WebKit's print
     /// engine ignores `break-after: avoid`, so this is the reliable route).
-    static func renderForPrint(_ markdown: String) -> String {
+    static func renderForPrint(_ markdown: String, strictLineBreaks: Bool = false) -> String {
         let document = Document(parsing: markdown)
-        var renderer = HTMLRenderer()
+        var renderer = HTMLRenderer(strictLineBreaks: strictLineBreaks)
         let children = Array(document.children)
         var html = ""
         var index = 0
@@ -210,10 +214,10 @@ struct HTMLRenderer: MarkupVisitor {
         return html
     }
 
-    /// Every Enter is a visible line break (GitHub-comment / Obsidian style),
-    /// rather than CommonMark's default of folding it into a space.
+    /// By default every Enter is a visible line break (GitHub-comment /
+    /// Obsidian style); strict mode keeps CommonMark's fold-into-a-space.
     mutating func visitSoftBreak(_ softBreak: SoftBreak) -> String {
-        "<br>\n"
+        strictLineBreaks ? "\n" : "<br>\n"
     }
 
     mutating func visitLineBreak(_ lineBreak: LineBreak) -> String {

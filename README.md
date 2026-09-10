@@ -22,7 +22,8 @@ Markdown renderizado à direita, atualizando em tempo real enquanto você digita
   `->`/`<-` viram →/← fora de código; barra de status mostra "Salvo ✓".
 - **Personalização** — em Ajustes (⌘,): aparência (claro/escuro/automático,
   claro por padrão), fonte e tamanho do editor, fonte, tamanho e entrelinha
-  do preview.
+  do preview, e quebras de linha estritas (por padrão, cada Enter quebra a
+  linha no preview; no modo estrito vale a regra do Markdown padrão).
 - Documento nativo do macOS: abrir/salvar `.md`, autosave, undo, renomear pelo
   título da janela, arquivos recentes.
 

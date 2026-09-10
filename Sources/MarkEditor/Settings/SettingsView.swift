@@ -7,6 +7,7 @@ struct SettingsView: View {
     @AppStorage(SettingsKeys.previewFontSize) private var previewFontSize = SettingsDefaults.previewFontSize
     @AppStorage(SettingsKeys.previewLineHeight) private var previewLineHeight = SettingsDefaults.previewLineHeight
     @AppStorage(SettingsKeys.appearanceMode) private var appearanceMode = SettingsDefaults.appearanceMode
+    @AppStorage(SettingsKeys.strictLineBreaks) private var strictLineBreaks = SettingsDefaults.strictLineBreaks
 
     var body: some View {
         Form {
@@ -39,6 +40,10 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                         .frame(width: 40, alignment: .trailing)
                 }
+                Toggle(isOn: $strictLineBreaks) {
+                    Text("Quebras de linha estritas")
+                    Text("Um Enter sozinho não quebra a linha, como no Markdown padrão.")
+                }
             }
 
             Section {
@@ -49,6 +54,7 @@ struct SettingsView: View {
                     previewFontSize = SettingsDefaults.previewFontSize
                     previewLineHeight = SettingsDefaults.previewLineHeight
                     appearanceMode = SettingsDefaults.appearanceMode
+                    strictLineBreaks = SettingsDefaults.strictLineBreaks
                     AppearanceMode.stored.apply()
                 }
             }

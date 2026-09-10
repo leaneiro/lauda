@@ -18,10 +18,12 @@ final class DocumentExporter: NSObject, WKNavigationDelegate {
             ?? SettingsDefaults.previewFontSize
         let lineHeight = defaults.object(forKey: SettingsKeys.previewLineHeight) as? Double
             ?? SettingsDefaults.previewLineHeight
+        let strictLineBreaks = defaults.object(forKey: SettingsKeys.strictLineBreaks) as? Bool
+            ?? SettingsDefaults.strictLineBreaks
 
         return PreviewTemplate.standalone(
             title: title,
-            bodyHTML: HTMLRenderer.renderForPrint(markdown),
+            bodyHTML: HTMLRenderer.renderForPrint(markdown, strictLineBreaks: strictLineBreaks),
             fontFamily: FontOption.cssFamily(for: fontName),
             fontSize: fontSize,
             lineHeight: lineHeight

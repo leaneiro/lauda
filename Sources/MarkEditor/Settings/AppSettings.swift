@@ -9,6 +9,7 @@ enum SettingsKeys {
     static let appearanceMode = "appearanceMode"
     static let previewWidthLevel = "previewWidthLevel"
     static let lastViewMode = "lastViewMode"
+    static let strictLineBreaks = "strictLineBreaks"
 }
 
 /// Content-column width for the preview in full-preview mode (⌘3).
@@ -47,6 +48,7 @@ enum SettingsDefaults {
     static let previewFontSize = 16.0
     static let previewLineHeight = 1.65
     static let appearanceMode = AppearanceMode.light.rawValue
+    static let strictLineBreaks = false
 }
 
 enum AppearanceMode: String, CaseIterable, Identifiable {

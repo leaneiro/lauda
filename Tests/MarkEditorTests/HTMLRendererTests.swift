@@ -96,6 +96,24 @@ final class HTMLRendererTests: XCTestCase {
         )
     }
 
+    func testStrictModeFoldsSingleEnterLikeCommonMark() {
+        XCTAssertEqual(
+            HTMLRenderer.render("primeira linha\nsegunda linha", strictLineBreaks: true),
+            "<p>primeira linha\nsegunda linha</p>\n"
+        )
+    }
+
+    func testStrictModeStillHonorsHardBreaks() {
+        let html = HTMLRenderer.render("linha um  \nlinha dois", strictLineBreaks: true)
+        XCTAssertTrue(html.contains("linha um<br>\nlinha dois"), "got: \(html)")
+    }
+
+    func testStrictModeAppliesToPrintRendering() {
+        let html = HTMLRenderer.renderForPrint("# T\n\na\nb", strictLineBreaks: true)
+        XCTAssertTrue(html.contains("<p>a\nb</p>"), "got: \(html)")
+        XCTAssertTrue(HTMLRenderer.renderForPrint("# T\n\na\nb").contains("<p>a<br>\nb</p>"))
+    }
+
     func testBlankLineStillStartsNewParagraph() {
         XCTAssertEqual(
             HTMLRenderer.render("um\n\ndois"),
