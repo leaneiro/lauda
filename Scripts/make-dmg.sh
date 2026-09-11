@@ -26,7 +26,22 @@ mkdir -p "$STAGING"
 cp -R build/MarkEditor.app "$STAGING/"
 ln -s /Applications "$STAGING/Applications"
 
-cat > "$STAGING/Como instalar.txt" <<'EOF'
+cat > "$STAGING/How to Install.txt" <<'EOF'
+How to install MarkEditor
+
+1. Drag MarkEditor into the Applications folder.
+2. Open MarkEditor from the Applications folder.
+
+The first time, macOS may say it couldn't verify the app (it isn't
+signed by an Apple-identified developer yet). If that happens:
+
+   System Settings → Privacy & Security → scroll to the bottom →
+   click "Open Anyway" and confirm.
+
+You only need to do this once. Happy writing! ✍️
+
+----------------------------------------------------------------------
+
 Como instalar o MarkEditor
 
 1. Arraste o MarkEditor para a pasta Applications (Aplicativos).

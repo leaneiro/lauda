@@ -65,9 +65,17 @@ enum ImageImporter {
     /// file name.
     static func saveImageData(_ data: Data, in directory: URL, now: Date = Date()) -> String? {
         guard let pngData = pngData(from: data) else { return nil }
+        // Fixed POSIX locale so the timestamp is always Western digits and the
+        // Gregorian calendar, whatever the user's region.
         let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
         formatter.dateFormat = "yyyyMMdd-HHmmss"
-        let name = "imagem-\(formatter.string(from: now)).png"
+        let timestamp = formatter.string(from: now)
+        let name = String(
+            localized: "image-\(timestamp).png",
+            comment: "File name for a pasted screenshot; keep the timestamp placeholder."
+        )
         let destination = uniqueDestination(for: name, in: directory)
         do {
             try pngData.write(to: destination)

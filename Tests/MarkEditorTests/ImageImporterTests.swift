@@ -69,7 +69,7 @@ final class ImageImporterTests: XCTestCase {
         let source = try makePNG("base.png")
         let name = ImageImporter.saveImageData(try Data(contentsOf: source), in: directory)
         XCTAssertNotNil(name)
-        XCTAssertTrue(name!.hasPrefix("imagem-"))
+        XCTAssertTrue(name!.hasPrefix("image-"))
         XCTAssertTrue(name!.hasSuffix(".png"))
     }
 

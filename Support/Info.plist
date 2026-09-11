@@ -3,7 +3,12 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleDevelopmentRegion</key>
-    <string>pt_BR</string>
+    <string>en</string>
+    <key>CFBundleLocalizations</key>
+    <array>
+        <string>en</string>
+        <string>pt-BR</string>
+    </array>
     <key>CFBundleExecutable</key>
     <string>MarkEditor</string>
     <key>CFBundleIconFile</key>
@@ -36,7 +41,7 @@
     <array>
         <dict>
             <key>CFBundleTypeName</key>
-            <string>Documento Markdown</string>
+            <string>Markdown Document</string>
             <key>CFBundleTypeRole</key>
             <string>Editor</string>
             <key>LSHandlerRank</key>
@@ -54,7 +59,7 @@
             <key>UTTypeIdentifier</key>
             <string>net.daringfireball.markdown</string>
             <key>UTTypeDescription</key>
-            <string>Documento Markdown</string>
+            <string>Markdown Document</string>
             <key>UTTypeConformsTo</key>
             <array>
                 <string>public.plain-text</string>

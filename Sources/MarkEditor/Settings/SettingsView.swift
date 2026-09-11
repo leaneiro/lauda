@@ -11,8 +11,8 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
-            Section("Geral") {
-                Picker("Aparência", selection: $appearanceMode) {
+            Section("General") {
+                Picker("Appearance", selection: $appearanceMode) {
                     ForEach(AppearanceMode.allCases) { mode in
                         Text(mode.label).tag(mode.rawValue)
                     }
@@ -24,16 +24,16 @@ struct SettingsView: View {
             }
 
             Section("Editor") {
-                fontPicker("Fonte", selection: $editorFontName)
-                sizeSlider("Tamanho", value: $editorFontSize, range: 10...24)
+                fontPicker("Font", selection: $editorFontName)
+                sizeSlider("Size", value: $editorFontSize, range: 10...24)
             }
 
-            Section("Visualização") {
-                fontPicker("Fonte", selection: $previewFontName)
-                sizeSlider("Tamanho", value: $previewFontSize, range: 12...28)
+            Section("Preview") {
+                fontPicker("Font", selection: $previewFontName)
+                sizeSlider("Size", value: $previewFontSize, range: 12...28)
                 HStack {
                     Slider(value: $previewLineHeight, in: 1.2...2.2, step: 0.05) {
-                        Text("Entrelinha")
+                        Text("Line height")
                     }
                     Text(previewLineHeight.formatted(.number.precision(.fractionLength(2))))
                         .monospacedDigit()
@@ -41,13 +41,13 @@ struct SettingsView: View {
                         .frame(width: 40, alignment: .trailing)
                 }
                 Toggle(isOn: $strictLineBreaks) {
-                    Text("Quebras de linha estritas")
-                    Text("Um Enter sozinho não quebra a linha, como no Markdown padrão.")
+                    Text("Strict line breaks")
+                    Text("A single Return doesn't break the line, as in standard Markdown.")
                 }
             }
 
             Section {
-                Button("Restaurar padrões") {
+                Button("Restore Defaults") {
                     editorFontName = SettingsDefaults.editorFontName
                     editorFontSize = SettingsDefaults.editorFontSize
                     previewFontName = SettingsDefaults.previewFontName
@@ -69,7 +69,7 @@ struct SettingsView: View {
         .fixedSize()
     }
 
-    private func fontPicker(_ title: String, selection: Binding<String>) -> some View {
+    private func fontPicker(_ title: LocalizedStringKey, selection: Binding<String>) -> some View {
         Picker(title, selection: selection) {
             ForEach(FontOption.specialOptions, id: \.id) { option in
                 Text(option.label).tag(option.id)
@@ -81,7 +81,7 @@ struct SettingsView: View {
         }
     }
 
-    private func sizeSlider(_ title: String, value: Binding<Double>, range: ClosedRange<Double>) -> some View {
+    private func sizeSlider(_ title: LocalizedStringKey, value: Binding<Double>, range: ClosedRange<Double>) -> some View {
         HStack {
             Slider(value: value, in: range, step: 1) {
                 Text(title)

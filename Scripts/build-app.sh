@@ -24,6 +24,16 @@ if [[ -f Resources/AppIcon.icns ]]; then
     cp Resources/AppIcon.icns "$APP_PATH/Contents/Resources/AppIcon.icns"
 fi
 
+# Localizations: compile the string catalogs into <lang>.lproj folders.
+# xcstringstool ships with Xcode; without it the app still runs, in English.
+if xcrun --find xcstringstool >/dev/null 2>&1; then
+    for catalog in Resources/*.xcstrings; do
+        xcrun xcstringstool compile "$catalog" --output-directory "$APP_PATH/Contents/Resources"
+    done
+else
+    echo "warning: xcstringstool not found (install Xcode); the app will run in English only"
+fi
+
 codesign --force --sign - "$APP_PATH"
 
 echo "OK: $APP_PATH"

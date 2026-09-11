@@ -49,6 +49,6 @@ struct MarkdownDocument: FileDocument {
 
 extension Notification.Name {
     /// Posted whenever a document's bytes are written (save or autosave), so
-    /// the status bar can show a friendly "Salvo" state.
+    /// the status bar can show a friendly "Saved" state.
     static let markdownDocumentDidSave = Notification.Name("markdownDocumentDidSave")
 }

@@ -93,10 +93,10 @@ struct ExportCommands: Commands {
 
     var body: some Commands {
         CommandGroup(after: .importExport) {
-            Button("Exportar como PDF…") { exportActions?.exportPDF() }
+            Button("Export as PDF…") { exportActions?.exportPDF() }
                 .keyboardShortcut("e", modifiers: [.command, .shift])
                 .disabled(exportActions == nil)
-            Button("Exportar como HTML…") { exportActions?.exportHTML() }
+            Button("Export as HTML…") { exportActions?.exportHTML() }
                 .keyboardShortcut("e", modifiers: [.command, .option, .shift])
                 .disabled(exportActions == nil)
         }
@@ -109,16 +109,16 @@ struct FindCommands: Commands {
     var body: some Commands {
         CommandGroup(after: .textEditing) {
             Divider()
-            Button("Localizar…") { findActions?.find() }
+            Button("Find…") { findActions?.find() }
                 .keyboardShortcut("f")
                 .disabled(findActions == nil)
-            Button("Localizar Seguinte") { findActions?.findNext() }
+            Button("Find Next") { findActions?.findNext() }
                 .keyboardShortcut("g")
                 .disabled(findActions == nil)
-            Button("Localizar Anterior") { findActions?.findPrevious() }
+            Button("Find Previous") { findActions?.findPrevious() }
                 .keyboardShortcut("g", modifiers: [.command, .shift])
                 .disabled(findActions == nil)
-            Button("Localizar e Substituir…") { findActions?.replace() }
+            Button("Find and Replace…") { findActions?.replace() }
                 .keyboardShortcut("f", modifiers: [.command, .option])
                 .disabled(findActions == nil)
         }
@@ -140,15 +140,15 @@ struct FormatCommands: Commands {
     @FocusedValue(\.editorActions) private var editorActions
 
     var body: some Commands {
-        CommandMenu("Formatar") {
-            Button("Negrito") { editorActions?.toggleBold() }
+        CommandMenu("Format") {
+            Button("Bold") { editorActions?.toggleBold() }
                 .keyboardShortcut("b")
                 .disabled(editorActions == nil)
-            Button("Itálico") { editorActions?.toggleItalic() }
+            Button("Italic") { editorActions?.toggleItalic() }
                 .keyboardShortcut("i")
                 .disabled(editorActions == nil)
             Divider()
-            Button("Adicionar Link") { editorActions?.insertLink() }
+            Button("Add Link") { editorActions?.insertLink() }
                 .keyboardShortcut("k")
                 .disabled(editorActions == nil)
         }
@@ -160,13 +160,13 @@ struct ViewModeCommands: Commands {
 
     var body: some Commands {
         CommandGroup(after: .toolbar) {
-            Button("Somente Editor") { viewMode = .editorOnly }
+            Button("Editor Only") { viewMode = .editorOnly }
                 .keyboardShortcut("1", modifiers: .command)
                 .disabled(viewMode == nil)
-            Button("Editor e Visualização") { viewMode = .split }
+            Button("Editor and Preview") { viewMode = .split }
                 .keyboardShortcut("2", modifiers: .command)
                 .disabled(viewMode == nil)
-            Button("Somente Visualização") { viewMode = .previewOnly }
+            Button("Preview Only") { viewMode = .previewOnly }
                 .keyboardShortcut("3", modifiers: .command)
                 .disabled(viewMode == nil)
             Divider()
@@ -181,7 +181,7 @@ enum ReadingTime {
     static func label(forWordCount wordCount: Int) -> String? {
         guard wordCount > 0 else { return nil }
         let minutes = Int((Double(wordCount) / Double(wordsPerMinute)).rounded())
-        return minutes < 1 ? "menos de 1 min de leitura" : "~\(minutes) min de leitura"
+        return minutes < 1 ? String(localized: "less than 1 min read") : String(localized: "~\(minutes) min read")
     }
 }
 
@@ -310,12 +310,12 @@ struct ContentView: View {
         }
         .toolbar {
             ToolbarItem(placement: .principal) {
-                Picker("Modo de exibição", selection: viewModeBinding) {
-                    Label("Somente editor", systemImage: "doc.plaintext")
+                Picker("View Mode", selection: viewModeBinding) {
+                    Label("Editor only", systemImage: "doc.plaintext")
                         .tag(ViewMode.editorOnly)
-                    Label("Editor e visualização", systemImage: "rectangle.split.2x1")
+                    Label("Editor and preview", systemImage: "rectangle.split.2x1")
                         .tag(ViewMode.split)
-                    Label("Somente visualização", systemImage: "doc.richtext")
+                    Label("Preview only", systemImage: "doc.richtext")
                         .tag(ViewMode.previewOnly)
                 }
                 .pickerStyle(.segmented)
@@ -325,9 +325,9 @@ struct ContentView: View {
                 Button {
                     outlinePresented.toggle()
                 } label: {
-                    Label("Sumário", systemImage: "list.bullet")
+                    Label("Outline", systemImage: "list.bullet")
                 }
-                .help("Sumário do documento")
+                .help("Document outline")
                 .popover(isPresented: $outlinePresented, arrowEdge: .bottom) {
                     OutlinePopover(items: Outline.items(in: document.text), onSelect: navigate(to:))
                 }
@@ -339,8 +339,8 @@ struct ContentView: View {
                     } label: {
                         WidthLevelIcon(level: effectivePreviewWidth)
                     }
-                    .help("Largura do texto: \(effectivePreviewWidth.label). Próxima: \(effectivePreviewWidth.next.label)")
-                    .accessibilityLabel("Largura do texto: \(effectivePreviewWidth.label)")
+                    .help("Text width: \(effectivePreviewWidth.label). Next: \(effectivePreviewWidth.next.label)")
+                    .accessibilityLabel("Text width: \(effectivePreviewWidth.label)")
                 }
             }
         }
@@ -386,8 +386,8 @@ struct ContentView: View {
 
     private var statusBar: some View {
         HStack(spacing: 16) {
-            Text("\(wordCount) palavras")
-            Text("\(document.text.count) caracteres")
+            Text("\(wordCount) words")
+            Text("\(document.text.count) characters")
             if let readingTime = ReadingTime.label(forWordCount: wordCount) {
                 Text(readingTime)
             }
@@ -422,7 +422,7 @@ struct ContentView: View {
     // MARK: - Export
 
     private var exportTitle: String {
-        fileURL?.deletingPathExtension().lastPathComponent ?? "Documento"
+        fileURL?.deletingPathExtension().lastPathComponent ?? String(localized: "Untitled")
     }
 
     private func exportHTML() {
@@ -531,21 +531,21 @@ struct ContentView: View {
                 .foregroundStyle(status.color)
             Text(status.label)
         }
-        .help("O macOS salva automaticamente; ⌘S salva na hora.")
+        .help("macOS saves automatically; ⌘S saves right away.")
     }
 
     private var saveStatus: (icon: String, label: String, color: Color) {
         if fileURL == nil && lastSavedText == nil {
-            return ("circle.dotted", "Não salvo ainda", .secondary)
+            return ("circle.dotted", String(localized: "Not saved yet"), .secondary)
         }
         if document.text == lastSavedText {
             if let date = lastSaveDate {
                 let time = date.formatted(date: .omitted, time: .shortened)
-                return ("checkmark.circle.fill", "Salvo · \(time)", .green)
+                return ("checkmark.circle.fill", String(localized: "Saved · \(time)"), .green)
             }
-            return ("checkmark.circle.fill", "Salvo", .green)
+            return ("checkmark.circle.fill", String(localized: "Saved"), .green)
         }
-        return ("ellipsis.circle.fill", "Editando…", .orange)
+        return ("ellipsis.circle.fill", String(localized: "Editing…"), .orange)
     }
 
     /// Display width of the editor pane: the stored fraction, clamped so both
@@ -602,7 +602,7 @@ struct FindBar: View {
         HStack(spacing: 6) {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(.secondary)
-            TextField("Localizar", text: $query)
+            TextField("Find", text: $query)
                 .textFieldStyle(.plain)
                 .frame(width: 170)
                 .focused($isFocused)
@@ -623,19 +623,19 @@ struct FindBar: View {
             }
             .buttonStyle(.borderless)
             .disabled(total == 0)
-            .help("Anterior (⇧⌘G)")
+            .help("Previous (⇧⌘G)")
             Button(action: onNext) {
                 Image(systemName: "chevron.right")
             }
             .buttonStyle(.borderless)
             .disabled(total == 0)
-            .help("Seguinte (⌘G)")
+            .help("Next (⌘G)")
             Button(action: onClose) {
                 Image(systemName: "xmark.circle.fill")
                     .foregroundStyle(.secondary)
             }
             .buttonStyle(.borderless)
-            .help("Fechar (Esc)")
+            .help("Close (Esc)")
         }
         .padding(.horizontal, 11)
         .padding(.vertical, 8)

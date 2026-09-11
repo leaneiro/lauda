@@ -1,0 +1,647 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "%lld characters" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld character"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld characters"
+                }
+              }
+            }
+          }
+        },
+        "pt-BR" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld caractere"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld caracteres"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld words" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld word"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld words"
+                }
+              }
+            }
+          }
+        },
+        "pt-BR" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld palavra"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld palavras"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "A single Return doesn't break the line, as in standard Markdown." : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Um Enter sozinho não quebra a linha, como no Markdown padrão."
+          }
+        }
+      }
+    },
+    "Add Link" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adicionar Link"
+          }
+        }
+      }
+    },
+    "Appearance" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aparência"
+          }
+        }
+      }
+    },
+    "Automatic" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automático"
+          }
+        }
+      }
+    },
+    "Bold" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Negrito"
+          }
+        }
+      }
+    },
+    "Close (Esc)" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fechar (Esc)"
+          }
+        }
+      }
+    },
+    "Dark" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escuro"
+          }
+        }
+      }
+    },
+    "Document outline" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sumário do documento"
+          }
+        }
+      }
+    },
+    "Editing…" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Editando…"
+          }
+        }
+      }
+    },
+    "Editor" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Editor"
+          }
+        }
+      }
+    },
+    "Editor Only" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Somente Editor"
+          }
+        }
+      }
+    },
+    "Editor and Preview" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Editor e Visualização"
+          }
+        }
+      }
+    },
+    "Editor and preview" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Editor e visualização"
+          }
+        }
+      }
+    },
+    "Editor only" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Somente editor"
+          }
+        }
+      }
+    },
+    "Export as HTML…" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportar como HTML…"
+          }
+        }
+      }
+    },
+    "Export as PDF…" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportar como PDF…"
+          }
+        }
+      }
+    },
+    "Find" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Localizar"
+          }
+        }
+      }
+    },
+    "Find Next" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Localizar Seguinte"
+          }
+        }
+      }
+    },
+    "Find Previous" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Localizar Anterior"
+          }
+        }
+      }
+    },
+    "Find and Replace…" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Localizar e Substituir…"
+          }
+        }
+      }
+    },
+    "Find…" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Localizar…"
+          }
+        }
+      }
+    },
+    "Font" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fonte"
+          }
+        }
+      }
+    },
+    "Format" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Formatar"
+          }
+        }
+      }
+    },
+    "General" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geral"
+          }
+        }
+      }
+    },
+    "Images are copied to the document's folder, so save the file before adding images." : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "As imagens são copiadas para a pasta do documento, então salve o arquivo antes de adicionar imagens."
+          }
+        }
+      }
+    },
+    "Italic" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Itálico"
+          }
+        }
+      }
+    },
+    "Light" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claro"
+          }
+        }
+      }
+    },
+    "Line height" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entrelinha"
+          }
+        }
+      }
+    },
+    "Medium" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Médio"
+          }
+        }
+      }
+    },
+    "Next (⌘G)" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seguinte (⌘G)"
+          }
+        }
+      }
+    },
+    "No headings in the document" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhum título no documento"
+          }
+        }
+      }
+    },
+    "Normal" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Normal"
+          }
+        }
+      }
+    },
+    "Not saved yet" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não salvo ainda"
+          }
+        }
+      }
+    },
+    "Outline" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sumário"
+          }
+        }
+      }
+    },
+    "Preview" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Visualização"
+          }
+        }
+      }
+    },
+    "Preview Only" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Somente Visualização"
+          }
+        }
+      }
+    },
+    "Preview only" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Somente visualização"
+          }
+        }
+      }
+    },
+    "Previous (⇧⌘G)" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anterior (⇧⌘G)"
+          }
+        }
+      }
+    },
+    "Restore Defaults" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restaurar padrões"
+          }
+        }
+      }
+    },
+    "Save the document first" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salve o documento primeiro"
+          }
+        }
+      }
+    },
+    "Saved" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salvo"
+          }
+        }
+      }
+    },
+    "Saved · %@" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salvo · %@"
+          }
+        }
+      }
+    },
+    "Size" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tamanho"
+          }
+        }
+      }
+    },
+    "Strict line breaks" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quebras de linha estritas"
+          }
+        }
+      }
+    },
+    "System (Mono)" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sistema (Mono)"
+          }
+        }
+      }
+    },
+    "System (Sans)" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sistema (Sans)"
+          }
+        }
+      }
+    },
+    "System (Serif)" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sistema (Serif)"
+          }
+        }
+      }
+    },
+    "Text width: %@" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Largura do texto: %@"
+          }
+        }
+      }
+    },
+    "Text width: %@. Next: %@" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Largura do texto: %@. Próxima: %@"
+          }
+        }
+      }
+    },
+    "Untitled" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sem título"
+          }
+        }
+      }
+    },
+    "View Mode" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modo de exibição"
+          }
+        }
+      }
+    },
+    "Wide" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Amplo"
+          }
+        }
+      }
+    },
+    "image-%@.png" : {
+      "comment" : "File name for a pasted screenshot; keep the timestamp placeholder.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "imagem-%@.png"
+          }
+        }
+      }
+    },
+    "less than 1 min read" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "menos de 1 min de leitura"
+          }
+        }
+      }
+    },
+    "macOS saves automatically; ⌘S saves right away." : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O macOS salva automaticamente; ⌘S salva na hora."
+          }
+        }
+      }
+    },
+    "~%lld min read" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "~%lld min de leitura"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

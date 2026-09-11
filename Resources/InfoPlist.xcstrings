@@ -1,0 +1,16 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Markdown Document" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Documento Markdown"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

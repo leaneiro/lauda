@@ -587,8 +587,8 @@ struct MarkdownTextView: NSViewRepresentable {
                 return fileURL.deletingLastPathComponent()
             }
             let alert = NSAlert()
-            alert.messageText = "Salve o documento primeiro"
-            alert.informativeText = "As imagens são copiadas para a pasta do documento, então salve o arquivo antes de adicionar imagens."
+            alert.messageText = String(localized: "Save the document first")
+            alert.informativeText = String(localized: "Images are copied to the document's folder, so save the file before adding images.")
             alert.runModal()
             return nil
         }

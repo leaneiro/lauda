@@ -22,9 +22,9 @@ enum PreviewWidth: Int, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .normal: return "Normal"
-        case .medium: return "Médio"
-        case .wide: return "Amplo"
+        case .normal: return String(localized: "Normal")
+        case .medium: return String(localized: "Medium")
+        case .wide: return String(localized: "Wide")
         }
     }
 
@@ -60,9 +60,9 @@ enum AppearanceMode: String, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .light: return "Claro"
-        case .dark: return "Escuro"
-        case .auto: return "Automático"
+        case .light: return String(localized: "Light")
+        case .dark: return String(localized: "Dark")
+        case .auto: return String(localized: "Automatic")
         }
     }
 
@@ -91,9 +91,9 @@ enum FontOption {
     static let systemMono = "system-mono"
 
     static let specialOptions: [(id: String, label: String)] = [
-        (systemSans, "Sistema (Sans)"),
-        (systemSerif, "Sistema (Serif)"),
-        (systemMono, "Sistema (Mono)"),
+        (systemSans, String(localized: "System (Sans)")),
+        (systemSerif, String(localized: "System (Serif)")),
+        (systemMono, String(localized: "System (Mono)")),
     ]
 
     static let installedFamilies: [String] = NSFontManager.shared

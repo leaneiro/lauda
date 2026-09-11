@@ -1,6 +1,9 @@
 import Foundation
 
 enum PreviewTemplate {
+    /// UI language, used as the page's lang (hyphenation, CJK font choice).
+    static let languageTag = Bundle.main.preferredLocalizations.first ?? "en"
+
     /// Stylesheet shared by the live preview and exported documents.
     static let styles = """
     :root {
@@ -155,7 +158,7 @@ enum PreviewTemplate {
 
     static let html = """
     <!DOCTYPE html>
-    <html lang="pt-BR">
+    <html lang="\(PreviewTemplate.languageTag)">
     <head>
     <meta charset="utf-8">
     <style>
@@ -342,7 +345,7 @@ enum PreviewTemplate {
     ) -> String {
         """
         <!DOCTYPE html>
-        <html lang="pt-BR">
+        <html lang="\(PreviewTemplate.languageTag)">
         <head>
         <meta charset="utf-8">
         <title>\(HTMLRenderer.escape(title))</title>

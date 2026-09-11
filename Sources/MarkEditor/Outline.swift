@@ -43,7 +43,7 @@ struct OutlinePopover: View {
 
     var body: some View {
         if items.isEmpty {
-            Text("Nenhum título no documento")
+            Text("No headings in the document")
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 20)
                 .padding(.vertical, 16)
