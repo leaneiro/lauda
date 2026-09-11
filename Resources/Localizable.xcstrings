@@ -518,6 +518,47 @@
         }
       }
     },
+    "Couldn't add the image to the document's folder" : {
+      "comment" : "Alert title when a dropped or pasted image can't be copied or saved into the document's folder; the system's reason is shown below it.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Das Bild konnte nicht zum Ordner des Dokuments hinzugefügt werden"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "No se ha podido añadir la imagen a la carpeta del documento"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Impossible d’ajouter l’image au dossier du document"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "画像を書類のフォルダに追加できませんでした"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível adicionar a imagem à pasta do documento"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "无法将图像添加到文稿所在的文件夹"
+          }
+        }
+      }
+    },
     "Dark" : {
       "localizations" : {
         "pt-BR" : {

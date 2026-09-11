@@ -39,7 +39,7 @@ final class ImageImporterTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: external) }
         let source = try makePNG("photo.png", in: external)
 
-        let path = ImageImporter.importImage(from: source, into: directory)
+        let path = try ImageImporter.importImage(from: source, into: directory)
         XCTAssertEqual(path, "photo.png")
         XCTAssertTrue(FileManager.default.fileExists(atPath: directory.appendingPathComponent("photo.png").path))
     }
@@ -52,25 +52,45 @@ final class ImageImporterTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: external) }
         let source = try makePNG("photo.png", in: external)
 
-        XCTAssertEqual(ImageImporter.importImage(from: source, into: directory), "photo-2.png")
+        XCTAssertEqual(try ImageImporter.importImage(from: source, into: directory), "photo-2.png")
     }
 
     func testImageAlreadyInsideFolderIsReferencedWithoutCopy() throws {
         let source = try makePNG("local.png")
-        XCTAssertEqual(ImageImporter.importImage(from: source, into: directory), "local.png")
+        XCTAssertEqual(try ImageImporter.importImage(from: source, into: directory), "local.png")
 
         let sub = directory.appendingPathComponent("img")
         try FileManager.default.createDirectory(at: sub, withIntermediateDirectories: true)
         let nested = try makePNG("inner.png", in: sub)
-        XCTAssertEqual(ImageImporter.importImage(from: nested, into: directory), "img/inner.png")
+        XCTAssertEqual(try ImageImporter.importImage(from: nested, into: directory), "img/inner.png")
     }
 
     func testSaveImageDataWritesPNG() throws {
         let source = try makePNG("base.png")
-        let name = ImageImporter.saveImageData(try Data(contentsOf: source), in: directory)
-        XCTAssertNotNil(name)
-        XCTAssertTrue(name!.hasPrefix("image-"))
-        XCTAssertTrue(name!.hasSuffix(".png"))
+        let name = try ImageImporter.saveImageData(try Data(contentsOf: source), in: directory)
+        XCTAssertTrue(name.hasPrefix("image-"))
+        XCTAssertTrue(name.hasSuffix(".png"))
+    }
+
+    /// A read-only folder (a disk image, a shared folder) must surface the
+    /// error, so the editor can explain why the image didn't go in.
+    func testReadOnlyFolderReportsTheError() throws {
+        let external = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ext-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: external, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: external) }
+        let source = try makePNG("photo.png", in: external)
+        let data = try Data(contentsOf: source)
+
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: directory.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: directory.path) }
+
+        XCTAssertThrowsError(try ImageImporter.importImage(from: source, into: directory))
+        XCTAssertThrowsError(try ImageImporter.saveImageData(data, in: directory))
+    }
+
+    func testDataThatIsNotAnImageReportsTheError() {
+        XCTAssertThrowsError(try ImageImporter.saveImageData(Data("not an image".utf8), in: directory))
     }
 
     func testMarkdownEncodesSpaces() {
@@ -197,7 +217,7 @@ final class ImageImporterTests: XCTestCase {
         textView.string = "before "
         textView.setSelectedRange(NSRange(location: 7, length: 0))
 
-        XCTAssertTrue(coordinator.insertImageFiles([image], at: nil))
+        coordinator.insertImageFiles([image], at: nil)
         XCTAssertEqual(textView.string, "before ![](chart.png)")
         XCTAssertTrue(FileManager.default.fileExists(atPath: directory.appendingPathComponent("chart.png").path))
     }

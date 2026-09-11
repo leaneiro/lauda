@@ -34,7 +34,8 @@ final class EditorTextView: NSTextView {
         if !images.isEmpty, let coordinator = delegate as? MarkdownTextView.Coordinator {
             let point = convert(sender.draggingLocation, from: nil)
             let index = characterIndexForInsertion(at: point)
-            return coordinator.insertImageFiles(images, at: index)
+            coordinator.insertImageFiles(images, at: index)
+            return true
         }
         return super.performDragOperation(sender)
     }
@@ -73,9 +74,11 @@ final class EditorTextView: NSTextView {
         if let coordinator = delegate as? MarkdownTextView.Coordinator {
             switch ImageImporter.pasteIntent(for: pasteboardProvider()) {
             case .imageFiles(let urls):
-                if coordinator.insertImageFiles(urls, at: nil) { return }
+                coordinator.insertImageFiles(urls, at: nil)
+                return
             case .imageData(let data):
-                if coordinator.insertPastedImageData(data) { return }
+                coordinator.insertPastedImageData(data)
+                return
             case .notAnImage:
                 break
             }

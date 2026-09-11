@@ -38,7 +38,8 @@ enum ImageImporter {
 
     /// Copies an image into `directory` (unless it already lives inside it)
     /// and returns the path to reference in markdown, relative to `directory`.
-    static func importImage(from source: URL, into directory: URL) -> String? {
+    /// Throws when the copy fails, e.g. in a read-only folder.
+    static func importImage(from source: URL, into directory: URL) throws -> String {
         let base = directory.resolvingSymlinksInPath().standardizedFileURL
         let canonicalSource = source.resolvingSymlinksInPath().standardizedFileURL
 
@@ -49,18 +50,15 @@ enum ImageImporter {
         }
 
         let destination = uniqueDestination(for: source.lastPathComponent, in: directory)
-        do {
-            try FileManager.default.copyItem(at: source, to: destination)
-            return destination.lastPathComponent
-        } catch {
-            return nil
-        }
+        try FileManager.default.copyItem(at: source, to: destination)
+        return destination.lastPathComponent
     }
 
     /// Saves raw image data (e.g. a pasted screenshot) as PNG and returns the
-    /// file name.
-    static func saveImageData(_ data: Data, in directory: URL, now: Date = Date()) -> String? {
-        guard let pngData = pngData(from: data) else { return nil }
+    /// file name. Throws when the data isn't a readable image or can't be
+    /// written.
+    static func saveImageData(_ data: Data, in directory: URL, now: Date = Date()) throws -> String {
+        guard let pngData = pngData(from: data) else { throw CocoaError(.fileReadCorruptFile) }
         // Fixed POSIX locale so the timestamp is always Western digits and the
         // Gregorian calendar, whatever the user's region.
         let formatter = DateFormatter()
@@ -73,12 +71,8 @@ enum ImageImporter {
             comment: "File name for a pasted screenshot; keep the timestamp placeholder."
         )
         let destination = uniqueDestination(for: name, in: directory)
-        do {
-            try pngData.write(to: destination)
-            return destination.lastPathComponent
-        } catch {
-            return nil
-        }
+        try pngData.write(to: destination)
+        return destination.lastPathComponent
     }
 
     /// Appends -2, -3… before the extension when the name is taken.
