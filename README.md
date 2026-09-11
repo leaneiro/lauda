@@ -1,69 +1,91 @@
 # MarkEditor
 
-Editor de Markdown nativo para macOS com visão dupla: o arquivo à esquerda, o
-Markdown renderizado à direita, atualizando em tempo real enquanto você digita.
+A native macOS Markdown editor with a dual-pane layout: you write on the left
+and see the rendered Markdown on the right, updated as you type.
 
-## Recursos
+## Features
 
-- **Visão dupla** — editor à esquerda, preview formatado à direita, com scroll
-  sincronizado nos dois sentidos e divisor ajustável (posição lembrada). A
-  sincronização se alinha por bloco (título, parágrafo, imagem, tabela), então
-  imagens e tabelas grandes não desalinham os dois lados.
-- **Preview instantâneo** — renderiza a cada tecla, sem debounce; diff por
-  bloco no DOM repinta só o que mudou.
-- **Modos de exibição** — somente editor (⌘1), dividido (⌘2) ou somente
-  preview (⌘3), também no seletor da barra de ferramentas.
-- **Preview caprichado** — headings, listas, tarefas (`- [ ]`), tabelas GFM,
-  código, citações, imagens e links (abrem no navegador).
-- **Highlight no editor** — realce leve da sintaxe Markdown enquanto edita.
-- **Exportar** — HTML standalone com o visual do preview (⌥⇧⌘E) e PDF
-  paginado (⇧⌘E), no menu Arquivo.
-- **Sumário** — botão na barra de ferramentas lista os títulos (H1 a H6)
-  e leva os dois painéis, e o cursor, até o escolhido.
-- **Guia de boas-vindas** — abre na primeira vez que o app é aberto, no
-  idioma do sistema, como um documento sem nome pra experimentar; dá pra
-  reabrir em Ajuda → Guia de Boas-Vindas.
-- **Idiomas** — segue o idioma do sistema. Inglês (base) e português do
-  Brasil estão revisados; alemão, chinês simplificado, espanhol, francês e
-  japonês são rascunhos aguardando revisão de nativos (veja
-  [CONTRIBUTING.md](CONTRIBUTING.md)). As traduções ficam em
-  `Resources/Localizable.xcstrings`, que o Xcode abre no editor de catálogos.
-- **Atalhos de escrita** — ⌘B/⌘I/⌘K (menu Formatar), Enter continua listas
-  (inclusive tarefas e numeradas), Tab/Shift-Tab indentam itens.
-- **Toques de conforto** — colar URL sobre uma seleção cria `[texto](url)`;
-  `->`/`<-` viram →/← fora de código; barra de status mostra "Salvo ✓".
-- **Personalização** — em Ajustes (⌘,): aparência (claro/escuro/automático,
-  claro por padrão), fonte e tamanho do editor, fonte, tamanho e entrelinha
-  do preview, e quebras de linha estritas (por padrão, cada Enter quebra a
-  linha no preview; no modo estrito vale a regra do Markdown padrão).
-- Documento nativo do macOS: abrir/salvar `.md`, autosave, undo, renomear pelo
-  título da janela, arquivos recentes.
+- **Dual pane**: editor on the left, formatted preview on the right, with
+  two-way scroll sync and an adjustable divider whose position is remembered.
+  Scrolling is aligned by block (heading, paragraph, image, table), so large
+  images and tables don't throw the two sides out of step.
+- **Instant preview**: renders on every keystroke, with no debounce. A
+  block-level DOM diff repaints only what changed.
+- **View modes**: editor only (⌘1), split (⌘2) or preview only (⌘3), also
+  available from the toolbar. Preview-only mode offers three text widths.
+- **Polished preview**: headings, lists, task lists (`- [ ]`), GFM tables,
+  code with syntax highlighting for 17 languages, quotes, images and links
+  (which open in the browser).
+- **Editor highlighting**: light Markdown syntax highlighting while you edit.
+- **Export**: standalone HTML with the preview's look (⌥⇧⌘E) and paginated
+  PDF (⇧⌘E), from the File menu.
+- **Outline**: a toolbar button lists the headings (H1 to H6) and takes both
+  panes, and the caret, to the one you pick.
+- **Find**: ⌘F works in every view mode, with a match counter.
+- **Images**: drag an image into the editor or paste a screenshot. It's
+  copied next to the document and the Markdown link is written for you.
+- **Welcome guide**: opens on first launch, in the system language, as an
+  untitled document to experiment with. Reopen it from Help → Welcome Guide.
+- **Languages**: follows the system language. English (the base language) and
+  Brazilian Portuguese are reviewed; German, Simplified Chinese, French,
+  Japanese and Spanish are drafts awaiting review by native speakers (see
+  [CONTRIBUTING.md](CONTRIBUTING.md)).
+- **Writing shortcuts**: ⌘B, ⌘I and ⌘K in the Format menu; Return continues
+  lists (including task and numbered lists); Tab and Shift-Tab indent items.
+- **Small comforts**: pasting a URL over a selection creates `[text](url)`;
+  `->` and `<-` become → and ← outside code; the status bar shows the word
+  count, reading time and save state.
+- **Settings** (⌘,): appearance (light, dark or automatic; light by default),
+  editor font and size, preview font, size and line height, and strict line
+  breaks. By default each Return breaks the line in the preview; in strict
+  mode, standard Markdown rules apply.
+- **Native documents**: open and save `.md` files, autosave, undo, rename
+  from the window title, and recent files.
 
-## Build
+## Requirements
 
-Requer Xcode (ou Command Line Tools com Swift 5.10+).
+macOS 14 or later. Building needs Xcode, or the Command Line Tools with
+Swift 5.10 or later. Xcode's `xcstringstool` compiles the translations;
+without it the app still builds, in English only.
+
+## Building
 
 ```bash
-make app     # gera build/MarkEditor.app
-make run     # builda e abre o app
-make icon    # regenera Resources/AppIcon.icns
+make app     # builds build/MarkEditor.app
+make run     # builds and opens the app
+make dev     # debug build (swift build)
+make dmg     # disk image for distribution
+make icon    # regenerates Resources/AppIcon.icns
 make clean
 ```
 
-O projeto é um pacote SwiftPM puro — `Scripts/build-app.sh` monta o bundle
-`.app` a partir do executável + `Support/Info.plist` e assina ad-hoc. Também dá
-para abrir a pasta no Xcode e rodar o target `MarkEditor` direto.
+Run the tests with `swift test`.
 
-## Estrutura
+The project is a plain SwiftPM package. `Scripts/build-app.sh` assembles the
+`.app` bundle from the executable and `Support/Info.plist` and signs it ad
+hoc. You can also open the folder in Xcode and run the `MarkEditor` target.
+
+## Project layout
 
 ```
 Sources/MarkEditor/
-  MarkEditorApp.swift        # App + DocumentGroup + Settings
-  MarkdownDocument.swift     # FileDocument (.md / texto)
-  ContentView.swift          # split view, toolbar, barra de status
-  Editor/                    # NSTextView + highlight de sintaxe
-  Preview/                   # WKWebView + renderer HTML (swift-markdown)
-  Settings/                  # chaves, fontes e tela de Ajustes
-Support/Info.plist           # tipos de documento, metadados do bundle
-Scripts/                     # build do .app e geração do ícone
+  MarkEditorApp.swift        # app, DocumentGroup, Settings scene
+  MarkdownDocument.swift     # FileDocument (.md and plain text)
+  ContentView.swift          # split view, toolbar, status bar, find bar
+  Outline.swift              # document outline
+  WelcomeGuide.swift         # first-launch welcome guide
+  Editor/                    # NSTextView, highlighting, lists, images
+  Preview/                   # WKWebView and HTML renderer (swift-markdown)
+  Export/                    # HTML and PDF export
+  Settings/                  # settings keys, fonts and Settings window
+Resources/                   # string catalogs, welcome guides, app icon
+Support/Info.plist           # document types and bundle metadata
+Scripts/                     # .app, DMG and icon builds
+Tests/MarkEditorTests/       # unit tests
+Samples/                     # sample documents
 ```
+
+## Contributing
+
+Translations are the easiest way to help. See [CONTRIBUTING.md](CONTRIBUTING.md)
+for how to review a language, add a new one and test it.
