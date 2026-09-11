@@ -20,10 +20,22 @@ struct PreviewWebView: NSViewRepresentable {
         Coordinator()
     }
 
+    /// Where the app's preview script runs: its own content world, apart from
+    /// the document's raw HTML, which shares the page but can't run script
+    /// under the template's Content-Security-Policy.
+    static let contentWorld = WKContentWorld.world(name: "MarkEditorPreview")
+
     func makeNSView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
         configuration.setURLSchemeHandler(context.coordinator.schemeHandler, forURLScheme: DocumentSchemeHandler.scheme)
-        configuration.userContentController.add(context.coordinator, name: "previewScrolled")
+        let controller = configuration.userContentController
+        controller.addUserScript(WKUserScript(
+            source: PreviewTemplate.script,
+            injectionTime: .atDocumentEnd,
+            forMainFrameOnly: true,
+            in: Self.contentWorld
+        ))
+        controller.add(context.coordinator, contentWorld: Self.contentWorld, name: "previewScrolled")
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = context.coordinator
@@ -50,7 +62,8 @@ struct PreviewWebView: NSViewRepresentable {
     }
 
     static func dismantleNSView(_ webView: WKWebView, coordinator: Coordinator) {
-        webView.configuration.userContentController.removeScriptMessageHandler(forName: "previewScrolled")
+        webView.configuration.userContentController.removeScriptMessageHandler(
+            forName: "previewScrolled", contentWorld: Self.contentWorld)
     }
 
     final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
@@ -88,7 +101,7 @@ struct PreviewWebView: NSViewRepresentable {
             let strictLineBreaks = lastStrictLineBreaks
             needsRender = false
             isRendering = true
-            DispatchQueue.global(qos: .userInteractive).async { [weak self] in
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
                 let content = HTMLRenderer.renderWithLines(markdown, strictLineBreaks: strictLineBreaks)
                 DispatchQueue.main.async {
                     guard let self else { return }
@@ -116,7 +129,7 @@ struct PreviewWebView: NSViewRepresentable {
                     "lineCount": content.lineCount,
                 ],
                 in: nil,
-                in: .page
+                in: PreviewWebView.contentWorld
             ) { [weak self] _ in
                 self?.alignScrollAfterContentChange()
                 completion()
@@ -133,7 +146,7 @@ struct PreviewWebView: NSViewRepresentable {
                 "setStyle(family, size, lineHeight)",
                 arguments: ["family": fontFamily, "size": size, "lineHeight": lineHeight],
                 in: nil,
-                in: .page
+                in: PreviewWebView.contentWorld
             ) { _ in }
         }
 
@@ -149,7 +162,7 @@ struct PreviewWebView: NSViewRepresentable {
                 "document.documentElement.style.setProperty('--article-max', rem + 'rem')",
                 arguments: ["rem": rem],
                 in: nil,
-                in: .page
+                in: PreviewWebView.contentWorld
             ) { _ in }
         }
 
@@ -169,7 +182,7 @@ struct PreviewWebView: NSViewRepresentable {
                 "return findRun(query, forward, restart)",
                 arguments: ["query": query, "forward": forward, "restart": restart],
                 in: nil,
-                in: .page
+                in: PreviewWebView.contentWorld
             ) { result in
                 if case .success(let value) = result,
                    let counts = value as? [Any], counts.count == 2,
@@ -184,7 +197,7 @@ struct PreviewWebView: NSViewRepresentable {
 
         func clearFind() {
             guard let webView, isReady else { return }
-            webView.callAsyncJavaScript("findClear()", arguments: [:], in: nil, in: .page) { _ in }
+            webView.callAsyncJavaScript("findClear()", arguments: [:], in: nil, in: PreviewWebView.contentWorld) { _ in }
         }
 
         // MARK: - Scroll sync (bidirectional)
@@ -234,7 +247,7 @@ struct PreviewWebView: NSViewRepresentable {
                     "toEndDistance": sync.toEndDistance,
                 ],
                 in: nil,
-                in: .page
+                in: PreviewWebView.contentWorld
             ) { _ in }
         }
 
@@ -293,7 +306,7 @@ struct PreviewWebView: NSViewRepresentable {
             if navigationAction.navigationType == .linkActivated {
                 if let url = navigationAction.request.url,
                    let scheme = url.scheme?.lowercased(),
-                   ["http", "https", "mailto"].contains(scheme) {
+                   ExternalLinks.allowedSchemes.contains(scheme) {
                     NSWorkspace.shared.open(url)
                 }
                 decisionHandler(.cancel)

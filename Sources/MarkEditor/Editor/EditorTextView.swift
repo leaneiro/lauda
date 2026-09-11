@@ -107,6 +107,6 @@ final class EditorTextView: NSTextView {
     static func isLikelyURL(_ string: String) -> Bool {
         guard !string.isEmpty, !string.contains(where: { $0.isWhitespace }) else { return false }
         guard let url = URL(string: string), let scheme = url.scheme?.lowercased() else { return false }
-        return ["http", "https", "mailto"].contains(scheme) && (url.host != nil || scheme == "mailto")
+        return ExternalLinks.allowedSchemes.contains(scheme) && (url.host != nil || scheme == "mailto")
     }
 }

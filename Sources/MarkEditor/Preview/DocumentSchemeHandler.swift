@@ -12,20 +12,18 @@ final class DocumentSchemeHandler: NSObject, WKURLSchemeHandler {
     /// The open document's folder; updated when the file is (re)saved elsewhere.
     var baseDirectory: URL?
 
-    private static let allowedExtensions: Set<String> = [
-        "png", "jpg", "jpeg", "gif", "svg", "webp", "bmp", "tiff", "tif", "heic", "avif", "ico",
-    ]
-
     static func resolveTarget(for url: URL, baseDirectory: URL) -> URL? {
         let relativePath = url.path.removingPercentEncoding ?? url.path
         guard !relativePath.isEmpty else { return nil }
 
-        let base = baseDirectory.standardizedFileURL
-        let target = base.appendingPathComponent(relativePath).standardizedFileURL
+        // Symlinks are resolved on both sides, so a link inside the folder
+        // can't serve a file from outside it.
+        let base = baseDirectory.standardizedFileURL.resolvingSymlinksInPath()
+        let target = base.appendingPathComponent(relativePath).standardizedFileURL.resolvingSymlinksInPath()
         guard target.path == base.path || target.path.hasPrefix(base.path + "/") else {
-            return nil // path traversal (e.g. ../../…)
+            return nil // path traversal (e.g. ../../…) or a symlink pointing out
         }
-        guard allowedExtensions.contains(target.pathExtension.lowercased()) else {
+        guard ImageFileTypes.isImage(target) else {
             return nil
         }
         return target

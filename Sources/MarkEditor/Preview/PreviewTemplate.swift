@@ -156,25 +156,55 @@ enum PreviewTemplate {
     }
     """
 
+    /// Content Security Policy of the live preview. The document's raw HTML
+    /// can't run script (tags, inline handlers, javascript: URLs) or open
+    /// connections. Images and media may come from the document's folder,
+    /// data: URIs or the web, and https embeds (iframes) still load. The
+    /// app's own script runs in a separate content world, outside this policy.
+    static let previewContentSecurityPolicy = [
+        "default-src 'none'",
+        "img-src \(DocumentSchemeHandler.scheme): data: https: http:",
+        "media-src \(DocumentSchemeHandler.scheme): data: https: http:",
+        "style-src 'unsafe-inline'",
+        "frame-src https:",
+        "base-uri 'none'",
+        "form-action 'none'",
+    ].joined(separator: "; ")
+
+    /// Exported documents load whatever the document references but, like the
+    /// preview, never run its scripts.
+    static let exportContentSecurityPolicy =
+        "script-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
+
+    /// Page for the live preview. It carries no script of its own: `script`
+    /// is injected into `PreviewWebView.contentWorld`.
     static let html = """
     <!DOCTYPE html>
     <html lang="\(PreviewTemplate.languageTag)">
     <head>
     <meta charset="utf-8">
+    <meta http-equiv="Content-Security-Policy" content="\(previewContentSecurityPolicy)">
     <style>
     \(styles)
     </style>
     </head>
     <body>
     <article id="content"></article>
-    <script>
+    </body>
+    </html>
+    """
+
+    /// The preview's script. It runs in its own content world, so the
+    /// document's raw HTML, which shares the page, can't see or replace it.
+    static let script = """
     // Timestamp of the last programmatic change; scroll events shortly after
     // one are echoes (or reflows), not the user scrolling the preview.
     let suppressScrollEventsUntil = 0;
 
     // Block-level DOM diff: only blocks that actually changed are replaced,
     // so typing repaints one paragraph instead of relaying the whole page.
-    // Parsing via a detached div's innerHTML keeps <script> tags inert.
+    // Parsing via a detached div's innerHTML keeps <script> tags inert, and
+    // the page's Content-Security-Policy blocks inline handlers as well.
     // Source line where each top-level block starts (parallel to the
     // container's children) and the document's line count, so scroll sync
     // can align both panes by content instead of by proportion.
@@ -329,9 +359,6 @@ enum PreviewTemplate {
         const endLine = points ? interpolate(points, max, 1, 0) : null;
         window.webkit.messageHandlers.previewScrolled.postMessage([line, endLine, fraction, toEndDistance]);
     }, { passive: true });
-    </script>
-    </body>
-    </html>
     """
 
     /// Self-contained document (no scripts) for HTML/PDF export, styled like
@@ -348,6 +375,7 @@ enum PreviewTemplate {
         <html lang="\(PreviewTemplate.languageTag)">
         <head>
         <meta charset="utf-8">
+        <meta http-equiv="Content-Security-Policy" content="\(exportContentSecurityPolicy)">
         <title>\(HTMLRenderer.escape(title))</title>
         <style>
         \(styles)

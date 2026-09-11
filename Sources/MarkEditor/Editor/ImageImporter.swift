@@ -3,12 +3,8 @@ import AppKit
 /// Brings images into the document's folder so they can be referenced with
 /// relative markdown paths (which the preview and exports already resolve).
 enum ImageImporter {
-    static let imageExtensions: Set<String> = [
-        "png", "jpg", "jpeg", "gif", "webp", "bmp", "tiff", "tif", "heic", "avif", "svg",
-    ]
-
     static func isImageFile(_ url: URL) -> Bool {
-        imageExtensions.contains(url.pathExtension.lowercased())
+        ImageFileTypes.isImage(url)
     }
 
     /// What a paste should insert, decided from the pasteboard's flavors.

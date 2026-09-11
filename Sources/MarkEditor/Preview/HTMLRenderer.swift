@@ -156,8 +156,25 @@ struct HTMLRenderer: MarkupVisitor {
     }
 
     mutating func visitLink(_ link: Markdown.Link) -> String {
-        let destination = Self.escape(link.destination ?? "")
-        return "<a href=\"\(destination)\">\(childrenHTML(of: link))</a>"
+        let content = childrenHTML(of: link)
+        guard let destination = link.destination, Self.isAllowedLinkDestination(destination) else {
+            return content
+        }
+        return "<a href=\"\(Self.escape(destination))\">\(content)</a>"
+    }
+
+    /// Relative links, fragments and the external schemes the app opens.
+    /// Anything else (javascript:, data:, file:…) is dropped, keeping the text.
+    static func isAllowedLinkDestination(_ destination: String) -> Bool {
+        // Browsers skip whitespace and control characters inside a scheme.
+        let text = String(String.UnicodeScalarView(
+            destination.unicodeScalars.filter { $0.value > 0x20 && $0.value != 0x7F }
+        ))
+        guard let colon = text.firstIndex(of: ":") else { return true }
+        let scheme = text[..<colon]
+        // A colon after a path, query or fragment separator isn't a scheme.
+        if scheme.contains(where: { "/?#".contains($0) }) { return true }
+        return ExternalLinks.allowedSchemes.contains(scheme.lowercased())
     }
 
     mutating func visitImage(_ image: Markdown.Image) -> String {
