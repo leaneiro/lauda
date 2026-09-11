@@ -377,9 +377,11 @@ struct ContentView: View {
             NotificationCenter.default.publisher(for: .markdownDocumentDidSave)
                 .receive(on: RunLoop.main)
         ) { notification in
-            guard let savedText = notification.userInfo?["text"] as? String,
-                  savedText == document.text else { return }
-            lastSavedText = savedText
+            // Only this document's saves count: another window can hold
+            // exactly the same text.
+            guard let save = notification.object as? DocumentSave,
+                  save.documentID == document.id else { return }
+            lastSavedText = save.text
             lastSaveDate = Date()
         }
     }

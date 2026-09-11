@@ -11,6 +11,10 @@ struct MarkdownDocument: FileDocument {
 
     var text: String
 
+    /// Tells this document apart from others with the same text. SwiftUI
+    /// copies the struct around; the copies keep it.
+    let id = UUID()
+
     init(text: String = "") {
         self.text = text
     }
@@ -36,20 +40,23 @@ struct MarkdownDocument: FileDocument {
     }
 
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
-        let savedText = text
+        let save = DocumentSave(documentID: id, text: text)
         DispatchQueue.main.async {
-            NotificationCenter.default.post(
-                name: .markdownDocumentDidSave,
-                object: nil,
-                userInfo: ["text": savedText]
-            )
+            NotificationCenter.default.post(name: .markdownDocumentDidSave, object: save)
         }
         return FileWrapper(regularFileWithContents: Data(text.utf8))
     }
 }
 
+/// What a save wrote, so only that document's window updates its status.
+struct DocumentSave {
+    let documentID: UUID
+    let text: String
+}
+
 extension Notification.Name {
-    /// Posted whenever a document's bytes are written (save or autosave), so
-    /// the status bar can show a friendly "Saved" state.
+    /// Posted whenever a document's bytes are written (save or autosave),
+    /// with a `DocumentSave` as the object, so the status bar of that
+    /// document's window can show a friendly "Saved" state.
     static let markdownDocumentDidSave = Notification.Name("markdownDocumentDidSave")
 }
