@@ -82,7 +82,7 @@ Sources/MarkEditor/
   Outline.swift              # document outline
   WelcomeGuide.swift         # first-launch welcome guide
   Editor/                    # NSTextView, highlighting, lists, images
-  Preview/                   # WKWebView and HTML renderer (swift-markdown)
+  Preview/                   # WKWebView, HTML renderer, preview.css and preview.js
   Export/                    # HTML and PDF export
   Settings/                  # settings keys, fonts and Settings window
 Resources/                   # string catalogs, welcome guides, app icon

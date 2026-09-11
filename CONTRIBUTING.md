@@ -113,6 +113,13 @@ highlighting that made scrolling jump and left blank regions. Scroll sync
 between the panes also relies on exact line positions. Please don't switch
 to TextKit 2 without carefully testing long documents and scroll sync.
 
+### Preview files
+
+The preview's stylesheet and script are plain files:
+`Sources/MarkEditor/Preview/preview.css` and `preview.js`. `PreviewTemplate`
+loads them, `Scripts/build-app.sh` copies them into the app, and tests read
+them from the package's resource bundle.
+
 ### Preview security
 
 The preview renders the document's raw HTML, and documents can come from

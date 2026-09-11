@@ -39,6 +39,9 @@ if [[ -d Resources/Welcome ]]; then
     cp -R Resources/Welcome/ "$APP_PATH/Contents/Resources/"
 fi
 
+# The preview's stylesheet and script (Sources/MarkEditor/Preview).
+cp Sources/MarkEditor/Preview/preview.css Sources/MarkEditor/Preview/preview.js "$APP_PATH/Contents/Resources/"
+
 codesign --force --sign - "$APP_PATH"
 
 echo "OK: $APP_PATH"
