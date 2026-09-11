@@ -16,8 +16,8 @@ final class ExportTests: XCTestCase {
         XCTAssertTrue(html.contains("<strong>texto</strong>"))
         XCTAssertTrue(html.contains("--pfont: Georgia, serif;"))
         XCTAssertTrue(html.contains("--psize: 18.0px;"))
-        XCTAssertTrue(html.contains("@media print"), "deve levar o CSS de impressão")
-        XCTAssertFalse(html.contains("<script"), "documento exportado não leva JS")
+        XCTAssertTrue(html.contains("@media print"), "should include the print CSS")
+        XCTAssertFalse(html.contains("<script"), "the exported document has no JS")
     }
 
     func testStandaloneEscapesTitle() {
@@ -36,13 +36,13 @@ final class ExportTests: XCTestCase {
         XCTAssertTrue(html.contains("<div class=\"keep-with-next keep-pad\"><h1>Título</h1>\n<div class=\"keep-probe\"></div></div>"), "got: \(html)")
         XCTAssertTrue(html.contains("<div class=\"keep-with-next keep-pad\"><h2>Outro</h2>\n<div class=\"keep-probe\"></div></div>"), "got: \(html)")
         XCTAssertTrue(html.contains("<p>Parágrafo.</p>"))
-        // O render normal (preview) não ganha wrappers.
+        // The regular (preview) render gets no wrappers.
         XCTAssertFalse(HTMLRenderer.render("# Título").contains("keep-with-next"))
     }
 
     func testRenderForPrintGroupsHeadingWithCompactCodeBlock() {
         let html = HTMLRenderer.renderForPrint("## Código\n\n```swift\nlet x = 1\n```\n\nTexto depois.")
-        // Título + bloco curto viajam juntos, sem sonda.
+        // The heading and a short block stay together, with no probe.
         XCTAssertTrue(html.contains("<div class=\"keep-with-next\"><h2>Código</h2>\n<pre class=\"keep\">"), "got: \(html)")
         XCTAssertFalse(html.contains("<h2>Código</h2>\n<div class=\"keep-probe\">"), "got: \(html)")
         XCTAssertTrue(html.contains("</pre>\n</div>"), "got: \(html)")
@@ -52,7 +52,7 @@ final class ExportTests: XCTestCase {
     func testRenderForPrintUsesProbeBeforeLongCodeBlock() {
         let code = (1...10).map { "let v\($0) = \($0)" }.joined(separator: "\n")
         let html = HTMLRenderer.renderForPrint("## Código\n\n```swift\n\(code)\n```")
-        // Bloco longo pode quebrar: título fica com a sonda e o pre flui livre.
+        // A long block may break: the heading keeps the probe and the pre flows freely.
         XCTAssertTrue(html.contains("<div class=\"keep-with-next keep-pad\"><h2>Código</h2>\n<div class=\"keep-probe\"></div></div>"), "got: \(html)")
         XCTAssertTrue(html.contains("<pre><code"), "got: \(html)")
     }

@@ -47,7 +47,7 @@ enum RecentDocuments {
 
     /// Makes the system list mirror ours — oldest first, so the most recent
     /// ends on top. Our store is the single source of truth because AppKit
-    /// re-adds documents on window close/quit even after "Limpar Menu".
+    /// re-adds documents on window close/quit even after "Clear Menu".
     static func resyncSystemList(defaults: UserDefaults = .standard) {
         NSDocumentController.shared.clearRecentDocuments(nil)
         for url in storedURLs(defaults: defaults).reversed()

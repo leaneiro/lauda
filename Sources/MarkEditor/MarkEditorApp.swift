@@ -37,7 +37,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// AppKit re-adds a document to the recents when its window closes —
-    /// even right after "Limpar Menu". Closing a doc that's still in our
+    /// even right after "Clear Menu". Closing a doc that's still in our
     /// store legitimately bumps it to the top; one that was cleared must
     /// stay forgotten, so shortly after the close we resync the system
     /// list from our store.
@@ -52,7 +52,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// "Limpar Menu" targets the responder chain; the app delegate comes
+    /// "Clear Menu" targets the responder chain; the app delegate comes
     /// before NSDocumentController, so we clear our persisted copy too —
     /// otherwise the cleared list would resurrect on the next launch.
     @objc func clearRecentDocuments(_ sender: Any?) {
@@ -61,7 +61,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillFinishLaunching(_ notification: Notification) {
-        // Light-first by default; the user can pick Escuro/Automático in Ajustes.
+        // Light-first by default; the user can pick Dark or Automatic in Settings.
         AppearanceMode.stored.apply()
     }
 }

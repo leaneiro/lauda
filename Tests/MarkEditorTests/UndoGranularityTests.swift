@@ -66,6 +66,6 @@ final class UndoGranularityTests: XCTestCase {
         XCTAssertEqual(textView.string, "**palavra**")
 
         coordinator.textUndoManager.undo()
-        XCTAssertEqual(textView.string, "palavra", "⌘Z desfaz só o negrito, não a digitação")
+        XCTAssertEqual(textView.string, "palavra", "⌘Z undoes only the bold, not the typing")
     }
 }

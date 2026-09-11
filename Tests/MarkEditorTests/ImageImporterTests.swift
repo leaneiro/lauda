@@ -168,8 +168,8 @@ final class ImageImporterTests: XCTestCase {
         textView.pasteboardProvider = { pasteboard }
         let item = NSMenuItem(title: "Colar", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
 
-        // Sem imagem, cai na validação padrão do NSTextView (que aceita texto
-        // do pasteboard geral) — o importante é não travar o comando.
+        // Without an image, NSTextView's default validation applies (it reads
+        // the general pasteboard); what matters is that the command isn't blocked.
         XCTAssertNoThrow(textView.validateUserInterfaceItem(item))
     }
 

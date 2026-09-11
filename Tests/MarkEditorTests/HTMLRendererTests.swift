@@ -34,7 +34,7 @@ final class HTMLRendererTests: XCTestCase {
     func testLongCodeBlockIsAllowedToBreakAcrossPages() {
         let code = (1...10).map { "let v\($0) = \($0)" }.joined(separator: "\n")
         let html = HTMLRenderer.render("```swift\n\(code)\n```")
-        XCTAssertTrue(html.hasPrefix("<pre><code"), "bloco longo não leva class=keep — got: \(html.prefix(60))")
+        XCTAssertTrue(html.hasPrefix("<pre><code"), "a long block has no class=keep, got: \(html.prefix(60))")
     }
 
     func testLink() {
