@@ -242,7 +242,7 @@ struct ContentView: View {
 
     private func startFind() {
         findPresented = true
-        editorActions.coordinator?.findCountsChanged = { current, total in
+        editorActions.coordinator?.find.countsChanged = { current, total in
             DispatchQueue.main.async {
                 findCurrent = current
                 findTotal = total

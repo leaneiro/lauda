@@ -27,12 +27,12 @@ final class EditorActions {
     func insertLink() { coordinator?.insertLink() }
     func performFind(_ action: NSTextFinder.Action) { coordinator?.performFindAction(action) }
     func findUpdate(_ query: String) -> (current: Int, total: Int) {
-        coordinator?.findUpdate(query) ?? (0, 0)
+        coordinator?.find.update(query) ?? (0, 0)
     }
     func findStep(forward: Bool) -> (current: Int, total: Int) {
-        coordinator?.findStep(forward: forward) ?? (0, 0)
+        coordinator?.find.step(forward: forward) ?? (0, 0)
     }
-    func findClear() { coordinator?.findClear() }
+    func findClear() { coordinator?.find.clear() }
     func placeCaret(atSourceLine line: Int) { coordinator?.placeCaret(atSourceLine: line) }
 }
 

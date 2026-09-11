@@ -79,7 +79,7 @@ Sources/MarkEditor/
   App/                       # app entry, menus, menu-to-window bridges
   Window/                    # document window: split view, toolbar, find bar
   Document/                  # Markdown document, recent files, welcome guide
-  Editor/                    # NSTextView, highlighting, lists, images
+  Editor/                    # NSTextView editor: highlighting, lists, formatting, find, images
   Preview/                   # WKWebView, HTML renderer, preview.css and preview.js
   Sync/                      # scroll position shared by the two panes
   Export/                    # HTML and PDF export

@@ -58,15 +58,15 @@ struct MarkdownTextView: NSViewRepresentable {
         textView.string = text
         context.coordinator.textView = textView
         context.coordinator.applyStyle(fontName: fontName, fontSize: fontSize)
-        context.coordinator.needsScrollRestore = true
+        context.coordinator.scrolling.needsRestore = true
         DispatchQueue.main.async { [weak coordinator = context.coordinator] in
-            coordinator?.restoreScrollIfNeeded()
+            coordinator?.scrolling.restoreIfNeeded()
         }
 
         scrollView.contentView.postsBoundsChangedNotifications = true
         NotificationCenter.default.addObserver(
-            context.coordinator,
-            selector: #selector(Coordinator.scrollViewBoundsDidChange(_:)),
+            context.coordinator.scrolling,
+            selector: #selector(EditorScrolling.boundsDidChange(_:)),
             name: NSView.boundsDidChangeNotification,
             object: scrollView.contentView
         )
@@ -78,7 +78,7 @@ struct MarkdownTextView: NSViewRepresentable {
         let coordinator = context.coordinator
         coordinator.parent = self
         actions.coordinator = coordinator
-        coordinator.restoreScrollIfNeeded()
+        coordinator.scrolling.restoreIfNeeded()
         guard let textView = coordinator.textView else { return }
 
         // Never replace text mid-IME-composition: the marked text makes the
@@ -86,7 +86,7 @@ struct MarkdownTextView: NSViewRepresentable {
         if textView.string != text, !textView.hasMarkedText() {
             let selection = textView.selectedRange()
             textView.string = text
-            coordinator.invalidateSourceLines()
+            coordinator.lines.invalidate()
             let length = (text as NSString).length
             textView.setSelectedRange(NSRange(location: min(selection.location, length), length: 0))
             // The text view's undo entries hold ranges into the replaced text.
@@ -97,20 +97,33 @@ struct MarkdownTextView: NSViewRepresentable {
             coordinator.applyStyle(fontName: fontName, fontSize: fontSize)
         }
         if scrollSync.source != .editor {
-            coordinator.applyRemoteScroll(scrollSync)
+            coordinator.scrolling.applyRemote(scrollSync)
         }
     }
 
     static func dismantleNSView(_ nsView: NSScrollView, coordinator: Coordinator) {
-        NotificationCenter.default.removeObserver(coordinator)
+        NotificationCenter.default.removeObserver(coordinator.scrolling)
     }
 
     final class Coordinator: NSObject, NSTextViewDelegate {
         var parent: MarkdownTextView
-        weak var textView: NSTextView?
+        weak var textView: NSTextView? {
+            didSet {
+                find.textView = textView
+                lines.textView = textView
+                scrolling.textView = textView
+            }
+        }
         private(set) var appliedFontName: String?
         private(set) var appliedFontSize: Double?
         private let highlighter = MarkdownHighlighter()
+
+        /// Find for the unified find bar.
+        let find = EditorFind()
+        /// Source lines ↔ layout positions, for scroll sync and the outline.
+        let lines: SourceLineLayout
+        /// Keeps this pane in step with the scroll position shared with the preview.
+        let scrolling: EditorScrolling
 
         /// Private undo stack for typing, so NSTextView's coalesced undo never
         /// interleaves with the document-level undo SwiftUI registers for each
@@ -119,6 +132,12 @@ struct MarkdownTextView: NSViewRepresentable {
 
         init(parent: MarkdownTextView) {
             self.parent = parent
+            let lines = SourceLineLayout()
+            self.lines = lines
+            scrolling = EditorScrolling(lines: lines)
+            super.init()
+            scrolling.sharedPosition = { [weak self] in self?.parent.scrollSync ?? ScrollSync() }
+            scrolling.publish = { [weak self] sync in self?.parent.scrollSync = sync }
         }
 
         func undoManager(for view: NSTextView) -> UndoManager? {
@@ -127,13 +146,13 @@ struct MarkdownTextView: NSViewRepresentable {
 
         func textDidChange(_ notification: Notification) {
             guard let textView else { return }
-            invalidateSourceLines()
+            lines.invalidate()
             // During IME composition (dead keys: ´ + a → á) the text contains
             // uncommitted marked text; committing fires textDidChange again.
             guard !textView.hasMarkedText() else { return }
             parent.text = textView.string
             highlightAfterEdit()
-            refreshFindAfterEdit()
+            find.refreshAfterEdit()
             scheduleCaretComfortScroll(textView)
         }
 
@@ -360,92 +379,33 @@ struct MarkdownTextView: NSViewRepresentable {
 
         func toggleInlineMarker(_ marker: String) {
             guard let textView else { return }
-            let text = textView.string as NSString
-            var range = textView.selectedRange()
-            let markerLength = (marker as NSString).length
-
-            if range.length == 0 {
-                let wordRange = textView.selectionRange(
-                    forProposedRange: range,
-                    granularity: .selectByWord
-                )
-                let word = wordRange.length > 0 ? text.substring(with: wordRange) : ""
-                if word.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    replaceText(
-                        in: range,
-                        with: marker + marker,
-                        selecting: NSRange(location: range.location + markerLength, length: 0)
-                    )
-                    return
-                }
-                range = wordRange
-            }
-
-            let selected = text.substring(with: range)
-            let selectedLength = (selected as NSString).length
-
-            // Unwrap when the markers are inside the selection…
-            if selected.hasPrefix(marker), selected.hasSuffix(marker),
-               selectedLength >= markerLength * 2 + 1 {
-                let inner = (selected as NSString).substring(
-                    with: NSRange(location: markerLength, length: selectedLength - markerLength * 2)
-                )
-                replaceText(
-                    in: range,
-                    with: inner,
-                    selecting: NSRange(location: range.location, length: (inner as NSString).length)
-                )
-                return
-            }
-            // …or just outside it.
-            let before = NSRange(location: range.location - markerLength, length: markerLength)
-            let after = NSRange(location: NSMaxRange(range), length: markerLength)
-            if before.location >= 0, NSMaxRange(after) <= text.length,
-               text.substring(with: before) == marker, text.substring(with: after) == marker {
-                replaceText(
-                    in: NSRange(location: before.location, length: range.length + markerLength * 2),
-                    with: selected,
-                    selecting: NSRange(location: before.location, length: range.length)
-                )
-                return
-            }
-            // Otherwise wrap.
-            replaceText(
-                in: range,
-                with: marker + selected + marker,
-                selecting: NSRange(location: range.location + markerLength, length: range.length)
-            )
+            let selection = textView.selectedRange()
+            // With nothing selected, formatting applies to the word under the caret.
+            let wordRange = selection.length == 0
+                ? textView.selectionRange(forProposedRange: selection, granularity: .selectByWord)
+                : selection
+            apply(InlineFormatting.toggle(
+                marker, in: textView.string as NSString, selection: selection, wordRange: wordRange
+            ))
         }
 
         func insertLink() {
             guard let textView else { return }
-            let text = textView.string as NSString
-            let range = textView.selectedRange()
-            let selected = range.length > 0 ? text.substring(with: range) : ""
-            let clipboard = NSPasteboard.general.string(forType: .string)?
-                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            let url = EditorTextView.isLikelyURL(clipboard) ? clipboard : ""
-
-            let replacement = "[\(selected)](\(url))"
-            let selectedLength = (selected as NSString).length
-            let newSelection: NSRange
-            if selected.isEmpty {
-                newSelection = NSRange(location: range.location + 1, length: 0)
-            } else if url.isEmpty {
-                newSelection = NSRange(location: range.location + selectedLength + 3, length: 0)
-            } else {
-                newSelection = NSRange(
-                    location: range.location + selectedLength + 3,
-                    length: (url as NSString).length
-                )
-            }
-            replaceText(in: range, with: replacement, selecting: newSelection)
+            apply(InlineFormatting.link(
+                in: textView.string as NSString,
+                selection: textView.selectedRange(),
+                clipboard: NSPasteboard.general.string(forType: .string)
+            ))
         }
 
-        private func replaceText(in range: NSRange, with replacement: String, selecting newSelection: NSRange) {
+        private func apply(_ edit: TextEdit) {
+            replaceText(in: edit.range, with: edit.replacement, selecting: edit.selection)
+        }
+
+        func replaceText(in range: NSRange, with replacement: String, selecting newSelection: NSRange) {
             guard let textView else { return }
-            // Programmatic edits (formatting, list continuation) get their own
-            // undo step, separate from surrounding typing.
+            // Programmatic edits (formatting, list continuation, images) get
+            // their own undo step, separate from surrounding typing.
             textView.breakUndoCoalescing()
             guard textView.shouldChangeText(in: range, replacementString: replacement) else { return }
             textView.textStorage?.replaceCharacters(in: range, with: replacement)
@@ -463,179 +423,7 @@ struct MarkdownTextView: NSViewRepresentable {
             textView.performTextFinderAction(sender)
         }
 
-        // MARK: - Find engine (unified find bar)
-
-        private(set) var findQuery = ""
-        private var findMatches: [NSRange] = []
-        private var findCurrentIndex = -1
-        /// Notifies the find bar when counts change due to typing.
-        var findCountsChanged: ((Int, Int) -> Void)?
-
-        /// Recomputes matches and jumps to the first one at/after the caret.
-        func findUpdate(_ query: String) -> (current: Int, total: Int) {
-            findQuery = query
-            recomputeFindMatches()
-            if findMatches.isEmpty {
-                findCurrentIndex = -1
-            } else {
-                let caret = textView?.selectedRange().location ?? 0
-                findCurrentIndex = findMatches.firstIndex { $0.location >= caret } ?? 0
-            }
-            applyFindHighlights(scrollToCurrent: true)
-            return (findCurrentIndex + 1, findMatches.count)
-        }
-
-        func findStep(forward: Bool) -> (current: Int, total: Int) {
-            guard !findMatches.isEmpty else { return (0, 0) }
-            findCurrentIndex = (findCurrentIndex + (forward ? 1 : -1) + findMatches.count)
-                % findMatches.count
-            applyFindHighlights(scrollToCurrent: true)
-            return (findCurrentIndex + 1, findMatches.count)
-        }
-
-        func findClear() {
-            findQuery = ""
-            findMatches = []
-            findCurrentIndex = -1
-            removeFindHighlights()
-        }
-
-        /// Edits shift match ranges; recompute and repaint (without scrolling).
-        fileprivate func refreshFindAfterEdit() {
-            guard !findQuery.isEmpty else { return }
-            recomputeFindMatches()
-            if findMatches.isEmpty {
-                findCurrentIndex = -1
-            } else {
-                findCurrentIndex = min(max(findCurrentIndex, 0), findMatches.count - 1)
-            }
-            applyFindHighlights(scrollToCurrent: false)
-            findCountsChanged?(findCurrentIndex + 1, findMatches.count)
-        }
-
-        private func recomputeFindMatches() {
-            findMatches = []
-            guard let textView, !findQuery.isEmpty else { return }
-            let text = textView.string as NSString
-            var location = 0
-            while location < text.length {
-                let range = text.range(
-                    of: findQuery,
-                    options: [.caseInsensitive],
-                    range: NSRange(location: location, length: text.length - location)
-                )
-                guard range.location != NSNotFound else { break }
-                findMatches.append(range)
-                location = range.location + max(range.length, 1)
-            }
-        }
-
-        private func applyFindHighlights(scrollToCurrent: Bool) {
-            guard let textView, let layoutManager = textView.layoutManager else { return }
-            removeFindHighlights()
-            // Current match: strong orange, clearly distinct from the pale
-            // yellow of the other matches (yellow-on-yellow was too subtle).
-            for (index, range) in findMatches.enumerated() {
-                if index == findCurrentIndex {
-                    layoutManager.addTemporaryAttribute(
-                        .backgroundColor, value: NSColor.systemOrange, forCharacterRange: range)
-                    layoutManager.addTemporaryAttribute(
-                        .foregroundColor, value: NSColor.black, forCharacterRange: range)
-                } else {
-                    layoutManager.addTemporaryAttribute(
-                        .backgroundColor,
-                        value: NSColor.systemYellow.withAlphaComponent(0.22),
-                        forCharacterRange: range)
-                }
-            }
-            if scrollToCurrent, findCurrentIndex >= 0 {
-                textView.scrollRangeToVisible(findMatches[findCurrentIndex])
-            }
-        }
-
-        private func removeFindHighlights() {
-            guard let textView, let layoutManager = textView.layoutManager else { return }
-            let fullRange = NSRange(location: 0, length: (textView.string as NSString).length)
-            layoutManager.removeTemporaryAttribute(.backgroundColor, forCharacterRange: fullRange)
-            layoutManager.removeTemporaryAttribute(.foregroundColor, forCharacterRange: fullRange)
-        }
-
-        // MARK: - Image insertion (drag & drop / paste)
-
-        /// Imports image files into the document's folder and inserts the
-        /// relative markdown at `index` (or the caret). Images that can't be
-        /// copied are reported in an alert rather than dropped silently.
-        func insertImageFiles(_ urls: [URL], at index: Int?) {
-            guard let directory = documentDirectory() else { return }
-            var paths: [String] = []
-            var failure: Error?
-            for url in urls {
-                do {
-                    paths.append(try ImageImporter.importImage(from: url, into: directory))
-                } catch {
-                    failure = failure ?? error
-                }
-            }
-            if !paths.isEmpty {
-                insertImageMarkdown(paths, at: index)
-            }
-            if let failure {
-                showImageError(failure)
-            }
-        }
-
-        /// Saves pasted raw image data (e.g. a screenshot) as PNG in the
-        /// document's folder and inserts the markdown at the caret.
-        func insertPastedImageData(_ data: Data) {
-            guard let directory = documentDirectory() else { return }
-            do {
-                let name = try ImageImporter.saveImageData(data, in: directory)
-                insertImageMarkdown([name], at: nil)
-            } catch {
-                showImageError(error)
-            }
-        }
-
-        private func documentDirectory() -> URL? {
-            if let fileURL = parent.fileURL {
-                return fileURL.deletingLastPathComponent()
-            }
-            let alert = NSAlert()
-            alert.messageText = String(localized: "Save the document first")
-            alert.informativeText = String(localized: "Images are copied to the document's folder, so save the file before adding images.")
-            present(alert)
-            return nil
-        }
-
-        /// E.g. a read-only folder or a full disk; the system's message says which.
-        private func showImageError(_ error: Error) {
-            Log.images.failure("Adding an image", error)
-            let alert = NSAlert()
-            alert.alertStyle = .warning
-            alert.messageText = String(localized: "Couldn't add the image to the document's folder")
-            alert.informativeText = error.localizedDescription
-            present(alert)
-        }
-
-        /// As a sheet on the editor's window, or app-modal when there is none.
-        private func present(_ alert: NSAlert) {
-            if let window = textView?.window {
-                alert.beginSheetModal(for: window)
-            } else {
-                alert.runModal()
-            }
-        }
-
-        private func insertImageMarkdown(_ paths: [String], at index: Int?) {
-            guard let textView else { return }
-            let markdown = ImageImporter.markdown(forRelativePaths: paths)
-            let range = index.map { NSRange(location: $0, length: 0) } ?? textView.selectedRange()
-            replaceText(
-                in: range,
-                with: markdown,
-                selecting: NSRange(location: range.location + (markdown as NSString).length, length: 0)
-            )
-        }
+        // MARK: - Style
 
         func applyStyle(fontName: String, fontSize: Double) {
             guard let textView else { return }
@@ -656,209 +444,14 @@ struct MarkdownTextView: NSViewRepresentable {
             highlighter.highlight(textView.textStorage, fenceRanges: fences)
         }
 
-        private var isApplyingRemoteScroll = false
-
-        /// A freshly created pane starts at the top (view-mode switches
-        /// recreate panes). Until real layout exists and the shared position
-        /// is reapplied, ignore the spurious layout-driven scroll events —
-        /// publishing them would drag the other pane to the top too.
-        var needsScrollRestore = false
-        private var restoreAttempts = 0
-        private var lastClipSize: NSSize?
-
-        func restoreScrollIfNeeded() {
-            guard needsScrollRestore else { return }
-            guard let textView,
-                  let scrollView = textView.enclosingScrollView,
-                  textView.window != nil,
-                  scrollView.contentView.bounds.width > 0,
-                  scrollView.contentView.bounds.height > 0 else {
-                // Not laid out yet — keep retrying briefly so the pane doesn't
-                // sit at the top waiting for an event that may never come.
-                restoreAttempts += 1
-                if restoreAttempts < 80 {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.025) { [weak self] in
-                        self?.restoreScrollIfNeeded()
-                    }
-                } else {
-                    needsScrollRestore = false
-                }
-                return
-            }
-
-            needsScrollRestore = false
-            restoreAttempts = 0
-            anchorToSharedPosition()
-        }
-
-        /// Positions the pane at the shared scroll position (used both when a
-        /// recreated pane comes up and when a resize re-flows the text, so the
-        /// same source line stays at the top).
-        private func anchorToSharedPosition() {
-            guard let textView,
-                  let scrollView = textView.enclosingScrollView else { return }
-            if let layoutManager = textView.layoutManager, let container = textView.textContainer {
-                layoutManager.ensureLayout(for: container)
-            }
-            let clipView = scrollView.contentView
-            lastClipSize = clipView.bounds.size
-            guard let target = targetOffset(for: parent.scrollSync) else { return }
-            isApplyingRemoteScroll = true
-            clipView.scroll(to: NSPoint(x: clipView.bounds.origin.x, y: target.rounded()))
-            scrollView.reflectScrolledClipView(clipView)
-            isApplyingRemoteScroll = false
-        }
-
         /// Puts the caret at the start of a source line and focuses the
         /// editor (outline navigation).
         func placeCaret(atSourceLine line: Int) {
             guard let textView else { return }
-            let starts = lineStarts()
+            let starts = lines.lineStarts()
             guard line >= 0, line < starts.count else { return }
             textView.setSelectedRange(NSRange(location: starts[line], length: 0))
             textView.window?.makeFirstResponder(textView)
-        }
-
-        // MARK: - Source-line mapping (scroll sync)
-
-        /// UTF-16 offsets where each source line starts, rebuilt after edits.
-        private var sourceLineStarts: [Int]?
-
-        func invalidateSourceLines() {
-            sourceLineStarts = nil
-        }
-
-        private func lineStarts() -> [Int] {
-            if let cached = sourceLineStarts { return cached }
-            let starts = SourceLines.starts(in: textView?.string ?? "")
-            sourceLineStarts = starts
-            return starts
-        }
-
-        /// Laid-out extent of a source line (all of its wrapped fragments),
-        /// in text-container coordinates.
-        private func sourceLineRect(_ line: Int) -> NSRect? {
-            guard let textView, let layoutManager = textView.layoutManager else { return nil }
-            let starts = lineStarts()
-            guard line >= 0, line < starts.count else { return nil }
-            let length = (textView.string as NSString).length
-            let start = starts[line]
-            let end = line + 1 < starts.count ? starts[line + 1] : length
-            guard end > start else {
-                // The empty last line only exists as the extra line fragment.
-                let extra = layoutManager.extraLineFragmentRect
-                return extra.height > 0 ? extra : nil
-            }
-            let first = layoutManager.lineFragmentRect(
-                forGlyphAt: layoutManager.glyphIndexForCharacter(at: start), effectiveRange: nil)
-            let last = layoutManager.lineFragmentRect(
-                forGlyphAt: layoutManager.glyphIndexForCharacter(at: end - 1), effectiveRange: nil)
-            return NSRect(x: 0, y: first.minY, width: first.width, height: last.maxY - first.minY)
-        }
-
-        /// Fractional source line at the top of the pane when scrolled to
-        /// `offset`; [-1, 0) covers the padding above the first line.
-        private func sourceLine(atScrollOffset offset: CGFloat) -> Double? {
-            guard let textView, let layoutManager = textView.layoutManager,
-                  let container = textView.textContainer else { return nil }
-            let inset = textView.textContainerOrigin.y
-            let y = offset - inset
-            if y < 0 {
-                return inset > 0 ? max(Double(y / inset), -1) : 0
-            }
-            guard (textView.string as NSString).length > 0 else { return 0 }
-            let glyph = layoutManager.glyphIndex(for: NSPoint(x: 0, y: y), in: container)
-            let character = layoutManager.characterIndexForGlyph(at: glyph)
-            let line = SourceLines.line(containing: character, starts: lineStarts())
-            guard let rect = sourceLineRect(line), rect.height > 0 else { return Double(line) }
-            return Double(line) + Double(min(max((y - rect.minY) / rect.height, 0), 1))
-        }
-
-        /// Scroll offset that puts `line` at the top of the visible area.
-        private func scrollOffset(forSourceLine line: Double) -> CGFloat? {
-            guard let textView, line.isFinite else { return nil }
-            let inset = textView.textContainerOrigin.y
-            if line < 0 {
-                return inset * CGFloat(1 + max(line, -1))
-            }
-            let starts = lineStarts()
-            let index = min(Int(line.rounded(.down)), starts.count - 1)
-            guard let rect = sourceLineRect(index) else { return nil }
-            let within = CGFloat(min(max(line - Double(index), 0), 1))
-            return inset + rect.minY + within * rect.height
-        }
-
-        /// Where the editor should scroll to follow `sync`: the synced source
-        /// line (proportional when there's no line map). As the leader nears
-        /// its end, this pane also absorbs the gap between where the leader's
-        /// final line lands here and its own end, over a stretch about the
-        /// size of that gap (capped at one screen): both panes reach the
-        /// bottom together and stay line-aligned everywhere before it.
-        private func targetOffset(for sync: ScrollSync) -> CGFloat? {
-            guard let textView,
-                  let scrollView = textView.enclosingScrollView,
-                  let documentView = scrollView.documentView else { return nil }
-            let maxOffset = documentView.frame.height - scrollView.contentView.bounds.height
-            guard maxOffset > 0 else { return nil }
-            guard let lineTarget = sync.line.flatMap(scrollOffset(forSourceLine:)) else {
-                return min(max(sync.fraction * maxOffset, 0), maxOffset)
-            }
-            var target = lineTarget
-            if let endTarget = sync.endLine.flatMap(scrollOffset(forSourceLine:)) {
-                let gap = max(maxOffset - endTarget, 0)
-                let stretch = max(min(max(gap, 120), scrollView.contentView.bounds.height), 1)
-                target += gap * CGFloat(max(0, 1 - sync.toEndDistance / Double(stretch)))
-            }
-            return min(max(target, 0), maxOffset)
-        }
-
-        @objc func scrollViewBoundsDidChange(_ notification: Notification) {
-            if needsScrollRestore {
-                restoreScrollIfNeeded()
-                return
-            }
-            guard !isApplyingRemoteScroll,
-                  let clipView = notification.object as? NSClipView,
-                  let documentView = clipView.documentView else { return }
-
-            // A pane resize (divider drag, mode switch) re-flows the text, so
-            // the same offset now shows a different line. Re-anchor to the
-            // shared position instead of publishing the drifted value.
-            if let lastSize = lastClipSize, lastSize != clipView.bounds.size {
-                anchorToSharedPosition()
-                return
-            }
-            lastClipSize = clipView.bounds.size
-
-            let maxOffset = documentView.frame.height - clipView.bounds.height
-            let offset = clipView.bounds.origin.y
-            let sync = ScrollSync(
-                line: sourceLine(atScrollOffset: offset),
-                fraction: maxOffset > 0 ? min(max(offset / maxOffset, 0), 1) : 0,
-                endLine: sourceLine(atScrollOffset: max(maxOffset, 0)),
-                toEndDistance: Double(max(maxOffset - offset, 0)),
-                source: .editor
-            )
-            guard sync.differs(from: parent.scrollSync) else { return }
-            DispatchQueue.main.async { [weak self] in
-                self?.parent.scrollSync = sync
-            }
-        }
-
-        /// Scrolls the editor to follow the preview. Compares against the live
-        /// position (not a cached value) and suppresses the resulting bounds
-        /// notification so the movement doesn't echo back to the preview.
-        func applyRemoteScroll(_ sync: ScrollSync) {
-            guard let textView,
-                  let scrollView = textView.enclosingScrollView,
-                  let target = targetOffset(for: sync) else { return }
-            let clipView = scrollView.contentView
-            guard abs(target - clipView.bounds.origin.y) > 0.5 else { return }
-
-            isApplyingRemoteScroll = true
-            clipView.scroll(to: NSPoint(x: clipView.bounds.origin.x, y: target.rounded()))
-            scrollView.reflectScrolledClipView(clipView)
-            isApplyingRemoteScroll = false
         }
     }
 }
