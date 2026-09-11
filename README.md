@@ -89,3 +89,7 @@ Samples/                     # sample documents
 
 Translations are the easiest way to help. See [CONTRIBUTING.md](CONTRIBUTING.md)
 for how to review a language, add a new one and test it.
+
+## License
+
+MarkEditor is released under the MIT License. See [LICENSE](LICENSE).
