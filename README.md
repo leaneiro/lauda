@@ -82,7 +82,6 @@ Resources/                   # string catalogs, welcome guides, app icon
 Support/Info.plist           # document types and bundle metadata
 Scripts/                     # .app, DMG and icon builds
 Tests/MarkEditorTests/       # unit tests
-Samples/                     # sample documents
 ```
 
 ## Contributing
