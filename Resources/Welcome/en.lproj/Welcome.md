@@ -6,7 +6,7 @@ This is an untitled document, so feel free to experiment. To keep it, save it wi
 
 ## Writing
 
-Text can be **bold** (⌘B), *italic* (⌘I) or `code`. Select some text and press ⌘K to turn it into a [link](https://daringfireball.net/projects/markdown/), or paste a URL over the selection.
+Text can be **bold** (⌘B), *italic* (⌘I), or `code`. Select some text and press ⌘K to turn it into a [link](https://daringfireball.net/projects/markdown/), or paste a URL over the selection.
 
 Type `->` or `<-` outside code and they become → and ←.
 
@@ -56,6 +56,6 @@ Drag an image into the editor, or paste a screenshot, and it's copied next to th
 
 - The **Outline** button in the toolbar lists the headings and jumps to them.
 - Both panes scroll together.
-- Fonts, sizes, appearance and line breaks are in **Settings** (⌘,).
+- Fonts, sizes, appearance, and line breaks are in **Settings** (⌘,).
 
 Happy writing! ✍️

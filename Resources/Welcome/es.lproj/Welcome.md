@@ -58,4 +58,4 @@ Arrastra una imagen al editor, o pega una captura de pantalla, y se copiará jun
 - Los dos paneles se desplazan juntos.
 - Los tipos de letra, tamaños, el aspecto y los saltos de línea están en **Ajustes** (⌘,).
 
-¡Feliz escritura! ✍️
+¡A escribir! ✍️

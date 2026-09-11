@@ -2,7 +2,7 @@
 
 MarkEditor ist ein Markdown-Editor mit zwei Bereichen: Links schreibst du, rechts siehst du das formatierte Ergebnis, das sich beim Tippen aktualisiert.
 
-Dies ist ein unbenanntes Dokument, probier also ruhig alles aus. Wenn du es behalten möchtest, sichere es mit ⌘S, sonst schließ es einfach. Du kannst diese Anleitung jederzeit über **Hilfe → Willkommensanleitung** wieder öffnen.
+Dies ist ein unbenanntes Dokument, probier also ruhig alles aus. Wenn du es behalten möchtest, sichere es mit ⌘S, sonst schließ es einfach. Du kannst diese Anleitung jederzeit über **Hilfe → Einführung** wieder öffnen.
 
 ## Schreiben
 
@@ -54,7 +54,7 @@ Zieh ein Bild in den Editor oder füge ein Bildschirmfoto ein. Es wird neben das
 
 ## Orientierung
 
-- Die Schaltfläche **Inhaltsverzeichnis** in der Symbolleiste listet die Überschriften auf und springt zu ihnen.
+- Die Schaltfläche **Gliederung** in der Symbolleiste listet die Überschriften auf und springt zu ihnen.
 - Beide Bereiche scrollen gemeinsam.
 - Schriften, Größen, Erscheinungsbild und Zeilenumbrüche findest du in den **Einstellungen** (⌘,).
 

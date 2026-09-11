@@ -99,7 +99,7 @@
               "other" : {
                 "stringUnit" : {
                   "state" : "needs_review",
-                  "value" : "%lld 文字"
+                  "value" : "%lld文字"
                 }
               }
             }
@@ -217,7 +217,7 @@
               "other" : {
                 "stringUnit" : {
                   "state" : "needs_review",
-                  "value" : "%lld 語"
+                  "value" : "%lld語"
                 }
               }
             }
@@ -229,7 +229,7 @@
               "other" : {
                 "stringUnit" : {
                   "state" : "needs_review",
-                  "value" : "%lld 个词"
+                  "value" : "%lld 个单词"
                 }
               }
             }
@@ -248,7 +248,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Ein einzelnes Return bricht nicht um, wie in Standard-Markdown."
+            "value" : "Ein einzelnes Return erzeugt keinen Zeilenumbruch, wie in Standard-Markdown."
           }
         },
         "es" : {
@@ -260,7 +260,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Un seul Retour ne coupe pas la ligne, comme en Markdown standard."
+            "value" : "Un simple retour ne crée pas de saut de ligne, comme en Markdown standard."
           }
         },
         "ja" : {
@@ -466,7 +466,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "閉じる（esc）"
+            "value" : "閉じる（Esc）"
           }
         },
         "zh-Hans" : {
@@ -528,7 +528,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Inhaltsverzeichnis des Dokuments"
+            "value" : "Gliederung des Dokuments"
           }
         },
         "es" : {
@@ -1328,7 +1328,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Zeilenhöhe"
+            "value" : "Zeilenabstand"
           }
         },
         "es" : {
@@ -1522,7 +1522,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Não salvo ainda"
+            "value" : "Ainda não salvo"
           }
         },
         "de" : {
@@ -1568,7 +1568,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Inhaltsverzeichnis"
+            "value" : "Gliederung"
           }
         },
         "es" : {
@@ -1774,7 +1774,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Restaurar valores por omisión"
+            "value" : "Restaurar valores predeterminados"
           }
         },
         "fr" : {
@@ -2329,7 +2329,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Willkommensanleitung"
+            "value" : "Einführung"
           }
         },
         "es" : {

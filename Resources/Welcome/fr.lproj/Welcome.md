@@ -19,7 +19,7 @@ Tapez `->` ou `<-` en dehors du code et ils deviennent → et ←.
   - Comme celui-ci
 
 1. Les listes numérotées continuent aussi
-2. Et reçoivent directement le numéro suivant
+2. Et prennent automatiquement le numéro suivant
 
 ### Tâches
 
