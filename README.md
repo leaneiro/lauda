@@ -6,7 +6,9 @@ Markdown renderizado à direita, atualizando em tempo real enquanto você digita
 ## Recursos
 
 - **Visão dupla** — editor à esquerda, preview formatado à direita, com scroll
-  sincronizado nos dois sentidos e divisor ajustável (posição lembrada).
+  sincronizado nos dois sentidos e divisor ajustável (posição lembrada). A
+  sincronização se alinha por bloco (título, parágrafo, imagem, tabela), então
+  imagens e tabelas grandes não desalinham os dois lados.
 - **Preview instantâneo** — renderiza a cada tecla, sem debounce; diff por
   bloco no DOM repinta só o que mudou.
 - **Modos de exibição** — somente editor (⌘1), dividido (⌘2) ou somente

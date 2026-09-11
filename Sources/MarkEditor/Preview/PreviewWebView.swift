@@ -61,10 +61,10 @@ struct PreviewWebView: NSViewRepresentable {
         private var isReady = false
         private var lastMarkdown: String?
         private var lastStyle: (family: String, size: Double, lineHeight: Double)?
-        private var lastScrollFraction: CGFloat = 0
+        private var lastScroll = ScrollSync()
         private var isRendering = false
         private var needsRender = false
-        private var pendingHTML: String?
+        private var pendingContent: RenderedContent?
 
         // MARK: - Content
 
@@ -89,10 +89,10 @@ struct PreviewWebView: NSViewRepresentable {
             needsRender = false
             isRendering = true
             DispatchQueue.global(qos: .userInteractive).async { [weak self] in
-                let html = HTMLRenderer.render(markdown, strictLineBreaks: strictLineBreaks)
+                let content = HTMLRenderer.renderWithLines(markdown, strictLineBreaks: strictLineBreaks)
                 DispatchQueue.main.async {
                     guard let self else { return }
-                    self.pushContent(html) {
+                    self.pushContent(content) {
                         self.isRendering = false
                         self.renderNextIfIdle()
                     }
@@ -100,19 +100,25 @@ struct PreviewWebView: NSViewRepresentable {
             }
         }
 
-        private func pushContent(_ html: String, completion: @escaping () -> Void) {
+        typealias RenderedContent = (html: String, blockLines: [Int], lineCount: Int)
+
+        private func pushContent(_ content: RenderedContent, completion: @escaping () -> Void) {
             guard let webView, isReady else {
-                pendingHTML = html
+                pendingContent = content
                 completion()
                 return
             }
             webView.callAsyncJavaScript(
-                "setContent(html)",
-                arguments: ["html": html],
+                "setContent(html, lines, lineCount)",
+                arguments: [
+                    "html": content.html,
+                    "lines": content.blockLines,
+                    "lineCount": content.lineCount,
+                ],
                 in: nil,
                 in: .page
             ) { [weak self] _ in
-                self?.flushPendingScroll()
+                self?.alignScrollAfterContentChange()
                 completion()
             }
         }
@@ -183,42 +189,50 @@ struct PreviewWebView: NSViewRepresentable {
 
         // MARK: - Scroll sync (bidirectional)
 
-        private var pendingScrollFraction: CGFloat?
+        private var pendingScroll: ScrollSync?
 
         func syncScroll(_ sync: ScrollSync) {
-            // Template (or content) not loaded yet — e.g. this pane was just
+            // Template (or content) not loaded yet, e.g. this pane was just
             // (re)created by a view-mode switch. Remember the position and
             // apply it once the content lands, whichever pane scrolled last.
-            guard let webView, isReady else {
-                pendingScrollFraction = sync.fraction
+            guard isReady else {
+                pendingScroll = sync
                 return
             }
             // Track preview-sourced positions so a later editor push compares
             // against where the preview actually is, then only follow the editor.
             if sync.source == .preview {
-                lastScrollFraction = sync.fraction
+                lastScroll = sync
                 return
             }
-            guard abs(sync.fraction - lastScrollFraction) > 0.0005 else { return }
-            lastScrollFraction = sync.fraction
-            webView.callAsyncJavaScript(
-                "setScrollFraction(fraction)",
-                arguments: ["fraction": Double(sync.fraction)],
-                in: nil,
-                in: .page
-            ) { _ in }
+            guard sync.differs(from: lastScroll) else { return }
+            lastScroll = sync
+            applyScroll(sync)
         }
 
-        /// Applies a scroll that arrived before the page/content was ready —
-        /// runs after a content push completes, so the page has its height.
-        private func flushPendingScroll() {
-            guard let fraction = pendingScrollFraction else { return }
-            pendingScrollFraction = nil
+        /// Runs after each content push: applies a position that arrived
+        /// before the page was ready, or re-aligns to the last one, since
+        /// edits shift where each source line sits in the preview.
+        private func alignScrollAfterContentChange() {
+            if let pending = pendingScroll {
+                pendingScroll = nil
+                lastScroll = pending
+            }
+            applyScroll(lastScroll)
+        }
+
+        private func applyScroll(_ sync: ScrollSync) {
             guard let webView, isReady else { return }
-            lastScrollFraction = fraction
             webView.callAsyncJavaScript(
-                "setScrollFraction(fraction)",
-                arguments: ["fraction": Double(fraction)],
+                "setScrollPosition(line, hasLine, endLine, hasEndLine, fraction, toEnd)",
+                arguments: [
+                    "line": sync.line ?? 0,
+                    "hasLine": sync.line != nil,
+                    "endLine": sync.endLine ?? 0,
+                    "hasEndLine": sync.endLine != nil,
+                    "fraction": Double(sync.fraction),
+                    "toEnd": sync.toEnd,
+                ],
                 in: nil,
                 in: .page
             ) { _ in }
@@ -231,10 +245,18 @@ struct PreviewWebView: NSViewRepresentable {
             didReceive message: WKScriptMessage
         ) {
             guard message.name == "previewScrolled",
-                  let fraction = message.body as? Double else { return }
-            let clamped = CGFloat(min(max(fraction, 0), 1))
-            lastScrollFraction = clamped
-            parent?.scrollSync = ScrollSync(fraction: clamped, source: .preview)
+                  let values = message.body as? [Any], values.count == 4,
+                  let fraction = (values[2] as? NSNumber)?.doubleValue,
+                  let toEnd = (values[3] as? NSNumber)?.doubleValue else { return }
+            let sync = ScrollSync(
+                line: (values[0] as? NSNumber)?.doubleValue,
+                fraction: CGFloat(min(max(fraction, 0), 1)),
+                endLine: (values[1] as? NSNumber)?.doubleValue,
+                toEnd: min(max(toEnd, 0), 1),
+                source: .preview
+            )
+            lastScroll = sync
+            parent?.scrollSync = sync
         }
 
         // MARK: - WKNavigationDelegate
@@ -249,9 +271,9 @@ struct PreviewWebView: NSViewRepresentable {
                 lastContentWidthRem = nil
                 setContentWidth(widthRem)
             }
-            if let html = pendingHTML {
-                pendingHTML = nil
-                pushContent(html) { [weak self] in
+            if let content = pendingContent {
+                pendingContent = nil
+                pushContent(content) { [weak self] in
                     self?.renderNextIfIdle()
                 }
             }

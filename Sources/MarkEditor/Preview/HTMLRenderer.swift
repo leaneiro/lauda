@@ -15,6 +15,28 @@ struct HTMLRenderer: MarkupVisitor {
         return renderer.visit(document)
     }
 
+    /// Preview rendering plus the 0-based source line where each top-level
+    /// block starts (one entry per top-level element of the HTML), which the
+    /// preview uses to line its scroll up with the editor's.
+    static func renderWithLines(
+        _ markdown: String,
+        strictLineBreaks: Bool = false
+    ) -> (html: String, blockLines: [Int], lineCount: Int) {
+        let document = Document(parsing: markdown)
+        var renderer = HTMLRenderer(strictLineBreaks: strictLineBreaks)
+        var html = ""
+        var blockLines: [Int] = []
+        for child in document.children {
+            let piece = renderer.visit(child)
+            // Raw HTML can hold zero or several top-level elements; a wrapper
+            // keeps the one-element-per-block correspondence.
+            html += child is HTMLBlock ? "<div>\(piece)</div>\n" : piece
+            let line = child.range.map { $0.lowerBound.line - 1 } ?? blockLines.last ?? 0
+            blockLines.append(line)
+        }
+        return (html, blockLines, SourceLines.count(in: markdown))
+    }
+
     /// Print-oriented rendering: each top-level heading is wrapped together
     /// with an invisible probe that reserves a couple of lines below it.
     /// `break-inside: avoid` on the wrapper then pushes the heading to the

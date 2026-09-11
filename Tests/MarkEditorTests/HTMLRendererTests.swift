@@ -114,6 +114,20 @@ final class HTMLRendererTests: XCTestCase {
         XCTAssertTrue(HTMLRenderer.renderForPrint("# T\n\na\nb").contains("<p>a<br>\nb</p>"))
     }
 
+    func testRenderWithLinesMapsEachTopLevelBlock() {
+        let markdown = "# Título\n\nParágrafo um\ncontinua\n\n- a\n- b\n\n```\ncode\n```\n"
+        let result = HTMLRenderer.renderWithLines(markdown)
+        XCTAssertEqual(result.blockLines, [0, 2, 5, 8])
+        XCTAssertEqual(result.lineCount, 12)
+        XCTAssertEqual(result.html, HTMLRenderer.render(markdown))
+    }
+
+    func testRenderWithLinesWrapsRawHTMLIntoOneElement() {
+        let result = HTMLRenderer.renderWithLines("<div>a</div>\n<div>b</div>\n\ntexto")
+        XCTAssertEqual(result.blockLines, [0, 3])
+        XCTAssertTrue(result.html.hasPrefix("<div><div>a</div>\n<div>b</div>"), "got: \(result.html)")
+    }
+
     func testBlankLineStillStartsNewParagraph() {
         XCTAssertEqual(
             HTMLRenderer.render("um\n\ndois"),

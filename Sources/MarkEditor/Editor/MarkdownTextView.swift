@@ -86,6 +86,7 @@ struct MarkdownTextView: NSViewRepresentable {
         if textView.string != text, !textView.hasMarkedText() {
             let selection = textView.selectedRange()
             textView.string = text
+            coordinator.invalidateSourceLines()
             let length = (text as NSString).length
             textView.setSelectedRange(NSRange(location: min(selection.location, length), length: 0))
             // The text view's undo entries hold ranges into the replaced text.
@@ -96,7 +97,7 @@ struct MarkdownTextView: NSViewRepresentable {
             coordinator.applyStyle(fontName: fontName, fontSize: fontSize)
         }
         if scrollSync.source == .preview {
-            coordinator.applyRemoteScroll(fraction: scrollSync.fraction)
+            coordinator.applyRemoteScroll(scrollSync)
         }
     }
 
@@ -126,6 +127,7 @@ struct MarkdownTextView: NSViewRepresentable {
 
         func textDidChange(_ notification: Notification) {
             guard let textView else { return }
+            invalidateSourceLines()
             // During IME composition (dead keys: ´ + a → á) the text contains
             // uncommitted marked text; committing fires textDidChange again.
             guard !textView.hasMarkedText() else { return }
@@ -653,12 +655,13 @@ struct MarkdownTextView: NSViewRepresentable {
 
             needsScrollRestore = false
             restoreAttempts = 0
-            anchorToSharedFraction()
+            anchorToSharedPosition()
         }
 
-        /// Positions the pane at the shared scroll fraction (used both when a
-        /// recreated pane comes up and when a resize re-flows the text).
-        private func anchorToSharedFraction() {
+        /// Positions the pane at the shared scroll position (used both when a
+        /// recreated pane comes up and when a resize re-flows the text, so the
+        /// same source line stays at the top).
+        private func anchorToSharedPosition() {
             guard let textView,
                   let scrollView = textView.enclosingScrollView else { return }
             if let layoutManager = textView.layoutManager, let container = textView.textContainer {
@@ -666,15 +669,101 @@ struct MarkdownTextView: NSViewRepresentable {
             }
             let clipView = scrollView.contentView
             lastClipSize = clipView.bounds.size
-            let maxOffset = textView.frame.height - clipView.bounds.height
-            guard maxOffset > 0 else { return }
+            guard let target = targetOffset(for: parent.scrollSync) else { return }
             isApplyingRemoteScroll = true
-            clipView.scroll(to: NSPoint(
-                x: clipView.bounds.origin.x,
-                y: (parent.scrollSync.fraction * maxOffset).rounded()
-            ))
+            clipView.scroll(to: NSPoint(x: clipView.bounds.origin.x, y: target.rounded()))
             scrollView.reflectScrolledClipView(clipView)
             isApplyingRemoteScroll = false
+        }
+
+        // MARK: - Source-line mapping (scroll sync)
+
+        /// UTF-16 offsets where each source line starts, rebuilt after edits.
+        private var sourceLineStarts: [Int]?
+
+        func invalidateSourceLines() {
+            sourceLineStarts = nil
+        }
+
+        private func lineStarts() -> [Int] {
+            if let cached = sourceLineStarts { return cached }
+            let starts = SourceLines.starts(in: textView?.string ?? "")
+            sourceLineStarts = starts
+            return starts
+        }
+
+        /// Laid-out extent of a source line (all of its wrapped fragments),
+        /// in text-container coordinates.
+        private func sourceLineRect(_ line: Int) -> NSRect? {
+            guard let textView, let layoutManager = textView.layoutManager else { return nil }
+            let starts = lineStarts()
+            guard line >= 0, line < starts.count else { return nil }
+            let length = (textView.string as NSString).length
+            let start = starts[line]
+            let end = line + 1 < starts.count ? starts[line + 1] : length
+            guard end > start else {
+                // The empty last line only exists as the extra line fragment.
+                let extra = layoutManager.extraLineFragmentRect
+                return extra.height > 0 ? extra : nil
+            }
+            let first = layoutManager.lineFragmentRect(
+                forGlyphAt: layoutManager.glyphIndexForCharacter(at: start), effectiveRange: nil)
+            let last = layoutManager.lineFragmentRect(
+                forGlyphAt: layoutManager.glyphIndexForCharacter(at: end - 1), effectiveRange: nil)
+            return NSRect(x: 0, y: first.minY, width: first.width, height: last.maxY - first.minY)
+        }
+
+        /// Fractional source line at the top of the pane when scrolled to
+        /// `offset`; [-1, 0) covers the padding above the first line.
+        private func sourceLine(atScrollOffset offset: CGFloat) -> Double? {
+            guard let textView, let layoutManager = textView.layoutManager,
+                  let container = textView.textContainer else { return nil }
+            let inset = textView.textContainerOrigin.y
+            let y = offset - inset
+            if y < 0 {
+                return inset > 0 ? max(Double(y / inset), -1) : 0
+            }
+            guard (textView.string as NSString).length > 0 else { return 0 }
+            let glyph = layoutManager.glyphIndex(for: NSPoint(x: 0, y: y), in: container)
+            let character = layoutManager.characterIndexForGlyph(at: glyph)
+            let line = SourceLines.line(containing: character, starts: lineStarts())
+            guard let rect = sourceLineRect(line), rect.height > 0 else { return Double(line) }
+            return Double(line) + Double(min(max((y - rect.minY) / rect.height, 0), 1))
+        }
+
+        /// Scroll offset that puts `line` at the top of the visible area.
+        private func scrollOffset(forSourceLine line: Double) -> CGFloat? {
+            guard let textView, line.isFinite else { return nil }
+            let inset = textView.textContainerOrigin.y
+            if line < 0 {
+                return inset * CGFloat(1 + max(line, -1))
+            }
+            let starts = lineStarts()
+            let index = min(Int(line.rounded(.down)), starts.count - 1)
+            guard let rect = sourceLineRect(index) else { return nil }
+            let within = CGFloat(min(max(line - Double(index), 0), 1))
+            return inset + rect.minY + within * rect.height
+        }
+
+        /// Where the editor should scroll to follow `sync`: the synced source
+        /// line (proportional when there's no line map). Over the leader's
+        /// last screen it also absorbs the gap between where the leader's
+        /// final line lands here and this pane's end, so both panes reach the
+        /// bottom together without skewing the rest of the document.
+        private func targetOffset(for sync: ScrollSync) -> CGFloat? {
+            guard let textView,
+                  let scrollView = textView.enclosingScrollView,
+                  let documentView = scrollView.documentView else { return nil }
+            let maxOffset = documentView.frame.height - scrollView.contentView.bounds.height
+            guard maxOffset > 0 else { return nil }
+            guard let lineTarget = sync.line.flatMap(scrollOffset(forSourceLine:)) else {
+                return min(max(sync.fraction * maxOffset, 0), maxOffset)
+            }
+            var target = lineTarget
+            if sync.toEnd < 1, let endTarget = sync.endLine.flatMap(scrollOffset(forSourceLine:)) {
+                target += CGFloat(1 - max(sync.toEnd, 0)) * max(maxOffset - endTarget, 0)
+            }
+            return min(max(target, 0), maxOffset)
         }
 
         @objc func scrollViewBoundsDidChange(_ notification: Notification) {
@@ -686,42 +775,43 @@ struct MarkdownTextView: NSViewRepresentable {
                   let clipView = notification.object as? NSClipView,
                   let documentView = clipView.documentView else { return }
 
-            // A pane resize (divider drag, mode switch) re-flows the text and
-            // shifts what fraction the same offset means. Re-anchor to the
+            // A pane resize (divider drag, mode switch) re-flows the text, so
+            // the same offset now shows a different line. Re-anchor to the
             // shared position instead of publishing the drifted value.
             if let lastSize = lastClipSize, lastSize != clipView.bounds.size {
-                anchorToSharedFraction()
+                anchorToSharedPosition()
                 return
             }
             lastClipSize = clipView.bounds.size
 
             let maxOffset = documentView.frame.height - clipView.bounds.height
-            let fraction = maxOffset > 0 ? clipView.bounds.origin.y / maxOffset : 0
-            let clamped = min(max(fraction, 0), 1)
-
-            guard abs(clamped - parent.scrollSync.fraction) > 0.001 else { return }
+            let offset = clipView.bounds.origin.y
+            let viewport = clipView.bounds.height
+            let sync = ScrollSync(
+                line: sourceLine(atScrollOffset: offset),
+                fraction: maxOffset > 0 ? min(max(offset / maxOffset, 0), 1) : 0,
+                endLine: sourceLine(atScrollOffset: max(maxOffset, 0)),
+                toEnd: viewport > 0 ? min(max(Double((maxOffset - offset) / viewport), 0), 1) : 1,
+                source: .editor
+            )
+            guard sync.differs(from: parent.scrollSync) else { return }
             DispatchQueue.main.async { [weak self] in
-                self?.parent.scrollSync = ScrollSync(fraction: clamped, source: .editor)
+                self?.parent.scrollSync = sync
             }
         }
 
         /// Scrolls the editor to follow the preview. Compares against the live
         /// position (not a cached value) and suppresses the resulting bounds
         /// notification so the movement doesn't echo back to the preview.
-        func applyRemoteScroll(fraction: CGFloat) {
+        func applyRemoteScroll(_ sync: ScrollSync) {
             guard let textView,
                   let scrollView = textView.enclosingScrollView,
-                  let documentView = scrollView.documentView else { return }
-
+                  let target = targetOffset(for: sync) else { return }
             let clipView = scrollView.contentView
-            let maxOffset = documentView.frame.height - clipView.bounds.height
-            guard maxOffset > 0 else { return }
-
-            let currentFraction = clipView.bounds.origin.y / maxOffset
-            guard abs(fraction - currentFraction) > 0.001 else { return }
+            guard abs(target - clipView.bounds.origin.y) > 0.5 else { return }
 
             isApplyingRemoteScroll = true
-            clipView.scroll(to: NSPoint(x: clipView.bounds.origin.x, y: fraction * maxOffset))
+            clipView.scroll(to: NSPoint(x: clipView.bounds.origin.x, y: target.rounded()))
             scrollView.reflectScrolledClipView(clipView)
             isApplyingRemoteScroll = false
         }

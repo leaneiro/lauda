@@ -172,8 +172,16 @@ enum PreviewTemplate {
     // Block-level DOM diff: only blocks that actually changed are replaced,
     // so typing repaints one paragraph instead of relaying the whole page.
     // Parsing via a detached div's innerHTML keeps <script> tags inert.
-    function setContent(html) {
+    // Source line where each top-level block starts (parallel to the
+    // container's children) and the document's line count, so scroll sync
+    // can align both panes by content instead of by proportion.
+    let blockLines = [];
+    let totalLines = 1;
+
+    function setContent(html, lines, lineCount) {
         suppressScrollEventsUntil = Date.now() + 200;
+        blockLines = lines || [];
+        totalLines = Math.max(lineCount || 1, 1);
         const container = document.getElementById("content");
         const parsed = document.createElement("div");
         parsed.innerHTML = html;
@@ -199,10 +207,55 @@ enum PreviewTemplate {
         style.setProperty("--psize", size + "px");
         style.setProperty("--plh", lineHeight);
     }
-    function setScrollFraction(fraction) {
-        const max = document.documentElement.scrollHeight - window.innerHeight;
+    function maxScroll() {
+        return Math.max(document.documentElement.scrollHeight - window.innerHeight, 0);
+    }
+    // [sourceLine, y] anchors: the top padding (line -1 at y 0), each
+    // top-level block and the document end. null when the DOM and the line
+    // map disagree (raw HTML can make the parser split a block); callers
+    // then fall back to proportional sync.
+    function lineAnchors() {
+        const blocks = document.getElementById("content").children;
+        if (blockLines.length === 0 || blocks.length !== blockLines.length) { return null; }
+        const points = [[-1, 0]];
+        for (let i = 0; i < blocks.length; i++) {
+            const y = blocks[i].getBoundingClientRect().top + window.scrollY;
+            const prev = points[points.length - 1];
+            if (blockLines[i] > prev[0] && y >= prev[1]) { points.push([blockLines[i], y]); }
+        }
+        const last = points[points.length - 1];
+        const endY = document.documentElement.scrollHeight;
+        if (totalLines > last[0] && endY >= last[1]) { points.push([totalLines, endY]); }
+        return points;
+    }
+    // Piecewise-linear lookup over anchors sorted by both columns.
+    function interpolate(points, value, from, to) {
+        if (value <= points[0][from]) { return points[0][to]; }
+        for (let i = 1; i < points.length; i++) {
+            const a = points[i - 1], b = points[i];
+            if (value <= b[from]) {
+                const span = b[from] - a[from];
+                return span > 0 ? a[to] + (value - a[from]) / span * (b[to] - a[to]) : b[to];
+            }
+        }
+        return points[points.length - 1][to];
+    }
+    function setScrollPosition(line, hasLine, endLine, hasEndLine, fraction, toEnd) {
+        const max = maxScroll();
         if (max <= 0) { return; }
-        const target = fraction * max;
+        const points = hasLine ? lineAnchors() : null;
+        let target = fraction * max;
+        if (points) {
+            target = interpolate(points, line, 0, 1);
+            // Over the leader's last screen, absorb the gap between where its
+            // final line lands here and this pane's end, so both panes reach
+            // the bottom together without skewing the rest of the document.
+            if (toEnd < 1 && hasEndLine) {
+                const endTarget = interpolate(points, endLine, 0, 1);
+                target += (1 - Math.max(toEnd, 0)) * Math.max(max - endTarget, 0);
+            }
+        }
+        target = Math.min(Math.max(target, 0), max);
         if (Math.abs(target - window.scrollY) < 2) { return; }
         suppressScrollEventsUntil = Date.now() + 200;
         window.scrollTo(0, target);
@@ -262,9 +315,15 @@ enum PreviewTemplate {
     });
     window.addEventListener("scroll", () => {
         if (Date.now() < suppressScrollEventsUntil) { return; }
-        const max = document.documentElement.scrollHeight - window.innerHeight;
-        const fraction = max > 0 ? Math.min(Math.max(window.scrollY / max, 0), 1) : 0;
-        window.webkit.messageHandlers.previewScrolled.postMessage(fraction);
+        const max = maxScroll();
+        const y = window.scrollY;
+        const fraction = max > 0 ? Math.min(Math.max(y / max, 0), 1) : 0;
+        const toEnd = window.innerHeight > 0
+            ? Math.min(Math.max((max - y) / window.innerHeight, 0), 1) : 1;
+        const points = lineAnchors();
+        const line = points ? interpolate(points, y, 1, 0) : null;
+        const endLine = points ? interpolate(points, max, 1, 0) : null;
+        window.webkit.messageHandlers.previewScrolled.postMessage([line, endLine, fraction, toEnd]);
     }, { passive: true });
     </script>
     </body>
