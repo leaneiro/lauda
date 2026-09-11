@@ -85,3 +85,39 @@ of a document window, and open Help → Welcome Guide to read the guide in
 that language. Quit the app before switching languages, since `--args`
 only applies to a fresh launch. You can also set a per-app language in
 System Settings → General → Language & Region → Applications.
+
+## Working on the code
+
+MarkEditor is a plain SwiftPM package, with no Xcode project. `make run`
+builds and opens the app, and `swift test` runs the unit tests. CI builds
+the package, runs the tests and assembles the app bundle for every pull
+request.
+
+Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/),
+for example `fix(preview): …` or `feat(editor): …`.
+
+### The editor uses TextKit 1 on purpose
+
+`MarkdownTextView` builds its own TextKit 1 stack. TextKit 2 lays text out
+by estimated viewport, and together with the per-keystroke syntax
+highlighting that made scrolling jump and left blank regions. Scroll sync
+between the panes also relies on exact line positions. Please don't switch
+to TextKit 2 without carefully testing long documents and scroll sync.
+
+### Preview security
+
+The preview renders the document's raw HTML, and documents can come from
+anyone. Keep these protections in place:
+
+- The page's Content-Security-Policy (`PreviewTemplate`) blocks any script
+  in the document and any connection it could open. Images and media may
+  still load from the document's folder, `data:` URIs and the web.
+- The app's own script runs in a separate content world
+  (`PreviewWebView.contentWorld`). Call it with
+  `callAsyncJavaScript(…, in: PreviewWebView.contentWorld)`, never `.page`.
+- `HTMLRenderer` only keeps links that are relative or use `http`, `https`
+  or `mailto` (`ExternalLinks`).
+- `DocumentSchemeHandler` serves only image files inside the document's
+  folder, with symlinks resolved.
+
+If a change needs to loosen any of these, please open an issue first.
