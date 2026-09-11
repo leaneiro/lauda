@@ -311,11 +311,11 @@ struct ContentView: View {
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Picker("View Mode", selection: viewModeBinding) {
-                    Label("Editor only", systemImage: "doc.plaintext")
+                    Label("Editor Only", systemImage: "doc.plaintext")
                         .tag(ViewMode.editorOnly)
-                    Label("Editor and preview", systemImage: "rectangle.split.2x1")
+                    Label("Editor and Preview", systemImage: "rectangle.split.2x1")
                         .tag(ViewMode.split)
-                    Label("Preview only", systemImage: "doc.richtext")
+                    Label("Preview Only", systemImage: "doc.richtext")
                         .tag(ViewMode.previewOnly)
                 }
                 .pickerStyle(.segmented)
