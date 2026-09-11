@@ -81,5 +81,7 @@ open build/MarkEditor.app --args -AppleLanguages "(de)"
 ```
 
 Check the menus, the Settings window (⌘,) and the status bar at the bottom
-of a document window. You can also set a per-app language in System
-Settings → General → Language & Region → Applications.
+of a document window, and open Help → Welcome Guide to read the guide in
+that language. Quit the app before switching languages, since `--args`
+only applies to a fresh launch. You can also set a per-app language in
+System Settings → General → Language & Region → Applications.
