@@ -33,6 +33,7 @@ final class EditorActions {
         coordinator?.findStep(forward: forward) ?? (0, 0)
     }
     func findClear() { coordinator?.findClear() }
+    func placeCaret(atSourceLine line: Int) { coordinator?.placeCaret(atSourceLine: line) }
 }
 
 /// Bridges the find bar to the focused window's preview coordinator.
@@ -189,7 +190,9 @@ enum ReadingTime {
 /// taller than the text. `source` marks which pane the user scrolled, so the
 /// other pane follows and echoes are ignored.
 struct ScrollSync: Equatable {
-    enum Source { case editor, preview }
+    /// Which pane the user scrolled (the other follows, echoes are ignored),
+    /// or `navigation` for a jump both panes follow, like the outline's.
+    enum Source { case editor, preview, navigation }
     /// Fractional source line at the top of the pane; [-1, 0) is the padding
     /// above the first line. nil when the pane has no line map.
     var line: Double?
@@ -244,6 +247,7 @@ struct ContentView: View {
     @State private var findQuery = ""
     @State private var findCurrent = 0
     @State private var findTotal = 0
+    @State private var outlinePresented = false
 
     private static let minPaneWidth: CGFloat = 280
 
@@ -318,6 +322,17 @@ struct ContentView: View {
                 .labelStyle(.iconOnly)
             }
             ToolbarItem(placement: .automatic) {
+                Button {
+                    outlinePresented.toggle()
+                } label: {
+                    Label("Sumário", systemImage: "list.bullet")
+                }
+                .help("Sumário do documento")
+                .popover(isPresented: $outlinePresented, arrowEdge: .bottom) {
+                    OutlinePopover(items: Outline.items(in: document.text), onSelect: navigate(to:))
+                }
+            }
+            ToolbarItem(placement: .automatic) {
                 if viewMode == .previewOnly {
                     Button {
                         previewWidthLevel = effectivePreviewWidth.next.rawValue
@@ -386,6 +401,21 @@ struct ContentView: View {
         .background(.bar)
         .overlay(alignment: .top) {
             Divider()
+        }
+    }
+
+    // MARK: - Outline
+
+    private func navigate(to item: OutlineItem) {
+        outlinePresented = false
+        let lineCount = max(SourceLines.count(in: document.text), 1)
+        scrollSync = ScrollSync(
+            line: Double(item.line),
+            fraction: CGFloat(item.line) / CGFloat(lineCount),
+            source: .navigation
+        )
+        if viewMode != .previewOnly {
+            editorActions.placeCaret(atSourceLine: item.line)
         }
     }
 

@@ -18,6 +18,8 @@ Markdown renderizado à direita, atualizando em tempo real enquanto você digita
 - **Highlight no editor** — realce leve da sintaxe Markdown enquanto edita.
 - **Exportar** — HTML standalone com o visual do preview (⌥⇧⌘E) e PDF
   paginado (⇧⌘E), no menu Arquivo.
+- **Sumário** — botão na barra de ferramentas lista os títulos (H1 a H6)
+  e leva os dois painéis, e o cursor, até o escolhido.
 - **Atalhos de escrita** — ⌘B/⌘I/⌘K (menu Formatar), Enter continua listas
   (inclusive tarefas e numeradas), Tab/Shift-Tab indentam itens.
 - **Toques de conforto** — colar URL sobre uma seleção cria `[texto](url)`;

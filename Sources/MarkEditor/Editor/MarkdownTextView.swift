@@ -96,7 +96,7 @@ struct MarkdownTextView: NSViewRepresentable {
         if coordinator.appliedFontName != fontName || coordinator.appliedFontSize != fontSize {
             coordinator.applyStyle(fontName: fontName, fontSize: fontSize)
         }
-        if scrollSync.source == .preview {
+        if scrollSync.source != .editor {
             coordinator.applyRemoteScroll(scrollSync)
         }
     }
@@ -674,6 +674,16 @@ struct MarkdownTextView: NSViewRepresentable {
             clipView.scroll(to: NSPoint(x: clipView.bounds.origin.x, y: target.rounded()))
             scrollView.reflectScrolledClipView(clipView)
             isApplyingRemoteScroll = false
+        }
+
+        /// Puts the caret at the start of a source line and focuses the
+        /// editor (outline navigation).
+        func placeCaret(atSourceLine line: Int) {
+            guard let textView else { return }
+            let starts = lineStarts()
+            guard line >= 0, line < starts.count else { return }
+            textView.setSelectedRange(NSRange(location: starts[line], length: 0))
+            textView.window?.makeFirstResponder(textView)
         }
 
         // MARK: - Source-line mapping (scroll sync)
