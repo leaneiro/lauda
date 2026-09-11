@@ -46,18 +46,13 @@ final class DocumentExporter: NSObject, WKNavigationDelegate {
 
     // MARK: - PDF
 
-    static func promptAndExportPDF(
-        markdown: String,
-        title: String,
-        baseDirectory: URL?,
-        window: NSWindow?
-    ) {
+    static func promptAndExportPDF(markdown: String, title: String, baseDirectory: URL?) {
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.pdf]
         panel.nameFieldStringValue = title + ".pdf"
         panel.directoryURL = baseDirectory
         guard panel.runModal() == .OK, let url = panel.url else { return }
-        exportPDF(markdown: markdown, title: title, baseDirectory: baseDirectory, to: url, window: window)
+        exportPDF(markdown: markdown, title: title, baseDirectory: baseDirectory, to: url)
     }
 
     static func exportPDF(
@@ -65,10 +60,9 @@ final class DocumentExporter: NSObject, WKNavigationDelegate {
         title: String,
         baseDirectory: URL?,
         to destination: URL,
-        window: NSWindow?,
         completion: ((Bool) -> Void)? = nil
     ) {
-        let exporter = DocumentExporter(destination: destination, window: window, completion: completion)
+        let exporter = DocumentExporter(destination: destination, completion: completion)
         active.insert(exporter)
         exporter.start(
             html: standaloneHTML(markdown: markdown, title: title),
@@ -77,14 +71,13 @@ final class DocumentExporter: NSObject, WKNavigationDelegate {
     }
 
     private let destination: URL
-    private weak var window: NSWindow?
     private let completion: ((Bool) -> Void)?
     private var webView: WKWebView?
+    private var hostWindow: NSWindow?
     private let schemeHandler = DocumentSchemeHandler()
 
-    private init(destination: URL, window: NSWindow?, completion: ((Bool) -> Void)?) {
+    private init(destination: URL, completion: ((Bool) -> Void)?) {
         self.destination = destination
-        self.window = window
         self.completion = completion
     }
 
@@ -137,17 +130,24 @@ final class DocumentExporter: NSObject, WKNavigationDelegate {
         // output comes out blank.
         operation.view?.frame = webView.bounds
 
-        if let window {
-            operation.runModal(
-                for: window,
-                delegate: self,
-                didRun: #selector(printOperationDidRun(_:success:contextInfo:)),
-                contextInfo: nil
-            )
-        } else {
-            let success = operation.run()
-            finish(success: success)
-        }
+        // Always run modally, for a window of our own that is never shown.
+        // WKWebView works out its page rects asynchronously; a synchronous
+        // run() asks for them too early, gets "unlimited pages of 1×1
+        // points" back and keeps writing pages until the disk fills up.
+        let host = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 400, height: 300),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: false
+        )
+        host.isReleasedWhenClosed = false
+        hostWindow = host
+        operation.runModal(
+            for: host,
+            delegate: self,
+            didRun: #selector(printOperationDidRun(_:success:contextInfo:)),
+            contextInfo: nil
+        )
     }
 
     @objc private func printOperationDidRun(
@@ -161,6 +161,7 @@ final class DocumentExporter: NSObject, WKNavigationDelegate {
     private func finish(success: Bool) {
         completion?(success)
         webView = nil
+        hostWindow = nil
         Self.active.remove(self)
     }
 }

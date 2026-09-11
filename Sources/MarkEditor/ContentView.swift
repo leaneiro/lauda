@@ -440,8 +440,7 @@ struct ContentView: View {
         DocumentExporter.promptAndExportPDF(
             markdown: document.text,
             title: exportTitle,
-            baseDirectory: fileURL?.deletingLastPathComponent(),
-            window: NSApp.keyWindow ?? NSApp.mainWindow
+            baseDirectory: fileURL?.deletingLastPathComponent()
         )
     }
 
