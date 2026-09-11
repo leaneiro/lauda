@@ -20,6 +20,9 @@ Markdown renderizado à direita, atualizando em tempo real enquanto você digita
   paginado (⇧⌘E), no menu Arquivo.
 - **Sumário** — botão na barra de ferramentas lista os títulos (H1 a H6)
   e leva os dois painéis, e o cursor, até o escolhido.
+- **Guia de boas-vindas** — abre na primeira vez que o app é aberto, no
+  idioma do sistema, como um documento sem nome pra experimentar; dá pra
+  reabrir em Ajuda → Guia de Boas-Vindas.
 - **Idiomas** — segue o idioma do sistema. Inglês (base) e português do
   Brasil estão revisados; alemão, chinês simplificado, espanhol, francês e
   japonês são rascunhos aguardando revisão de nativos (veja

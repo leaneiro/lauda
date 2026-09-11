@@ -52,11 +52,21 @@ Guidelines:
 - Keep the pasted-image file name (`image-%@.png`) in ASCII letters, since
   it ends up inside Markdown links.
 
+### Welcome guide
+
+Each language also has a welcome document, shown on first launch and from
+Help → Welcome Guide: `Resources/Welcome/<language>.lproj/Welcome.md`. The
+versions other than English and Portuguese are machine drafts too. Review
+them like the strings, and keep the Markdown structure (headings, lists,
+the code block and the table), since the guide demonstrates each feature.
+
 ### Adding a new language
 
 In Xcode's catalog editor, add the language (the + button) to both
-catalogs and translate. Then add its code to `CFBundleLocalizations` in
-`Support/Info.plist`, and add a row to the table above.
+catalogs and translate. Then add a translated
+`Resources/Welcome/<language>.lproj/Welcome.md`, add the language code to
+`CFBundleLocalizations` in `Support/Info.plist`, and add a row to the
+table above.
 
 ### Testing
 

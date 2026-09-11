@@ -14,6 +14,7 @@ struct MarkEditorApp: App {
             FormatCommands()
             FindCommands()
             ViewModeCommands()
+            HelpCommands()
         }
 
         Settings {
@@ -25,6 +26,11 @@ struct MarkEditorApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         RecentDocuments.resyncSystemList()
+        // Launched to open files (e.g. from Finder)? Then no welcome guide.
+        let isDefaultLaunch = notification.userInfo?[NSApplication.launchIsDefaultUserInfoKey] as? Bool ?? true
+        if isDefaultLaunch {
+            WelcomeGuide.showOnFirstLaunch()
+        }
         NotificationCenter.default.addObserver(
             self, selector: #selector(windowWillClose(_:)),
             name: NSWindow.willCloseNotification, object: nil)

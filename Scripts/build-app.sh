@@ -34,6 +34,11 @@ else
     echo "warning: xcstringstool not found (install Xcode); the app will run in English only"
 fi
 
+# Localized welcome guide: Resources/Welcome/<lang>.lproj/Welcome.md.
+if [[ -d Resources/Welcome ]]; then
+    cp -R Resources/Welcome/ "$APP_PATH/Contents/Resources/"
+fi
+
 codesign --force --sign - "$APP_PATH"
 
 echo "OK: $APP_PATH"
