@@ -74,13 +74,23 @@ function interpolate(points, value, from, to) {
     }
     return points[points.length - 1][to];
 }
-// Keeps the same source line at the top as the other pane, which also means
-// the shorter pane reaches its bottom first.
-function setScrollPosition(line, hasLine, fraction) {
+function setScrollPosition(line, hasLine, endLine, hasEndLine, fraction, toEndDistance, convergence) {
     const max = maxScroll();
     if (max <= 0) { return; }
     const points = hasLine ? lineAnchors() : null;
-    let target = points ? interpolate(points, line, 0, 1) : fraction * max;
+    let target = fraction * max;
+    if (points) {
+        target = interpolate(points, line, 0, 1);
+        // Over the leader's last `convergence` points, absorb the gap
+        // between where its final line lands here and this pane's end, so
+        // both panes reach the bottom together while staying line-aligned
+        // everywhere before that.
+        if (hasEndLine) {
+            const gap = Math.max(max - interpolate(points, endLine, 0, 1), 0);
+            const stretch = Math.max(Math.min(convergence, window.innerHeight), 1);
+            target += gap * Math.max(0, 1 - toEndDistance / stretch);
+        }
+    }
     target = Math.min(Math.max(target, 0), max);
     if (Math.abs(target - window.scrollY) < 2) { return; }
     suppressScrollEventsUntil = Date.now() + 200;
@@ -144,7 +154,9 @@ window.addEventListener("scroll", () => {
     const max = maxScroll();
     const y = window.scrollY;
     const fraction = max > 0 ? Math.min(Math.max(y / max, 0), 1) : 0;
+    const toEndDistance = Math.max(max - y, 0);
     const points = lineAnchors();
     const line = points ? interpolate(points, y, 1, 0) : null;
-    window.webkit.messageHandlers.previewScrolled.postMessage([line, fraction]);
+    const endLine = points ? interpolate(points, max, 1, 0) : null;
+    window.webkit.messageHandlers.previewScrolled.postMessage([line, endLine, fraction, toEndDistance]);
 }, { passive: true });

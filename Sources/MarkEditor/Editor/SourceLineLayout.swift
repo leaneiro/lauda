@@ -74,9 +74,11 @@ final class SourceLineLayout {
     }
 
     /// Where the editor should scroll to follow `sync`: the synced source
-    /// line, or proportionally when there's no line map. The same line stays
-    /// at the top of both panes, which also means the shorter pane reaches
-    /// its bottom first.
+    /// line (proportional when there's no line map). Over the leader's
+    /// last `ScrollSync.endConvergence` points, this pane also absorbs the
+    /// gap between where the leader's final line lands here and its own
+    /// end, so both panes reach the bottom together while staying
+    /// line-aligned everywhere before that.
     func targetOffset(for sync: ScrollSync) -> CGFloat? {
         guard let textView,
               let scrollView = textView.enclosingScrollView,
@@ -86,6 +88,12 @@ final class SourceLineLayout {
         guard let lineTarget = sync.line.flatMap(scrollOffset(forLine:)) else {
             return min(max(sync.fraction * maxOffset, 0), maxOffset)
         }
-        return min(max(lineTarget, 0), maxOffset)
+        var target = lineTarget
+        if let endTarget = sync.endLine.flatMap(scrollOffset(forLine:)) {
+            let gap = max(maxOffset - endTarget, 0)
+            let stretch = max(min(ScrollSync.endConvergence, Double(scrollView.contentView.bounds.height)), 1)
+            target += gap * CGFloat(max(0, 1 - sync.toEndDistance / stretch))
+        }
+        return min(max(target, 0), maxOffset)
     }
 }
