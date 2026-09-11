@@ -4,10 +4,10 @@ import XCTest
 final class CodeHighlighterTests: XCTestCase {
     func testSwiftKeywordsStringsCommentsNumbers() {
         let html = CodeHighlighter.highlight(
-            "// oi\nlet x = \"a < b\" + 42",
+            "// hi\nlet x = \"a < b\" + 42",
             language: "swift"
         )!
-        XCTAssertTrue(html.contains("<span class=\"hl-com\">// oi</span>"), "got: \(html)")
+        XCTAssertTrue(html.contains("<span class=\"hl-com\">// hi</span>"), "got: \(html)")
         XCTAssertTrue(html.contains("<span class=\"hl-kw\">let</span>"), "got: \(html)")
         XCTAssertTrue(html.contains("<span class=\"hl-str\">&quot;a &lt; b&quot;</span>"), "got: \(html)")
         XCTAssertTrue(html.contains("<span class=\"hl-num\">42</span>"), "got: \(html)")
@@ -49,12 +49,12 @@ final class CodeHighlighterTests: XCTestCase {
 
     func testLanguageAliases() {
         XCTAssertNotNil(CodeHighlighter.highlight("const a = 1", language: "ts"))
-        XCTAssertNotNil(CodeHighlighter.highlight("echo oi", language: "sh"))
+        XCTAssertNotNil(CodeHighlighter.highlight("echo hi", language: "sh"))
         XCTAssertNotNil(CodeHighlighter.highlight("SELECT 1", language: "sql"))
     }
 
     func testUnterminatedStringDoesNotCrashOrLoop() {
-        let html = CodeHighlighter.highlight("let s = \"aberta", language: "swift")!
+        let html = CodeHighlighter.highlight("let s = \"unclosed", language: "swift")!
         XCTAssertTrue(html.contains("hl-str"), "got: \(html)")
     }
 }

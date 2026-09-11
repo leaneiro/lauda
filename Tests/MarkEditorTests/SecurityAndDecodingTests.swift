@@ -2,7 +2,7 @@ import XCTest
 @testable import MarkEditor
 
 final class DocumentSchemeHandlerTests: XCTestCase {
-    private let base = URL(fileURLWithPath: "/Users/alguem/Documentos/notas")
+    private let base = URL(fileURLWithPath: "/Users/someone/Documents/notes")
 
     private func resolve(_ path: String) -> URL? {
         DocumentSchemeHandler.resolveTarget(
@@ -12,43 +12,43 @@ final class DocumentSchemeHandlerTests: XCTestCase {
     }
 
     func testResolvesImageInsideDocumentFolder() {
-        XCTAssertEqual(resolve("/figura.png")?.path, "/Users/alguem/Documentos/notas/figura.png")
+        XCTAssertEqual(resolve("/figure.png")?.path, "/Users/someone/Documents/notes/figure.png")
     }
 
     func testResolvesImageInSubfolder() {
-        XCTAssertEqual(resolve("/img/foto.jpeg")?.path, "/Users/alguem/Documentos/notas/img/foto.jpeg")
+        XCTAssertEqual(resolve("/img/photo.jpeg")?.path, "/Users/someone/Documents/notes/img/photo.jpeg")
     }
 
     func testRejectsPathTraversal() {
-        XCTAssertNil(resolve("/../segredo.png"))
-        XCTAssertNil(resolve("/img/../../../etc/senha.png"))
+        XCTAssertNil(resolve("/../secret.png"))
+        XCTAssertNil(resolve("/img/../../../etc/password.png"))
     }
 
     func testRejectsPercentEncodedTraversal() {
-        XCTAssertNil(resolve("/%2e%2e/segredo.png"))
+        XCTAssertNil(resolve("/%2e%2e/secret.png"))
     }
 
     func testRejectsNonImageFiles() {
-        XCTAssertNil(resolve("/chave.pem"))
-        XCTAssertNil(resolve("/notas.md"))
-        XCTAssertNil(resolve("/sem-extensao"))
+        XCTAssertNil(resolve("/key.pem"))
+        XCTAssertNil(resolve("/notes.md"))
+        XCTAssertNil(resolve("/no-extension"))
     }
 
     func testExtensionCheckIsCaseInsensitive() {
-        XCTAssertNotNil(resolve("/FOTO.PNG"))
+        XCTAssertNotNil(resolve("/PHOTO.PNG"))
     }
 }
 
 final class MarkdownDocumentDecodingTests: XCTestCase {
     func testDecodesUTF8() throws {
-        let data = Data("Olá, coração!".utf8)
-        XCTAssertEqual(try MarkdownDocument.decode(data), "Olá, coração!")
+        let data = Data("Café, naïve façade!".utf8)
+        XCTAssertEqual(try MarkdownDocument.decode(data), "Café, naïve façade!")
     }
 
     func testFallsBackToLatin1WithoutLoss() throws {
-        let data = "Olá, coração!".data(using: .isoLatin1)!
+        let data = "Café, naïve façade!".data(using: .isoLatin1)!
         let decoded = try MarkdownDocument.decode(data)
-        XCTAssertEqual(decoded, "Olá, coração!")
+        XCTAssertEqual(decoded, "Café, naïve façade!")
         XCTAssertFalse(decoded.contains("\u{FFFD}"))
     }
 }

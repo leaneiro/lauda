@@ -4,30 +4,30 @@ import XCTest
 final class OutlineTests: XCTestCase {
     func testCollectsHeadingsWithLevelsTitlesAndLines() {
         let markdown = """
-        # Título
+        # Title
 
-        texto
+        text
 
-        ## Seção *um*
+        ## Section *one*
 
         Sub
         ---
 
         ```
-        # não é título
+        # not a heading
         ```
 
-        ### Três
+        ### Three
         """
         let items = Outline.items(in: markdown)
         XCTAssertEqual(items.map(\.level), [1, 2, 2, 3])
-        XCTAssertEqual(items.map(\.title), ["Título", "Seção um", "Sub", "Três"])
+        XCTAssertEqual(items.map(\.title), ["Title", "Section one", "Sub", "Three"])
         XCTAssertEqual(items.map(\.line), [0, 4, 6, 13])
         XCTAssertEqual(items.map(\.id), [0, 1, 2, 3])
     }
 
     func testSupportsAllSixLevels() {
-        let items = Outline.items(in: "# 1\n## 2\n### 3\n#### 4\n##### 5\n###### 6\n####### 7 não é título")
+        let items = Outline.items(in: "# 1\n## 2\n### 3\n#### 4\n##### 5\n###### 6\n####### 7 is not a heading")
         XCTAssertEqual(items.map(\.level), [1, 2, 3, 4, 5, 6])
     }
 
@@ -36,6 +36,6 @@ final class OutlineTests: XCTestCase {
     }
 
     func testDocumentWithoutHeadingsHasEmptyOutline() {
-        XCTAssertTrue(Outline.items(in: "só texto\n\n- lista").isEmpty)
+        XCTAssertTrue(Outline.items(in: "just text\n\n- list").isEmpty)
     }
 }

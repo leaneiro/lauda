@@ -10,7 +10,7 @@ final class SourceLinesTests: XCTestCase {
     }
 
     func testStartsAreUTF16Offsets() {
-        XCTAssertEqual(SourceLines.starts(in: "ab\nção\n\nx"), [0, 3, 7, 8])
+        XCTAssertEqual(SourceLines.starts(in: "ab\ncafé\n\nx"), [0, 3, 8, 9])
     }
 
     func testLineContainingOffset() {

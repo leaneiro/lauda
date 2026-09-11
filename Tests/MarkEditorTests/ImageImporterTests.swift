@@ -27,9 +27,9 @@ final class ImageImporterTests: XCTestCase {
     }
 
     func testIsImageFile() {
-        XCTAssertTrue(ImageImporter.isImageFile(URL(fileURLWithPath: "/x/foto.PNG")))
+        XCTAssertTrue(ImageImporter.isImageFile(URL(fileURLWithPath: "/x/photo.PNG")))
         XCTAssertTrue(ImageImporter.isImageFile(URL(fileURLWithPath: "/x/a.jpeg")))
-        XCTAssertFalse(ImageImporter.isImageFile(URL(fileURLWithPath: "/x/notas.md")))
+        XCTAssertFalse(ImageImporter.isImageFile(URL(fileURLWithPath: "/x/notes.md")))
     }
 
     func testImportCopiesExternalImage() throws {
@@ -37,22 +37,22 @@ final class ImageImporterTests: XCTestCase {
             .appendingPathComponent("ext-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: external, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: external) }
-        let source = try makePNG("foto.png", in: external)
+        let source = try makePNG("photo.png", in: external)
 
         let path = ImageImporter.importImage(from: source, into: directory)
-        XCTAssertEqual(path, "foto.png")
-        XCTAssertTrue(FileManager.default.fileExists(atPath: directory.appendingPathComponent("foto.png").path))
+        XCTAssertEqual(path, "photo.png")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: directory.appendingPathComponent("photo.png").path))
     }
 
     func testImportResolvesNameCollision() throws {
-        _ = try makePNG("foto.png")
+        _ = try makePNG("photo.png")
         let external = FileManager.default.temporaryDirectory
             .appendingPathComponent("ext-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: external, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: external) }
-        let source = try makePNG("foto.png", in: external)
+        let source = try makePNG("photo.png", in: external)
 
-        XCTAssertEqual(ImageImporter.importImage(from: source, into: directory), "foto-2.png")
+        XCTAssertEqual(ImageImporter.importImage(from: source, into: directory), "photo-2.png")
     }
 
     func testImageAlreadyInsideFolderIsReferencedWithoutCopy() throws {
@@ -61,8 +61,8 @@ final class ImageImporterTests: XCTestCase {
 
         let sub = directory.appendingPathComponent("img")
         try FileManager.default.createDirectory(at: sub, withIntermediateDirectories: true)
-        let nested = try makePNG("dentro.png", in: sub)
-        XCTAssertEqual(ImageImporter.importImage(from: nested, into: directory), "img/dentro.png")
+        let nested = try makePNG("inner.png", in: sub)
+        XCTAssertEqual(ImageImporter.importImage(from: nested, into: directory), "img/inner.png")
     }
 
     func testSaveImageDataWritesPNG() throws {
@@ -75,8 +75,8 @@ final class ImageImporterTests: XCTestCase {
 
     func testMarkdownEncodesSpaces() {
         XCTAssertEqual(
-            ImageImporter.markdown(forRelativePaths: ["minha foto.png"]),
-            "![](minha%20foto.png)"
+            ImageImporter.markdown(forRelativePaths: ["my photo.png"]),
+            "![](my%20photo.png)"
         )
         XCTAssertEqual(
             ImageImporter.markdown(forRelativePaths: ["a.png", "b.png"]),
@@ -85,14 +85,14 @@ final class ImageImporterTests: XCTestCase {
     }
 
     private func makePasteboard() -> NSPasteboard {
-        let pasteboard = NSPasteboard(name: NSPasteboard.Name("teste-\(UUID().uuidString)"))
+        let pasteboard = NSPasteboard(name: NSPasteboard.Name("test-\(UUID().uuidString)"))
         pasteboard.clearContents()
         return pasteboard
     }
 
     /// Reproduces a real Finder ⌘C: file URL + file name as text + icon TIFF.
     func testFinderCopyIsTreatedAsImageFileDespiteTextAndIcon() throws {
-        let image = try makePNG("foto.png")
+        let image = try makePNG("photo.png")
         let pasteboard = makePasteboard()
         pasteboard.writeObjects([image as NSURL])
         pasteboard.setString(image.lastPathComponent, forType: .string)
@@ -111,20 +111,20 @@ final class ImageImporterTests: XCTestCase {
 
     func testPlainTextIsNotAnImage() {
         let pasteboard = makePasteboard()
-        pasteboard.setString("só um texto", forType: .string)
+        pasteboard.setString("just some text", forType: .string)
         XCTAssertEqual(ImageImporter.pasteIntent(for: pasteboard), .notAnImage)
     }
 
     func testRichContentWithTextAndImageStaysText() throws {
         let data = try Data(contentsOf: try makePNG("web.png"))
         let pasteboard = makePasteboard()
-        pasteboard.setString("trecho copiado de um site", forType: .string)
+        pasteboard.setString("text copied from a website", forType: .string)
         pasteboard.setData(data, forType: .tiff)
         XCTAssertEqual(ImageImporter.pasteIntent(for: pasteboard), .notAnImage)
     }
 
     func testNonImageFileIsNotAnImage() throws {
-        let doc = directory.appendingPathComponent("notas.md")
+        let doc = directory.appendingPathComponent("notes.md")
         try "x".write(to: doc, atomically: true, encoding: .utf8)
         let pasteboard = makePasteboard()
         pasteboard.writeObjects([doc as NSURL])
@@ -132,7 +132,7 @@ final class ImageImporterTests: XCTestCase {
     }
 
     func testTextThatLooksLikeAPathIsNotAnImage() throws {
-        let image = try makePNG("caminho.png")
+        let image = try makePNG("path.png")
         let pasteboard = makePasteboard()
         pasteboard.setString(image.path, forType: .string)
         XCTAssertEqual(ImageImporter.pasteIntent(for: pasteboard), .notAnImage)
@@ -150,7 +150,7 @@ final class ImageImporterTests: XCTestCase {
         let textView = EditorTextView()
         textView.isRichText = false
         textView.pasteboardProvider = { pasteboard }
-        let item = NSMenuItem(title: "Colar", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        let item = NSMenuItem(title: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
 
         XCTAssertTrue(textView.validateUserInterfaceItem(item))
         XCTAssertTrue(textView.readablePasteboardTypes.contains(.tiff))
@@ -161,12 +161,12 @@ final class ImageImporterTests: XCTestCase {
     @MainActor
     func testPasteCommandFollowsDefaultRulesForPlainText() throws {
         let pasteboard = makePasteboard()
-        pasteboard.setString("texto", forType: .string)
+        pasteboard.setString("text", forType: .string)
 
         let textView = EditorTextView()
         textView.isRichText = false
         textView.pasteboardProvider = { pasteboard }
-        let item = NSMenuItem(title: "Colar", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        let item = NSMenuItem(title: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
 
         // Without an image, NSTextView's default validation applies (it reads
         // the general pasteboard); what matters is that the command isn't blocked.
@@ -175,13 +175,13 @@ final class ImageImporterTests: XCTestCase {
 
     @MainActor
     func testCoordinatorInsertsImageMarkdownAtCaret() throws {
-        let documentURL = directory.appendingPathComponent("notas.md")
-        try "texto".write(to: documentURL, atomically: true, encoding: .utf8)
+        let documentURL = directory.appendingPathComponent("notes.md")
+        try "text".write(to: documentURL, atomically: true, encoding: .utf8)
         let external = FileManager.default.temporaryDirectory
             .appendingPathComponent("ext-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: external, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: external) }
-        let image = try makePNG("grafico.png", in: external)
+        let image = try makePNG("chart.png", in: external)
 
         let view = MarkdownTextView(
             text: .constant(""),
@@ -194,11 +194,11 @@ final class ImageImporterTests: XCTestCase {
         textView.isRichText = false
         textView.delegate = coordinator
         coordinator.textView = textView
-        textView.string = "antes "
-        textView.setSelectedRange(NSRange(location: 6, length: 0))
+        textView.string = "before "
+        textView.setSelectedRange(NSRange(location: 7, length: 0))
 
         XCTAssertTrue(coordinator.insertImageFiles([image], at: nil))
-        XCTAssertEqual(textView.string, "antes ![](grafico.png)")
-        XCTAssertTrue(FileManager.default.fileExists(atPath: directory.appendingPathComponent("grafico.png").path))
+        XCTAssertEqual(textView.string, "before ![](chart.png)")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: directory.appendingPathComponent("chart.png").path))
     }
 }

@@ -23,7 +23,7 @@ final class ListContinuationTests: XCTestCase {
     }
 
     func testContinuesTaskListUnchecked() {
-        let action = ListContinuation.newlineAction(forLine: "- [x] feito", caretOffset: 11)
+        let action = ListContinuation.newlineAction(forLine: "- [x] done", caretOffset: 10)
         XCTAssertEqual(action, .continueList(insertion: "\n- [ ] "))
     }
 
@@ -38,7 +38,7 @@ final class ListContinuationTests: XCTestCase {
     }
 
     func testNonListLineDoesNothing() {
-        XCTAssertEqual(ListContinuation.newlineAction(forLine: "texto normal", caretOffset: 5), .none)
+        XCTAssertEqual(ListContinuation.newlineAction(forLine: "plain text", caretOffset: 5), .none)
     }
 
     func testCaretInsideMarkerDoesNothing() {
@@ -52,8 +52,8 @@ final class ListContinuationTests: XCTestCase {
     func testLineInfoIndentUnit() {
         XCTAssertEqual(ListContinuation.lineInfo(forLine: "- item")?.indentUnit, 2)
         XCTAssertEqual(ListContinuation.lineInfo(forLine: "10. item")?.indentUnit, 4)
-        XCTAssertEqual(ListContinuation.lineInfo(forLine: "- [ ] tarefa")?.indentUnit, 2)
-        XCTAssertNil(ListContinuation.lineInfo(forLine: "sem lista"))
+        XCTAssertEqual(ListContinuation.lineInfo(forLine: "- [ ] task")?.indentUnit, 2)
+        XCTAssertNil(ListContinuation.lineInfo(forLine: "no list"))
     }
 }
 
@@ -90,14 +90,14 @@ final class TypingSubstitutionsTests: XCTestCase {
 
 final class EditorTextViewURLTests: XCTestCase {
     func testAcceptsHTTPAndHTTPS() {
-        XCTAssertTrue(EditorTextView.isLikelyURL("https://example.com/pagina"))
+        XCTAssertTrue(EditorTextView.isLikelyURL("https://example.com/page"))
         XCTAssertTrue(EditorTextView.isLikelyURL("http://example.com"))
     }
 
     func testRejectsPlainTextAndOtherSchemes() {
-        XCTAssertFalse(EditorTextView.isLikelyURL("apenas texto"))
+        XCTAssertFalse(EditorTextView.isLikelyURL("just text"))
         XCTAssertFalse(EditorTextView.isLikelyURL("file:///etc/passwd"))
-        XCTAssertFalse(EditorTextView.isLikelyURL("texto com https://example.com dentro"))
+        XCTAssertFalse(EditorTextView.isLikelyURL("text with https://example.com inside"))
         XCTAssertFalse(EditorTextView.isLikelyURL(""))
     }
 }

@@ -3,16 +3,16 @@ import XCTest
 
 final class HTMLRendererTests: XCTestCase {
     func testHeading() {
-        XCTAssertEqual(HTMLRenderer.render("## Título"), "<h2>Título</h2>\n")
+        XCTAssertEqual(HTMLRenderer.render("## Title"), "<h2>Title</h2>\n")
     }
 
     func testParagraphWithInlineStyles() {
-        let html = HTMLRenderer.render("Um **negrito**, *itálico* e `código`.")
-        XCTAssertEqual(html, "<p>Um <strong>negrito</strong>, <em>itálico</em> e <code>código</code>.</p>\n")
+        let html = HTMLRenderer.render("Some **bold**, *italic* and `code`.")
+        XCTAssertEqual(html, "<p>Some <strong>bold</strong>, <em>italic</em> and <code>code</code>.</p>\n")
     }
 
     func testStrikethrough() {
-        XCTAssertEqual(HTMLRenderer.render("~~riscado~~"), "<p><del>riscado</del></p>\n")
+        XCTAssertEqual(HTMLRenderer.render("~~struck~~"), "<p><del>struck</del></p>\n")
     }
 
     func testEscapesHTMLInText() {
@@ -43,29 +43,29 @@ final class HTMLRendererTests: XCTestCase {
     }
 
     func testImage() {
-        let html = HTMLRenderer.render("![alt](figura.png)")
-        XCTAssertEqual(html, "<p><img src=\"figura.png\" alt=\"alt\"></p>\n")
+        let html = HTMLRenderer.render("![alt](figure.png)")
+        XCTAssertEqual(html, "<p><img src=\"figure.png\" alt=\"alt\"></p>\n")
     }
 
     func testUnorderedList() {
-        let html = HTMLRenderer.render("- um\n- dois")
-        XCTAssertEqual(html, "<ul>\n<li>um</li>\n<li>dois</li>\n</ul>\n")
+        let html = HTMLRenderer.render("- one\n- two")
+        XCTAssertEqual(html, "<ul>\n<li>one</li>\n<li>two</li>\n</ul>\n")
     }
 
     func testOrderedListWithCustomStart() {
-        let html = HTMLRenderer.render("3. três\n4. quatro")
+        let html = HTMLRenderer.render("3. three\n4. four")
         XCTAssertTrue(html.hasPrefix("<ol start=\"3\">"), "got: \(html)")
     }
 
     func testTaskList() {
-        let html = HTMLRenderer.render("- [x] feito\n- [ ] pendente")
-        XCTAssertTrue(html.contains("<li class=\"task\"><input type=\"checkbox\" disabled checked> feito</li>"), "got: \(html)")
-        XCTAssertTrue(html.contains("<li class=\"task\"><input type=\"checkbox\" disabled> pendente</li>"), "got: \(html)")
+        let html = HTMLRenderer.render("- [x] done\n- [ ] pending")
+        XCTAssertTrue(html.contains("<li class=\"task\"><input type=\"checkbox\" disabled checked> done</li>"), "got: \(html)")
+        XCTAssertTrue(html.contains("<li class=\"task\"><input type=\"checkbox\" disabled> pending</li>"), "got: \(html)")
     }
 
     func testBlockQuote() {
-        let html = HTMLRenderer.render("> citação")
-        XCTAssertEqual(html, "<blockquote>\n<p>citação</p>\n</blockquote>\n")
+        let html = HTMLRenderer.render("> quote")
+        XCTAssertEqual(html, "<blockquote>\n<p>quote</p>\n</blockquote>\n")
     }
 
     func testThematicBreak() {
@@ -85,27 +85,27 @@ final class HTMLRendererTests: XCTestCase {
     }
 
     func testHardLineBreak() {
-        let html = HTMLRenderer.render("linha um  \nlinha dois")
+        let html = HTMLRenderer.render("line one  \nline two")
         XCTAssertTrue(html.contains("<br>"), "got: \(html)")
     }
 
     func testSingleEnterBecomesLineBreak() {
         XCTAssertEqual(
-            HTMLRenderer.render("primeira linha\nsegunda linha"),
-            "<p>primeira linha<br>\nsegunda linha</p>\n"
+            HTMLRenderer.render("first line\nsecond line"),
+            "<p>first line<br>\nsecond line</p>\n"
         )
     }
 
     func testStrictModeFoldsSingleEnterLikeCommonMark() {
         XCTAssertEqual(
-            HTMLRenderer.render("primeira linha\nsegunda linha", strictLineBreaks: true),
-            "<p>primeira linha\nsegunda linha</p>\n"
+            HTMLRenderer.render("first line\nsecond line", strictLineBreaks: true),
+            "<p>first line\nsecond line</p>\n"
         )
     }
 
     func testStrictModeStillHonorsHardBreaks() {
-        let html = HTMLRenderer.render("linha um  \nlinha dois", strictLineBreaks: true)
-        XCTAssertTrue(html.contains("linha um<br>\nlinha dois"), "got: \(html)")
+        let html = HTMLRenderer.render("line one  \nline two", strictLineBreaks: true)
+        XCTAssertTrue(html.contains("line one<br>\nline two"), "got: \(html)")
     }
 
     func testStrictModeAppliesToPrintRendering() {
@@ -115,7 +115,7 @@ final class HTMLRendererTests: XCTestCase {
     }
 
     func testRenderWithLinesMapsEachTopLevelBlock() {
-        let markdown = "# Título\n\nParágrafo um\ncontinua\n\n- a\n- b\n\n```\ncode\n```\n"
+        let markdown = "# Title\n\nParagraph one\ncontinues\n\n- a\n- b\n\n```\ncode\n```\n"
         let result = HTMLRenderer.renderWithLines(markdown)
         XCTAssertEqual(result.blockLines, [0, 2, 5, 8])
         XCTAssertEqual(result.lineCount, 12)
@@ -123,21 +123,21 @@ final class HTMLRendererTests: XCTestCase {
     }
 
     func testRenderWithLinesWrapsRawHTMLIntoOneElement() {
-        let result = HTMLRenderer.renderWithLines("<div>a</div>\n<div>b</div>\n\ntexto")
+        let result = HTMLRenderer.renderWithLines("<div>a</div>\n<div>b</div>\n\ntext")
         XCTAssertEqual(result.blockLines, [0, 3])
         XCTAssertTrue(result.html.hasPrefix("<div><div>a</div>\n<div>b</div>"), "got: \(result.html)")
     }
 
     func testBlankLineStillStartsNewParagraph() {
         XCTAssertEqual(
-            HTMLRenderer.render("um\n\ndois"),
-            "<p>um</p>\n<p>dois</p>\n"
+            HTMLRenderer.render("one\n\ntwo"),
+            "<p>one</p>\n<p>two</p>\n"
         )
     }
 
     func testSingleEnterInsideListItemBecomesLineBreak() {
-        let html = HTMLRenderer.render("- item\n  continuação")
-        XCTAssertTrue(html.contains("<li>item<br>\ncontinuação</li>"), "got: \(html)")
+        let html = HTMLRenderer.render("- item\n  continued")
+        XCTAssertTrue(html.contains("<li>item<br>\ncontinued</li>"), "got: \(html)")
     }
 
     func testCodeBlockKeepsPlainNewlines() {
@@ -146,8 +146,8 @@ final class HTMLRendererTests: XCTestCase {
     }
 
     func testRawHTMLPassesThrough() {
-        let html = HTMLRenderer.render("<div>bloco</div>")
-        XCTAssertTrue(html.contains("<div>bloco</div>"), "got: \(html)")
+        let html = HTMLRenderer.render("<div>block</div>")
+        XCTAssertTrue(html.contains("<div>block</div>"), "got: \(html)")
     }
 
     func testEmptyDocument() {
