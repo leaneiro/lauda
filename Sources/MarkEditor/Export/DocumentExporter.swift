@@ -94,6 +94,7 @@ final class DocumentExporter: NSObject, WKNavigationDelegate {
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+        Log.export.failure("Loading the page for the PDF", error)
         finish(success: false)
     }
 
@@ -149,6 +150,9 @@ final class DocumentExporter: NSObject, WKNavigationDelegate {
     }
 
     private func finish(success: Bool) {
+        if !success {
+            Log.export.error("PDF export didn't finish")
+        }
         completion?(success)
         webView = nil
         hostWindow = nil

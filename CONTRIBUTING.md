@@ -96,6 +96,15 @@ request.
 Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/),
 for example `fix(preview): …` or `feat(editor): …`.
 
+### Settings and logs
+
+- Every stored setting is declared once in `AppSettings`, with its key and
+  default. Views bind to it with `@AppStorage(AppSettings.…)`, and other
+  code reads `UserDefaults.standard[AppSettings.…]`.
+- Failures worth diagnosing go to the system log through `Log`
+  (`os.Logger`, subsystem `dev.leandro.markeditor`). Never log document
+  text or file names: people may attach these logs to public bug reports.
+
 ### The editor uses TextKit 1 on purpose
 
 `MarkdownTextView` builds its own TextKit 1 stack. TextKit 2 lays text out

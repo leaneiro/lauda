@@ -30,11 +30,18 @@ final class DocumentSchemeHandler: NSObject, WKURLSchemeHandler {
     }
 
     func webView(_ webView: WKWebView, start urlSchemeTask: WKURLSchemeTask) {
-        guard let url = urlSchemeTask.request.url,
-              let baseDirectory,
-              let target = Self.resolveTarget(for: url, baseDirectory: baseDirectory),
-              let data = try? Data(contentsOf: target)
-        else {
+        guard let url = urlSchemeTask.request.url, let baseDirectory else {
+            urlSchemeTask.didFailWithError(CocoaError(.fileReadNoSuchFile))
+            return
+        }
+        guard let target = Self.resolveTarget(for: url, baseDirectory: baseDirectory) else {
+            // Refused on purpose (see resolveTarget), but it shows up as a
+            // broken image, so it's worth a line when someone asks why.
+            Log.preview.notice("Refused a preview image outside the document's folder or not an image file")
+            urlSchemeTask.didFailWithError(CocoaError(.fileReadNoPermission))
+            return
+        }
+        guard let data = try? Data(contentsOf: target) else {
             urlSchemeTask.didFailWithError(CocoaError(.fileReadNoSuchFile))
             return
         }

@@ -130,10 +130,21 @@ struct PreviewWebView: NSViewRepresentable {
                 ],
                 in: nil,
                 in: PreviewWebView.contentWorld
-            ) { [weak self] _ in
+            ) { [weak self] result in
+                Self.logScriptFailure(result)
                 self?.alignScrollAfterContentChange()
                 completion()
             }
+        }
+
+        /// The app's script normally never fails; when it does, the page and
+        /// the app disagree, which is worth a line in the log. The message
+        /// comes from our own script, not from the document.
+        private static func logScriptFailure(_ result: Result<Any, Error>) {
+            guard case .failure(let error) = result else { return }
+            let message = (error as NSError).userInfo["WKJavaScriptExceptionMessage"] as? String
+                ?? error.localizedDescription
+            Log.preview.error("Preview script failed: \(message, privacy: .public)")
         }
 
         // MARK: - Style
@@ -147,7 +158,7 @@ struct PreviewWebView: NSViewRepresentable {
                 arguments: ["family": fontFamily, "size": size, "lineHeight": lineHeight],
                 in: nil,
                 in: PreviewWebView.contentWorld
-            ) { _ in }
+            ) { Self.logScriptFailure($0) }
         }
 
         // MARK: - Content width (preview-only mode levels)
@@ -163,7 +174,7 @@ struct PreviewWebView: NSViewRepresentable {
                 arguments: ["rem": rem],
                 in: nil,
                 in: PreviewWebView.contentWorld
-            ) { _ in }
+            ) { Self.logScriptFailure($0) }
         }
 
         // MARK: - Find in preview (⌘3 mode)
@@ -190,6 +201,7 @@ struct PreviewWebView: NSViewRepresentable {
                    let total = (counts[1] as? NSNumber)?.intValue {
                     completion(current, total)
                 } else {
+                    Self.logScriptFailure(result)
                     completion(0, 0)
                 }
             }
@@ -197,7 +209,7 @@ struct PreviewWebView: NSViewRepresentable {
 
         func clearFind() {
             guard let webView, isReady else { return }
-            webView.callAsyncJavaScript("findClear()", arguments: [:], in: nil, in: PreviewWebView.contentWorld) { _ in }
+            webView.callAsyncJavaScript("findClear()", arguments: [:], in: nil, in: PreviewWebView.contentWorld) { Self.logScriptFailure($0) }
         }
 
         // MARK: - Scroll sync (bidirectional)
@@ -248,7 +260,7 @@ struct PreviewWebView: NSViewRepresentable {
                 ],
                 in: nil,
                 in: PreviewWebView.contentWorld
-            ) { _ in }
+            ) { Self.logScriptFailure($0) }
         }
 
         // MARK: - WKScriptMessageHandler (preview → editor)

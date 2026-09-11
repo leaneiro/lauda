@@ -609,6 +609,7 @@ struct MarkdownTextView: NSViewRepresentable {
 
         /// E.g. a read-only folder or a full disk; the system's message says which.
         private func showImageError(_ error: Error) {
+            Log.images.failure("Adding an image", error)
             let alert = NSAlert()
             alert.alertStyle = .warning
             alert.messageText = String(localized: "Couldn't add the image to the document's folder")

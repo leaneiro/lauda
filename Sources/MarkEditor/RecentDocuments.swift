@@ -15,7 +15,14 @@ enum RecentDocuments {
         let canonical = canonicalPath(of: url)
         var urls = storedURLs(defaults: defaults).filter { canonicalPath(of: $0) != canonical }
         urls.insert(url, at: 0)
-        let bookmarks = urls.prefix(limit).compactMap { try? $0.bookmarkData() }
+        let bookmarks = urls.prefix(limit).compactMap { url -> Data? in
+            do {
+                return try url.bookmarkData()
+            } catch {
+                Log.documents.failure("Remembering a recent document", error)
+                return nil
+            }
+        }
         defaults.set(bookmarks, forKey: key)
     }
 

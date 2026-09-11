@@ -29,6 +29,7 @@ struct MarkdownDocument: FileDocument {
             return utf8
         }
         if let latin1 = String(data: data, encoding: .isoLatin1) {
+            Log.documents.notice("Opened a file that isn't valid UTF-8 as Latin-1")
             return latin1
         }
         throw CocoaError(.fileReadInapplicableStringEncoding)

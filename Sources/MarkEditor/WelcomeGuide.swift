@@ -43,6 +43,7 @@ enum WelcomeGuide {
             document.showWindows()
             return true
         } catch {
+            Log.documents.failure("Opening the welcome guide", error)
             NSApp.presentError(error)
             return false
         }
