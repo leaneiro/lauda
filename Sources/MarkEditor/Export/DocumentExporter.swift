@@ -10,23 +10,13 @@ final class DocumentExporter: NSObject, WKNavigationDelegate {
 
     // MARK: - Standalone HTML
 
-    static func standaloneHTML(markdown: String, title: String) -> String {
-        let defaults = UserDefaults.standard
-        let fontName = defaults.string(forKey: SettingsKeys.previewFontName)
-            ?? SettingsDefaults.previewFontName
-        let fontSize = defaults.object(forKey: SettingsKeys.previewFontSize) as? Double
-            ?? SettingsDefaults.previewFontSize
-        let lineHeight = defaults.object(forKey: SettingsKeys.previewLineHeight) as? Double
-            ?? SettingsDefaults.previewLineHeight
-        let strictLineBreaks = defaults.object(forKey: SettingsKeys.strictLineBreaks) as? Bool
-            ?? SettingsDefaults.strictLineBreaks
-
-        return PreviewTemplate.standalone(
+    static func standaloneHTML(markdown: String, title: String, style: PreviewStyle = .current()) -> String {
+        PreviewTemplate.standalone(
             title: title,
-            bodyHTML: HTMLRenderer.renderForPrint(markdown, strictLineBreaks: strictLineBreaks),
-            fontFamily: FontOption.cssFamily(for: fontName),
-            fontSize: fontSize,
-            lineHeight: lineHeight
+            bodyHTML: HTMLRenderer.renderForPrint(markdown, strictLineBreaks: style.strictLineBreaks),
+            fontFamily: FontOption.cssFamily(for: style.fontName),
+            fontSize: style.fontSize,
+            lineHeight: style.lineHeight
         )
     }
 

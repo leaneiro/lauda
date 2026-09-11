@@ -61,6 +61,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillFinishLaunching(_ notification: Notification) {
+        AppSettings.registerDefaults()
         // Light-first by default; the user can pick Dark or Automatic in Settings.
         AppearanceMode.stored.apply()
     }

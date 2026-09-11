@@ -11,10 +11,10 @@ struct PreviewWebView: NSViewRepresentable {
     let contentWidthRem: Double
     let actions: PreviewActions
 
-    @AppStorage(SettingsKeys.previewFontName) private var fontName = SettingsDefaults.previewFontName
-    @AppStorage(SettingsKeys.previewFontSize) private var fontSize = SettingsDefaults.previewFontSize
-    @AppStorage(SettingsKeys.previewLineHeight) private var lineHeight = SettingsDefaults.previewLineHeight
-    @AppStorage(SettingsKeys.strictLineBreaks) private var strictLineBreaks = SettingsDefaults.strictLineBreaks
+    @AppStorage(AppSettings.previewFontName) private var fontName: String
+    @AppStorage(AppSettings.previewFontSize) private var fontSize: Double
+    @AppStorage(AppSettings.previewLineHeight) private var lineHeight: Double
+    @AppStorage(AppSettings.strictLineBreaks) private var strictLineBreaks: Bool
 
     func makeCoordinator() -> Coordinator {
         Coordinator()
@@ -81,7 +81,7 @@ struct PreviewWebView: NSViewRepresentable {
 
         // MARK: - Content
 
-        private var lastStrictLineBreaks = SettingsDefaults.strictLineBreaks
+        private var lastStrictLineBreaks = AppSettings.strictLineBreaks.defaultValue
 
         func setMarkdown(_ markdown: String, strictLineBreaks: Bool) {
             // Toggling the setting must re-render even when the text is unchanged.

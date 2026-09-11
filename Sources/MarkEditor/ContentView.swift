@@ -221,7 +221,7 @@ struct ContentView: View {
     /// Per-window mode; -1 means "not chosen yet" so a brand-new window
     /// inherits the last mode used anywhere (restored windows keep theirs).
     @SceneStorage("viewMode") private var storedViewMode: Int = -1
-    @AppStorage(SettingsKeys.lastViewMode) private var lastViewMode = ViewMode.split.rawValue
+    @AppStorage(AppSettings.lastViewMode) private var lastViewMode: Int
 
     private var viewMode: ViewMode {
         ViewMode(rawValue: storedViewMode >= 0 ? storedViewMode : lastViewMode) ?? .split
@@ -237,7 +237,7 @@ struct ContentView: View {
         )
     }
     @SceneStorage("splitFraction") private var splitFraction: Double = 0.5
-    @AppStorage(SettingsKeys.previewWidthLevel) private var previewWidthLevel = PreviewWidth.normal.rawValue
+    @AppStorage(AppSettings.previewWidthLevel) private var previewWidthLevel: Int
     @State private var scrollSync = ScrollSync()
     @State private var editorActions = EditorActions()
     @State private var previewActions = PreviewActions()

@@ -5,15 +5,13 @@ import SwiftUI
 /// (`Resources/Welcome/<language>.lproj/Welcome.md`). It opens as an untitled
 /// copy, so people can experiment freely and save it only if they want to.
 enum WelcomeGuide {
-    static let shownKey = "hasShownWelcomeGuide"
-
     /// First launch without a file to open: show the guide. SwiftUI puts up
     /// its "Open" panel at launch by itself (it never asks the app
     /// delegate), so that panel is dismissed if it shows up meanwhile.
     static func showOnFirstLaunch() {
         let defaults = UserDefaults.standard
-        guard !defaults.bool(forKey: shownKey) else { return }
-        defaults.set(true, forKey: shownKey)
+        guard !defaults[AppSettings.hasShownWelcomeGuide] else { return }
+        defaults[AppSettings.hasShownWelcomeGuide] = true
         guard open() else { return }
         dismissLaunchOpenPanel(until: Date().addingTimeInterval(3))
     }

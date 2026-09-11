@@ -1,13 +1,13 @@
 import SwiftUI
 
 struct SettingsView: View {
-    @AppStorage(SettingsKeys.editorFontName) private var editorFontName = SettingsDefaults.editorFontName
-    @AppStorage(SettingsKeys.editorFontSize) private var editorFontSize = SettingsDefaults.editorFontSize
-    @AppStorage(SettingsKeys.previewFontName) private var previewFontName = SettingsDefaults.previewFontName
-    @AppStorage(SettingsKeys.previewFontSize) private var previewFontSize = SettingsDefaults.previewFontSize
-    @AppStorage(SettingsKeys.previewLineHeight) private var previewLineHeight = SettingsDefaults.previewLineHeight
-    @AppStorage(SettingsKeys.appearanceMode) private var appearanceMode = SettingsDefaults.appearanceMode
-    @AppStorage(SettingsKeys.strictLineBreaks) private var strictLineBreaks = SettingsDefaults.strictLineBreaks
+    @AppStorage(AppSettings.editorFontName) private var editorFontName: String
+    @AppStorage(AppSettings.editorFontSize) private var editorFontSize: Double
+    @AppStorage(AppSettings.previewFontName) private var previewFontName: String
+    @AppStorage(AppSettings.previewFontSize) private var previewFontSize: Double
+    @AppStorage(AppSettings.previewLineHeight) private var previewLineHeight: Double
+    @AppStorage(AppSettings.appearanceMode) private var appearanceMode: String
+    @AppStorage(AppSettings.strictLineBreaks) private var strictLineBreaks: Bool
 
     var body: some View {
         Form {
@@ -48,13 +48,7 @@ struct SettingsView: View {
 
             Section {
                 Button("Restore Defaults") {
-                    editorFontName = SettingsDefaults.editorFontName
-                    editorFontSize = SettingsDefaults.editorFontSize
-                    previewFontName = SettingsDefaults.previewFontName
-                    previewFontSize = SettingsDefaults.previewFontSize
-                    previewLineHeight = SettingsDefaults.previewLineHeight
-                    appearanceMode = SettingsDefaults.appearanceMode
-                    strictLineBreaks = SettingsDefaults.strictLineBreaks
+                    AppSettings.restoreDefaults()
                     AppearanceMode.stored.apply()
                 }
             }

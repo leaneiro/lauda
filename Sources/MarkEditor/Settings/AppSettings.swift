@@ -1,15 +1,107 @@
 import AppKit
+import SwiftUI
 
-enum SettingsKeys {
-    static let editorFontName = "editorFontName"
-    static let editorFontSize = "editorFontSize"
-    static let previewFontName = "previewFontName"
-    static let previewFontSize = "previewFontSize"
-    static let previewLineHeight = "previewLineHeight"
-    static let appearanceMode = "appearanceMode"
-    static let previewWidthLevel = "previewWidthLevel"
-    static let lastViewMode = "lastViewMode"
-    static let strictLineBreaks = "strictLineBreaks"
+/// One stored setting: its UserDefaults key and its default value.
+struct Setting<Value> {
+    let key: String
+    let defaultValue: Value
+}
+
+/// Every setting the app stores, declared once with its key and default.
+/// Views bind with `@AppStorage(AppSettings.editorFontSize)`; other code
+/// reads `UserDefaults.standard[AppSettings.editorFontSize]`.
+enum AppSettings {
+    // The Settings window, reset by Restore Defaults.
+    static let appearanceMode = Setting(key: "appearanceMode", defaultValue: AppearanceMode.light.rawValue)
+    static let editorFontName = Setting(key: "editorFontName", defaultValue: FontOption.systemMono)
+    static let editorFontSize = Setting(key: "editorFontSize", defaultValue: 14.0)
+    static let previewFontName = Setting(key: "previewFontName", defaultValue: FontOption.systemSans)
+    static let previewFontSize = Setting(key: "previewFontSize", defaultValue: 16.0)
+    static let previewLineHeight = Setting(key: "previewLineHeight", defaultValue: 1.65)
+    static let strictLineBreaks = Setting(key: "strictLineBreaks", defaultValue: false)
+
+    // Remembered state, which Restore Defaults leaves alone.
+    static let lastViewMode = Setting(key: "lastViewMode", defaultValue: ViewMode.split.rawValue)
+    static let previewWidthLevel = Setting(key: "previewWidthLevel", defaultValue: PreviewWidth.normal.rawValue)
+    static let hasShownWelcomeGuide = Setting(key: "hasShownWelcomeGuide", defaultValue: false)
+
+    /// The options in the Settings window.
+    static let preferences: [(key: String, defaultValue: Any)] = [
+        entry(appearanceMode), entry(editorFontName), entry(editorFontSize),
+        entry(previewFontName), entry(previewFontSize), entry(previewLineHeight),
+        entry(strictLineBreaks),
+    ]
+
+    static let rememberedState: [(key: String, defaultValue: Any)] = [
+        entry(lastViewMode), entry(previewWidthLevel), entry(hasShownWelcomeGuide),
+    ]
+
+    private static func entry<Value>(_ setting: Setting<Value>) -> (key: String, defaultValue: Any) {
+        (setting.key, setting.defaultValue)
+    }
+
+    /// Called at launch, so plain UserDefaults reads see the defaults too.
+    static func registerDefaults(in defaults: UserDefaults = .standard) {
+        let all = (preferences + rememberedState).map { ($0.key, $0.defaultValue) }
+        defaults.register(defaults: Dictionary(uniqueKeysWithValues: all))
+    }
+
+    /// Restore Defaults: every preference goes back to its default, and views
+    /// bound with @AppStorage update right away.
+    static func restoreDefaults(in defaults: UserDefaults = .standard) {
+        for preference in preferences {
+            defaults.removeObject(forKey: preference.key)
+        }
+    }
+}
+
+extension UserDefaults {
+    subscript<Value>(setting: Setting<Value>) -> Value {
+        get { object(forKey: setting.key) as? Value ?? setting.defaultValue }
+        set { set(newValue, forKey: setting.key) }
+    }
+}
+
+extension AppStorage where Value == String {
+    init(_ setting: Setting<String>) {
+        self.init(wrappedValue: setting.defaultValue, setting.key)
+    }
+}
+
+extension AppStorage where Value == Double {
+    init(_ setting: Setting<Double>) {
+        self.init(wrappedValue: setting.defaultValue, setting.key)
+    }
+}
+
+extension AppStorage where Value == Bool {
+    init(_ setting: Setting<Bool>) {
+        self.init(wrappedValue: setting.defaultValue, setting.key)
+    }
+}
+
+extension AppStorage where Value == Int {
+    init(_ setting: Setting<Int>) {
+        self.init(wrappedValue: setting.defaultValue, setting.key)
+    }
+}
+
+/// How the preview looks, as set in Settings. Exports take one so they
+/// match the preview.
+struct PreviewStyle: Equatable {
+    var fontName: String
+    var fontSize: Double
+    var lineHeight: Double
+    var strictLineBreaks: Bool
+
+    static func current(in defaults: UserDefaults = .standard) -> PreviewStyle {
+        PreviewStyle(
+            fontName: defaults[AppSettings.previewFontName],
+            fontSize: defaults[AppSettings.previewFontSize],
+            lineHeight: defaults[AppSettings.previewLineHeight],
+            strictLineBreaks: defaults[AppSettings.strictLineBreaks]
+        )
+    }
 }
 
 /// Content-column width for the preview in full-preview mode (⌘3).
@@ -41,16 +133,6 @@ enum PreviewWidth: Int, CaseIterable, Identifiable {
     }
 }
 
-enum SettingsDefaults {
-    static let editorFontName = FontOption.systemMono
-    static let editorFontSize = 14.0
-    static let previewFontName = FontOption.systemSans
-    static let previewFontSize = 16.0
-    static let previewLineHeight = 1.65
-    static let appearanceMode = AppearanceMode.light.rawValue
-    static let strictLineBreaks = false
-}
-
 enum AppearanceMode: String, CaseIterable, Identifiable {
     case light
     case dark
@@ -77,9 +159,7 @@ enum AppearanceMode: String, CaseIterable, Identifiable {
     }
 
     static var stored: AppearanceMode {
-        let raw = UserDefaults.standard.string(forKey: SettingsKeys.appearanceMode)
-            ?? SettingsDefaults.appearanceMode
-        return AppearanceMode(rawValue: raw) ?? .light
+        AppearanceMode(rawValue: UserDefaults.standard[AppSettings.appearanceMode]) ?? .light
     }
 }
 

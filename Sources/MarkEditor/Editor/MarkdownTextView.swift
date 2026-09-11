@@ -9,8 +9,8 @@ struct MarkdownTextView: NSViewRepresentable {
     let actions: EditorActions
     let fileURL: URL?
 
-    @AppStorage(SettingsKeys.editorFontName) private var fontName = SettingsDefaults.editorFontName
-    @AppStorage(SettingsKeys.editorFontSize) private var fontSize = SettingsDefaults.editorFontSize
+    @AppStorage(AppSettings.editorFontName) private var fontName: String
+    @AppStorage(AppSettings.editorFontSize) private var fontSize: Double
 
     func makeCoordinator() -> Coordinator {
         Coordinator(parent: self)
