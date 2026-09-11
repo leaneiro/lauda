@@ -60,6 +60,11 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
+        // Everything fits in this fixed-size window, but the grouped Form
+        // under the transparent title bar comes out 0.5pt taller than its
+        // visible area, which shows a pointless scroll bar.
+        .scrollDisabled(true)
+        .scrollIndicators(.never)
         .frame(width: 480)
         .fixedSize()
     }
