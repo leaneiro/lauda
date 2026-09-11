@@ -13,3 +13,14 @@ enum WordCount {
         return count
     }
 }
+
+/// Estimated reading time for the status bar (~200 words per minute).
+enum ReadingTime {
+    static let wordsPerMinute = 200
+
+    static func label(forWordCount wordCount: Int) -> String? {
+        guard wordCount > 0 else { return nil }
+        let minutes = Int((Double(wordCount) / Double(wordsPerMinute)).rounded())
+        return minutes < 1 ? String(localized: "less than 1 min read") : String(localized: "~\(minutes) min read")
+    }
+}

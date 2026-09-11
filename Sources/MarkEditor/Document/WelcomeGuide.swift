@@ -49,11 +49,3 @@ enum WelcomeGuide {
         }
     }
 }
-
-struct HelpCommands: Commands {
-    var body: some Commands {
-        CommandGroup(replacing: .help) {
-            Button("Welcome Guide") { WelcomeGuide.open() }
-        }
-    }
-}

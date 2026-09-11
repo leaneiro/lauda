@@ -76,15 +76,15 @@ hoc. You can also open the folder in Xcode and run the `MarkEditor` target.
 
 ```
 Sources/MarkEditor/
-  MarkEditorApp.swift        # app, DocumentGroup, Settings scene
-  MarkdownDocument.swift     # FileDocument (.md and plain text)
-  ContentView.swift          # split view, toolbar, status bar, find bar
-  Outline.swift              # document outline
-  WelcomeGuide.swift         # first-launch welcome guide
+  App/                       # app entry, menus, menu-to-window bridges
+  Window/                    # document window: split view, toolbar, find bar
+  Document/                  # Markdown document, recent files, welcome guide
   Editor/                    # NSTextView, highlighting, lists, images
   Preview/                   # WKWebView, HTML renderer, preview.css and preview.js
+  Sync/                      # scroll position shared by the two panes
   Export/                    # HTML and PDF export
-  Settings/                  # settings keys, fonts and Settings window
+  Settings/                  # settings model and Settings window
+  Outline.swift              # document outline
 Resources/                   # string catalogs, welcome guides, app icon
 Support/Info.plist           # document types and bundle metadata
 Scripts/                     # .app, DMG and icon builds
