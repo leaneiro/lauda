@@ -70,6 +70,13 @@ struct MarkdownTextView: NSViewRepresentable {
             name: NSView.boundsDidChangeNotification,
             object: scrollView.contentView
         )
+        scrollView.contentView.postsFrameChangedNotifications = true
+        NotificationCenter.default.addObserver(
+            context.coordinator.scrolling,
+            selector: #selector(EditorScrolling.frameDidChange(_:)),
+            name: NSView.frameDidChangeNotification,
+            object: scrollView.contentView
+        )
 
         return scrollView
     }

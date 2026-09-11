@@ -69,6 +69,17 @@ final class EditorScrolling: NSObject {
         isApplyingRemoteScroll = false
     }
 
+    /// The pane changed size (window resize, divider drag, a scroll bar
+    /// appearing): the text re-flows, so the same offset would show another
+    /// line. Re-anchor right away; left for later, the next scroll event
+    /// would be spent re-anchoring instead of scrolling.
+    @objc func frameDidChange(_ notification: Notification) {
+        guard !needsRestore, !isApplyingRemoteScroll,
+              let clipView = notification.object as? NSClipView,
+              let lastSize = lastClipSize, lastSize != clipView.bounds.size else { return }
+        anchorToSharedPosition()
+    }
+
     @objc func boundsDidChange(_ notification: Notification) {
         if needsRestore {
             restoreIfNeeded()
