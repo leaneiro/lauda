@@ -248,6 +248,8 @@ struct ContentView: View {
     @State private var findCurrent = 0
     @State private var findTotal = 0
     @State private var outlinePresented = false
+    /// The window this view lives in, for sheets such as the export panel.
+    @State private var hostWindow = WindowReference()
 
     private static let minPaneWidth: CGFloat = 280
 
@@ -308,6 +310,7 @@ struct ContentView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             statusBar
         }
+        .background(WindowReader(reference: hostWindow))
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Picker("View Mode", selection: viewModeBinding) {
@@ -434,7 +437,8 @@ struct ContentView: View {
         DocumentExporter.promptAndExportHTML(
             markdown: document.text,
             title: exportTitle,
-            baseDirectory: fileURL?.deletingLastPathComponent()
+            baseDirectory: fileURL?.deletingLastPathComponent(),
+            window: hostWindow.window
         )
     }
 
@@ -442,7 +446,8 @@ struct ContentView: View {
         DocumentExporter.promptAndExportPDF(
             markdown: document.text,
             title: exportTitle,
-            baseDirectory: fileURL?.deletingLastPathComponent()
+            baseDirectory: fileURL?.deletingLastPathComponent(),
+            window: hostWindow.window
         )
     }
 

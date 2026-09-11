@@ -20,29 +20,55 @@ final class DocumentExporter: NSObject, WKNavigationDelegate {
         )
     }
 
-    static func promptAndExportHTML(markdown: String, title: String, baseDirectory: URL?) {
+    static func promptAndExportHTML(markdown: String, title: String, baseDirectory: URL?, window: NSWindow?) {
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.html]
         panel.nameFieldStringValue = title + ".html"
         panel.directoryURL = baseDirectory
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        do {
-            try standaloneHTML(markdown: markdown, title: title)
-                .write(to: url, atomically: true, encoding: .utf8)
-        } catch {
-            NSAlert(error: error).runModal()
+        present(panel, for: window) { url in
+            do {
+                try standaloneHTML(markdown: markdown, title: title)
+                    .write(to: url, atomically: true, encoding: .utf8)
+            } catch {
+                Log.export.failure("Writing HTML", error)
+                present(NSAlert(error: error), for: window)
+            }
         }
     }
 
     // MARK: - PDF
 
-    static func promptAndExportPDF(markdown: String, title: String, baseDirectory: URL?) {
+    static func promptAndExportPDF(markdown: String, title: String, baseDirectory: URL?, window: NSWindow?) {
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.pdf]
         panel.nameFieldStringValue = title + ".pdf"
         panel.directoryURL = baseDirectory
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        exportPDF(markdown: markdown, title: title, baseDirectory: baseDirectory, to: url)
+        present(panel, for: window) { url in
+            exportPDF(markdown: markdown, title: title, baseDirectory: baseDirectory, to: url)
+        }
+    }
+
+    /// The save panel drops down from the document's window as a sheet
+    /// (app-modal when there is no window).
+    private static func present(_ panel: NSSavePanel, for window: NSWindow?, then save: @escaping (URL) -> Void) {
+        let finish: (NSApplication.ModalResponse) -> Void = { response in
+            if response == .OK, let url = panel.url {
+                save(url)
+            }
+        }
+        if let window {
+            panel.beginSheetModal(for: window, completionHandler: finish)
+        } else {
+            finish(panel.runModal())
+        }
+    }
+
+    private static func present(_ alert: NSAlert, for window: NSWindow?) {
+        if let window {
+            alert.beginSheetModal(for: window)
+        } else {
+            alert.runModal()
+        }
     }
 
     static func exportPDF(
