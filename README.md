@@ -44,9 +44,16 @@ and see the rendered Markdown on the right, updated as you type.
 
 ## Requirements
 
-macOS 14 or later. Building needs Xcode, or the Command Line Tools with
-Swift 5.10 or later. Xcode's `xcstringstool` compiles the translations;
-without it the app still builds, in English only.
+macOS 14 Sonoma or later. MarkEditor is built on SwiftUI's document
+architecture and on APIs that arrived between macOS 11 and 14: the
+document window, menus and settings, `String(localized:)` for the
+translations, and the isolated script world that keeps the preview safe.
+Supporting older versions would mean rewriting those parts, and macOS 14
+already covers every version that still receives security updates.
+
+Building needs Xcode, or the Command Line Tools with Swift 5.10 or later.
+Xcode's `xcstringstool` compiles the translations; without it the app
+still builds, in English only.
 
 ## Building
 
