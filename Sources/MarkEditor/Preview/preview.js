@@ -74,23 +74,13 @@ function interpolate(points, value, from, to) {
     }
     return points[points.length - 1][to];
 }
-function setScrollPosition(line, hasLine, endLine, hasEndLine, fraction, toEndDistance) {
+// Keeps the same source line at the top as the other pane, which also means
+// the shorter pane reaches its bottom first.
+function setScrollPosition(line, hasLine, fraction) {
     const max = maxScroll();
     if (max <= 0) { return; }
     const points = hasLine ? lineAnchors() : null;
-    let target = fraction * max;
-    if (points) {
-        target = interpolate(points, line, 0, 1);
-        // As the leader nears its end, absorb the gap between where its
-        // final line lands here and this pane's end, over a stretch about
-        // the size of that gap (capped at one screen): both panes reach
-        // the bottom together and stay line-aligned everywhere before it.
-        if (hasEndLine) {
-            const gap = Math.max(max - interpolate(points, endLine, 0, 1), 0);
-            const stretch = Math.max(Math.min(Math.max(gap, 120), window.innerHeight), 1);
-            target += gap * Math.max(0, 1 - toEndDistance / stretch);
-        }
-    }
+    let target = points ? interpolate(points, line, 0, 1) : fraction * max;
     target = Math.min(Math.max(target, 0), max);
     if (Math.abs(target - window.scrollY) < 2) { return; }
     suppressScrollEventsUntil = Date.now() + 200;
@@ -154,9 +144,7 @@ window.addEventListener("scroll", () => {
     const max = maxScroll();
     const y = window.scrollY;
     const fraction = max > 0 ? Math.min(Math.max(y / max, 0), 1) : 0;
-    const toEndDistance = Math.max(max - y, 0);
     const points = lineAnchors();
     const line = points ? interpolate(points, y, 1, 0) : null;
-    const endLine = points ? interpolate(points, max, 1, 0) : null;
-    window.webkit.messageHandlers.previewScrolled.postMessage([line, endLine, fraction, toEndDistance]);
+    window.webkit.messageHandlers.previewScrolled.postMessage([line, fraction]);
 }, { passive: true });

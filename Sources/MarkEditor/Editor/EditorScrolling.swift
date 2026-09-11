@@ -103,8 +103,6 @@ final class EditorScrolling: NSObject {
         let sync = ScrollSync(
             line: lines.line(atScrollOffset: offset),
             fraction: maxOffset > 0 ? min(max(offset / maxOffset, 0), 1) : 0,
-            endLine: lines.line(atScrollOffset: max(maxOffset, 0)),
-            toEndDistance: Double(max(maxOffset - offset, 0)),
             source: .editor
         )
         guard sync.differs(from: sharedPosition()) else { return }
