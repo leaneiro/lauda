@@ -746,10 +746,11 @@ struct MarkdownTextView: NSViewRepresentable {
         }
 
         /// Where the editor should scroll to follow `sync`: the synced source
-        /// line (proportional when there's no line map). Over the leader's
-        /// last screen it also absorbs the gap between where the leader's
-        /// final line lands here and this pane's end, so both panes reach the
-        /// bottom together without skewing the rest of the document.
+        /// line (proportional when there's no line map). As the leader nears
+        /// its end, this pane also absorbs the gap between where the leader's
+        /// final line lands here and its own end, over a stretch about the
+        /// size of that gap (capped at one screen): both panes reach the
+        /// bottom together and stay line-aligned everywhere before it.
         private func targetOffset(for sync: ScrollSync) -> CGFloat? {
             guard let textView,
                   let scrollView = textView.enclosingScrollView,
@@ -760,8 +761,10 @@ struct MarkdownTextView: NSViewRepresentable {
                 return min(max(sync.fraction * maxOffset, 0), maxOffset)
             }
             var target = lineTarget
-            if sync.toEnd < 1, let endTarget = sync.endLine.flatMap(scrollOffset(forSourceLine:)) {
-                target += CGFloat(1 - max(sync.toEnd, 0)) * max(maxOffset - endTarget, 0)
+            if let endTarget = sync.endLine.flatMap(scrollOffset(forSourceLine:)) {
+                let gap = max(maxOffset - endTarget, 0)
+                let stretch = max(min(max(gap, 120), scrollView.contentView.bounds.height), 1)
+                target += gap * CGFloat(max(0, 1 - sync.toEndDistance / Double(stretch)))
             }
             return min(max(target, 0), maxOffset)
         }
@@ -786,12 +789,11 @@ struct MarkdownTextView: NSViewRepresentable {
 
             let maxOffset = documentView.frame.height - clipView.bounds.height
             let offset = clipView.bounds.origin.y
-            let viewport = clipView.bounds.height
             let sync = ScrollSync(
                 line: sourceLine(atScrollOffset: offset),
                 fraction: maxOffset > 0 ? min(max(offset / maxOffset, 0), 1) : 0,
                 endLine: sourceLine(atScrollOffset: max(maxOffset, 0)),
-                toEnd: viewport > 0 ? min(max(Double((maxOffset - offset) / viewport), 0), 1) : 1,
+                toEndDistance: Double(max(maxOffset - offset, 0)),
                 source: .editor
             )
             guard sync.differs(from: parent.scrollSync) else { return }

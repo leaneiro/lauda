@@ -240,19 +240,21 @@ enum PreviewTemplate {
         }
         return points[points.length - 1][to];
     }
-    function setScrollPosition(line, hasLine, endLine, hasEndLine, fraction, toEnd) {
+    function setScrollPosition(line, hasLine, endLine, hasEndLine, fraction, toEndDistance) {
         const max = maxScroll();
         if (max <= 0) { return; }
         const points = hasLine ? lineAnchors() : null;
         let target = fraction * max;
         if (points) {
             target = interpolate(points, line, 0, 1);
-            // Over the leader's last screen, absorb the gap between where its
-            // final line lands here and this pane's end, so both panes reach
-            // the bottom together without skewing the rest of the document.
-            if (toEnd < 1 && hasEndLine) {
-                const endTarget = interpolate(points, endLine, 0, 1);
-                target += (1 - Math.max(toEnd, 0)) * Math.max(max - endTarget, 0);
+            // As the leader nears its end, absorb the gap between where its
+            // final line lands here and this pane's end, over a stretch about
+            // the size of that gap (capped at one screen): both panes reach
+            // the bottom together and stay line-aligned everywhere before it.
+            if (hasEndLine) {
+                const gap = Math.max(max - interpolate(points, endLine, 0, 1), 0);
+                const stretch = Math.max(Math.min(Math.max(gap, 120), window.innerHeight), 1);
+                target += gap * Math.max(0, 1 - toEndDistance / stretch);
             }
         }
         target = Math.min(Math.max(target, 0), max);
@@ -318,12 +320,11 @@ enum PreviewTemplate {
         const max = maxScroll();
         const y = window.scrollY;
         const fraction = max > 0 ? Math.min(Math.max(y / max, 0), 1) : 0;
-        const toEnd = window.innerHeight > 0
-            ? Math.min(Math.max((max - y) / window.innerHeight, 0), 1) : 1;
+        const toEndDistance = Math.max(max - y, 0);
         const points = lineAnchors();
         const line = points ? interpolate(points, y, 1, 0) : null;
         const endLine = points ? interpolate(points, max, 1, 0) : null;
-        window.webkit.messageHandlers.previewScrolled.postMessage([line, endLine, fraction, toEnd]);
+        window.webkit.messageHandlers.previewScrolled.postMessage([line, endLine, fraction, toEndDistance]);
     }, { passive: true });
     </script>
     </body>

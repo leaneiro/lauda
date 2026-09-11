@@ -224,14 +224,14 @@ struct PreviewWebView: NSViewRepresentable {
         private func applyScroll(_ sync: ScrollSync) {
             guard let webView, isReady else { return }
             webView.callAsyncJavaScript(
-                "setScrollPosition(line, hasLine, endLine, hasEndLine, fraction, toEnd)",
+                "setScrollPosition(line, hasLine, endLine, hasEndLine, fraction, toEndDistance)",
                 arguments: [
                     "line": sync.line ?? 0,
                     "hasLine": sync.line != nil,
                     "endLine": sync.endLine ?? 0,
                     "hasEndLine": sync.endLine != nil,
                     "fraction": Double(sync.fraction),
-                    "toEnd": sync.toEnd,
+                    "toEndDistance": sync.toEndDistance,
                 ],
                 in: nil,
                 in: .page
@@ -247,12 +247,12 @@ struct PreviewWebView: NSViewRepresentable {
             guard message.name == "previewScrolled",
                   let values = message.body as? [Any], values.count == 4,
                   let fraction = (values[2] as? NSNumber)?.doubleValue,
-                  let toEnd = (values[3] as? NSNumber)?.doubleValue else { return }
+                  let toEndDistance = (values[3] as? NSNumber)?.doubleValue else { return }
             let sync = ScrollSync(
                 line: (values[0] as? NSNumber)?.doubleValue,
                 fraction: CGFloat(min(max(fraction, 0), 1)),
                 endLine: (values[1] as? NSNumber)?.doubleValue,
-                toEnd: min(max(toEnd, 0), 1),
+                toEndDistance: max(toEndDistance, 0),
                 source: .preview
             )
             lastScroll = sync

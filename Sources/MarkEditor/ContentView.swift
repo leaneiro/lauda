@@ -197,15 +197,16 @@ struct ScrollSync: Equatable {
     var fraction: CGFloat = 0
     /// Source line at the top of this pane when scrolled all the way down.
     var endLine: Double?
-    /// Distance to the bottom in screens, capped at 1. Over that last screen
-    /// the follower absorbs the gap between where `endLine` lands in it and
-    /// its own end, so both panes reach the bottom together.
-    var toEnd: Double = 1
+    /// Points left to scroll before the bottom. The follower uses it to
+    /// absorb, over a short final stretch, the gap between where `endLine`
+    /// lands in it and its own end, so both panes reach the bottom together
+    /// while staying line-aligned everywhere before it.
+    var toEndDistance: Double = 100_000
     var source: Source = .editor
 
     func differs(from other: ScrollSync) -> Bool {
         abs(fraction - other.fraction) > 0.001
-            || abs(toEnd - other.toEnd) > 0.005
+            || abs(toEndDistance - other.toEndDistance) > 1
             || abs((line ?? -2) - (other.line ?? -2)) > 0.005
     }
 }
