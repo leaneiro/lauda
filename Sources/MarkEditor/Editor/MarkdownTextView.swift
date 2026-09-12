@@ -42,6 +42,13 @@ struct MarkdownTextView: NSViewRepresentable {
 
         textView.delegate = context.coordinator
         textView.isRichText = false
+        // This view holds Markdown as plain text. Left on the system
+        // default, Writing Tools may answer a rewrite with text attributes,
+        // reading "**bold**" as bold and dropping the asterisks it came
+        // from; asking for plain text keeps the document's own syntax.
+        if #available(macOS 15.0, *) {
+            textView.allowedWritingToolsResultOptions = .plainText
+        }
         textView.allowsUndo = true
         textView.usesFindBar = true
         textView.isIncrementalSearchingEnabled = true

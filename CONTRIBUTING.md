@@ -128,6 +128,17 @@ highlighting that made scrolling jump and left blank regions. Scroll sync
 between the panes also relies on exact line positions. Please don't switch
 to TextKit 2 without carefully testing long documents and scroll sync.
 
+### Writing Tools keeps Markdown intact
+
+macOS 15 and later add Writing Tools (Proofread, Rewrite) to the editor's
+context menu on its own, with no code on our side. The one thing the editor
+does set is `allowedWritingToolsResultOptions = .plainText`. Left on the
+system default, a rewrite may come back as an attributed string: Writing
+Tools reads `**bold**` as bold, applies it as a text attribute and drops
+the asterisks, which this plain-text view then throws away, so the emphasis
+is lost. Asking for plain text keeps the document's own Markdown, code
+fences included. Don't remove that line.
+
 ### Preview files
 
 The preview's stylesheet and script are plain files:
