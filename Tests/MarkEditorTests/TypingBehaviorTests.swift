@@ -1,63 +1,57 @@
-import XCTest
+import Foundation
+import Testing
 @testable import MarkEditor
 
-final class ListContinuationTests: XCTestCase {
-    func testContinuesBulletList() {
-        let action = ListContinuation.newlineAction(forLine: "- item", caretOffset: 6)
-        XCTAssertEqual(action, .continueList(insertion: "\n- "))
+struct ListContinuationTests {
+    @Test func continuesBulletList() {
+        #expect(ListContinuation.newlineAction(forLine: "- item", caretOffset: 6) == .continueList(insertion: "\n- "))
     }
 
-    func testContinuesIndentedBullet() {
-        let action = ListContinuation.newlineAction(forLine: "  * sub", caretOffset: 7)
-        XCTAssertEqual(action, .continueList(insertion: "\n  * "))
+    @Test func continuesIndentedBullet() {
+        #expect(ListContinuation.newlineAction(forLine: "  * sub", caretOffset: 7) == .continueList(insertion: "\n  * "))
     }
 
-    func testIncrementsOrderedList() {
-        let action = ListContinuation.newlineAction(forLine: "3. passo", caretOffset: 8)
-        XCTAssertEqual(action, .continueList(insertion: "\n4. "))
+    @Test func incrementsOrderedList() {
+        #expect(ListContinuation.newlineAction(forLine: "3. passo", caretOffset: 8) == .continueList(insertion: "\n4. "))
     }
 
-    func testKeepsOrderedDelimiterStyle() {
-        let action = ListContinuation.newlineAction(forLine: "1) passo", caretOffset: 8)
-        XCTAssertEqual(action, .continueList(insertion: "\n2) "))
+    @Test func keepsOrderedDelimiterStyle() {
+        #expect(ListContinuation.newlineAction(forLine: "1) passo", caretOffset: 8) == .continueList(insertion: "\n2) "))
     }
 
-    func testContinuesTaskListUnchecked() {
-        let action = ListContinuation.newlineAction(forLine: "- [x] done", caretOffset: 10)
-        XCTAssertEqual(action, .continueList(insertion: "\n- [ ] "))
+    @Test func continuesTaskListUnchecked() {
+        #expect(ListContinuation.newlineAction(forLine: "- [x] done", caretOffset: 10) == .continueList(insertion: "\n- [ ] "))
     }
 
-    func testEmptyItemEndsList() {
-        let action = ListContinuation.newlineAction(forLine: "- ", caretOffset: 2)
-        XCTAssertEqual(action, .endList(prefixLength: 2))
+    @Test func emptyItemEndsList() {
+        #expect(ListContinuation.newlineAction(forLine: "- ", caretOffset: 2) == .endList(prefixLength: 2))
     }
 
-    func testEmptyTaskItemEndsList() {
-        let action = ListContinuation.newlineAction(forLine: "- [ ] ", caretOffset: 6)
-        XCTAssertEqual(action, .endList(prefixLength: 6))
+    @Test func emptyTaskItemEndsList() {
+        #expect(ListContinuation.newlineAction(forLine: "- [ ] ", caretOffset: 6) == .endList(prefixLength: 6))
     }
 
-    func testNonListLineDoesNothing() {
-        XCTAssertEqual(ListContinuation.newlineAction(forLine: "plain text", caretOffset: 5), .none)
+    @Test func nonListLineDoesNothing() {
+        #expect(ListContinuation.newlineAction(forLine: "plain text", caretOffset: 5) == .none)
     }
 
-    func testCaretInsideMarkerDoesNothing() {
-        XCTAssertEqual(ListContinuation.newlineAction(forLine: "- item", caretOffset: 1), .none)
+    @Test func caretInsideMarkerDoesNothing() {
+        #expect(ListContinuation.newlineAction(forLine: "- item", caretOffset: 1) == .none)
     }
 
-    func testHorizontalRuleIsNotAList() {
-        XCTAssertEqual(ListContinuation.newlineAction(forLine: "---", caretOffset: 3), .none)
+    @Test func horizontalRuleIsNotAList() {
+        #expect(ListContinuation.newlineAction(forLine: "---", caretOffset: 3) == .none)
     }
 
-    func testLineInfoIndentUnit() {
-        XCTAssertEqual(ListContinuation.lineInfo(forLine: "- item")?.indentUnit, 2)
-        XCTAssertEqual(ListContinuation.lineInfo(forLine: "10. item")?.indentUnit, 4)
-        XCTAssertEqual(ListContinuation.lineInfo(forLine: "- [ ] task")?.indentUnit, 2)
-        XCTAssertNil(ListContinuation.lineInfo(forLine: "no list"))
+    @Test func lineInfoIndentUnit() {
+        #expect(ListContinuation.lineInfo(forLine: "- item")?.indentUnit == 2)
+        #expect(ListContinuation.lineInfo(forLine: "10. item")?.indentUnit == 4)
+        #expect(ListContinuation.lineInfo(forLine: "- [ ] task")?.indentUnit == 2)
+        #expect(ListContinuation.lineInfo(forLine: "no list") == nil)
     }
 }
 
-final class TypingSubstitutionsTests: XCTestCase {
+struct TypingSubstitutionsTests {
     private func substitute(text: String, typing: String, at location: Int) -> (NSRange, String)? {
         TypingSubstitutions.substitution(
             in: text as NSString,
@@ -66,38 +60,36 @@ final class TypingSubstitutionsTests: XCTestCase {
         )
     }
 
-    func testRightArrow() {
+    @Test func rightArrow() {
         let result = substitute(text: "a -", typing: ">", at: 3)
-        XCTAssertEqual(result?.0, NSRange(location: 2, length: 1))
-        XCTAssertEqual(result?.1, "→")
+        #expect(result?.0 == NSRange(location: 2, length: 1))
+        #expect(result?.1 == "→")
     }
 
-    func testLeftArrow() {
+    @Test func leftArrow() {
         let result = substitute(text: "a <", typing: "-", at: 3)
-        XCTAssertEqual(result?.0, NSRange(location: 2, length: 1))
-        XCTAssertEqual(result?.1, "←")
+        #expect(result?.0 == NSRange(location: 2, length: 1))
+        #expect(result?.1 == "←")
     }
 
-    func testNoSubstitutionWithoutPriorCharacter() {
-        XCTAssertNil(substitute(text: "abc", typing: ">", at: 3))
-        XCTAssertNil(substitute(text: "", typing: ">", at: 0))
+    @Test func noSubstitutionWithoutPriorCharacter() {
+        #expect(substitute(text: "abc", typing: ">", at: 3) == nil)
+        #expect(substitute(text: "", typing: ">", at: 0) == nil)
     }
 
-    func testPlainDashIsUntouched() {
-        XCTAssertNil(substitute(text: "a b", typing: "-", at: 3))
+    @Test func plainDashIsUntouched() {
+        #expect(substitute(text: "a b", typing: "-", at: 3) == nil)
     }
 }
 
-final class EditorTextViewURLTests: XCTestCase {
-    func testAcceptsHTTPAndHTTPS() {
-        XCTAssertTrue(EditorTextView.isLikelyURL("https://example.com/page"))
-        XCTAssertTrue(EditorTextView.isLikelyURL("http://example.com"))
+struct EditorTextViewURLTests {
+    @Test(arguments: ["https://example.com/page", "http://example.com"])
+    func acceptsHTTPAndHTTPS(text: String) {
+        #expect(EditorTextView.isLikelyURL(text))
     }
 
-    func testRejectsPlainTextAndOtherSchemes() {
-        XCTAssertFalse(EditorTextView.isLikelyURL("just text"))
-        XCTAssertFalse(EditorTextView.isLikelyURL("file:///etc/passwd"))
-        XCTAssertFalse(EditorTextView.isLikelyURL("text with https://example.com inside"))
-        XCTAssertFalse(EditorTextView.isLikelyURL(""))
+    @Test(arguments: ["just text", "file:///etc/passwd", "text with https://example.com inside", ""])
+    func rejectsPlainTextAndOtherSchemes(text: String) {
+        #expect(!EditorTextView.isLikelyURL(text))
     }
 }

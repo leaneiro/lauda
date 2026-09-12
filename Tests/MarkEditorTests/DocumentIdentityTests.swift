@@ -1,16 +1,17 @@
-import XCTest
+import Foundation
+import Testing
 @testable import MarkEditor
 
-final class DocumentIdentityTests: XCTestCase {
+struct DocumentIdentityTests {
     /// Two windows can hold the same text; a save must mark only its own.
-    func testDocumentsWithTheSameTextAreStillDifferentDocuments() {
-        XCTAssertNotEqual(MarkdownDocument(text: "same").id, MarkdownDocument(text: "same").id)
+    @Test func documentsWithTheSameTextAreStillDifferentDocuments() {
+        #expect(MarkdownDocument(text: "same").id != MarkdownDocument(text: "same").id)
     }
 
-    func testCopiesKeepTheIdentity() {
+    @Test func copiesKeepTheIdentity() {
         let original = MarkdownDocument(text: "a")
         var copy = original
         copy.text = "b"
-        XCTAssertEqual(copy.id, original.id)
+        #expect(copy.id == original.id)
     }
 }

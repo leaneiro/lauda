@@ -1,7 +1,9 @@
-import XCTest
+import AppKit
+import Testing
 @testable import MarkEditor
 
-final class EditorFindTests: XCTestCase {
+@MainActor
+struct EditorFindTests {
     private func makeFind(_ text: String, caret: Int = 0) -> (EditorFind, NSTextView) {
         let textView = NSTextView()
         textView.string = text
@@ -11,37 +13,37 @@ final class EditorFindTests: XCTestCase {
         return (find, textView)
     }
 
-    func testCountsMatchesCaseInsensitivelyStartingAtTheCaret() {
+    @Test func countsMatchesCaseInsensitivelyStartingAtTheCaret() {
         let (find, _) = makeFind("Cat, cat and CAT", caret: 3)
         let counts = find.update("cat")
-        XCTAssertEqual(counts.total, 3)
-        XCTAssertEqual(counts.current, 2)
+        #expect(counts.total == 3)
+        #expect(counts.current == 2)
     }
 
-    func testSteppingWrapsAround() {
+    @Test func steppingWrapsAround() {
         let (find, _) = makeFind("a a a")
-        XCTAssertEqual(find.update("a").current, 1)
-        XCTAssertEqual(find.step(forward: true).current, 2)
-        XCTAssertEqual(find.step(forward: true).current, 3)
-        XCTAssertEqual(find.step(forward: true).current, 1)
-        XCTAssertEqual(find.step(forward: false).current, 3)
+        #expect(find.update("a").current == 1)
+        #expect(find.step(forward: true).current == 2)
+        #expect(find.step(forward: true).current == 3)
+        #expect(find.step(forward: true).current == 1)
+        #expect(find.step(forward: false).current == 3)
     }
 
-    func testEditsRefreshTheCountsAndTellTheFindBar() {
+    @Test func editsRefreshTheCountsAndTellTheFindBar() {
         let (find, textView) = makeFind("one two")
-        XCTAssertEqual(find.update("o").total, 2)
+        #expect(find.update("o").total == 2)
         var reported: (current: Int, total: Int)?
         find.countsChanged = { reported = ($0, $1) }
         textView.string = "one two too"
         find.refreshAfterEdit()
-        XCTAssertEqual(reported?.total, 4)
+        #expect(reported?.total == 4)
     }
 
-    func testClearForgetsTheQuery() {
+    @Test func clearForgetsTheQuery() {
         let (find, _) = makeFind("abc")
         _ = find.update("b")
         find.clear()
-        XCTAssertEqual(find.query, "")
-        XCTAssertEqual(find.step(forward: true).total, 0)
+        #expect(find.query == "")
+        #expect(find.step(forward: true).total == 0)
     }
 }

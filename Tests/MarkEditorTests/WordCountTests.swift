@@ -1,28 +1,28 @@
-import XCTest
+import Foundation
+import Testing
 @testable import MarkEditor
 
-final class WordCountTests: XCTestCase {
-    func testCountsEnglishWordsAndIgnoresPunctuation() {
-        XCTAssertEqual(WordCount.count(in: "Hello world, this is a test."), 6)
-        XCTAssertEqual(WordCount.count(in: "one two  three\n\nfour"), 4)
+struct WordCountTests {
+    @Test func countsEnglishWordsAndIgnoresPunctuation() {
+        #expect(WordCount.count(in: "Hello world, this is a test.") == 6)
+        #expect(WordCount.count(in: "one two  three\n\nfour") == 4)
     }
 
-    func testMarkdownMarkersAreNotWords() {
-        XCTAssertEqual(WordCount.count(in: "# Title\n\n- item one\n- **bold** word"), 5)
+    @Test func markdownMarkersAreNotWords() {
+        #expect(WordCount.count(in: "# Title\n\n- item one\n- **bold** word") == 5)
     }
 
-    func testEmptyTextHasNoWords() {
-        XCTAssertEqual(WordCount.count(in: ""), 0)
-        XCTAssertEqual(WordCount.count(in: "  \n\n - "), 0)
+    @Test func emptyTextHasNoWords() {
+        #expect(WordCount.count(in: "") == 0)
+        #expect(WordCount.count(in: "  \n\n - ") == 0)
     }
 
     /// Japanese and Chinese have no spaces between words; splitting on
     /// whitespace would count a whole sentence as one word.
-    func testCountsWordsInLanguagesWithoutSpaces() {
-        for sentence in ["今日は良い天気です。", "我们今天去公园散步。"] {
-            let count = WordCount.count(in: sentence)
-            XCTAssertGreaterThan(count, 2, sentence)
-            XCTAssertLessThan(count, sentence.count, sentence)
-        }
+    @Test(arguments: ["今日は良い天気です。", "我们今天去公园散步。"])
+    func countsWordsInLanguagesWithoutSpaces(sentence: String) {
+        let count = WordCount.count(in: sentence)
+        #expect(count > 2, "\(sentence)")
+        #expect(count < sentence.count, "\(sentence)")
     }
 }

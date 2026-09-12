@@ -1,8 +1,10 @@
-import XCTest
+import AppKit
+import Testing
 @testable import MarkEditor
 
 /// The line ↔ position math behind scroll sync and outline navigation.
-final class SourceLineLayoutTests: XCTestCase {
+@MainActor
+struct SourceLineLayoutTests {
     private func makeLayout(lines count: Int) -> (SourceLineLayout, NSTextView, NSScrollView) {
         let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 300, height: 100))
         let textView = NSTextView(frame: NSRect(x: 0, y: 0, width: 300, height: 100))
@@ -17,25 +19,25 @@ final class SourceLineLayoutTests: XCTestCase {
         return (layout, textView, scrollView)
     }
 
-    func testTopPaddingMapsToNegativeLines() {
+    @Test func topPaddingMapsToNegativeLines() {
         let (layout, _, _) = makeLayout(lines: 20)
-        XCTAssertEqual(layout.line(atScrollOffset: 0), -1)
-        XCTAssertEqual(layout.scrollOffset(forLine: -1), 0)
-        XCTAssertEqual(layout.scrollOffset(forLine: 0), 10)
+        #expect(layout.line(atScrollOffset: 0) == -1)
+        #expect(layout.scrollOffset(forLine: -1) == 0)
+        #expect(layout.scrollOffset(forLine: 0) == 10)
     }
 
-    func testLineAndOffsetRoundTrip() throws {
+    @Test(arguments: [0.0, 3.0, 7.5, 12.0])
+    func lineAndOffsetRoundTrip(line: Double) throws {
         let (layout, _, _) = makeLayout(lines: 20)
-        for line in [0.0, 3.0, 7.5, 12.0] {
-            let offset = try XCTUnwrap(layout.scrollOffset(forLine: line))
-            XCTAssertEqual(try XCTUnwrap(layout.line(atScrollOffset: offset)), line, accuracy: 0.01)
-        }
+        let offset = try #require(layout.scrollOffset(forLine: line))
+        let roundTripped = try #require(layout.line(atScrollOffset: offset))
+        #expect(abs(roundTripped - line) < 0.01, "line \(line) came back as \(roundTripped)")
     }
 
-    func testFollowsProportionallyWithoutALineMap() throws {
+    @Test func followsProportionallyWithoutALineMap() throws {
         let (layout, textView, scrollView) = makeLayout(lines: 40)
         let maxOffset = textView.frame.height - scrollView.contentView.bounds.height
-        let target = try XCTUnwrap(layout.targetOffset(for: ScrollSync(line: nil, fraction: 0.5)))
-        XCTAssertEqual(target, maxOffset * 0.5, accuracy: 0.5)
+        let target = try #require(layout.targetOffset(for: ScrollSync(line: nil, fraction: 0.5)))
+        #expect(abs(target - maxOffset * 0.5) < 0.5, "target \(target) for max \(maxOffset)")
     }
 }

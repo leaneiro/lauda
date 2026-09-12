@@ -1,55 +1,56 @@
-import XCTest
+import Foundation
+import Testing
 @testable import MarkEditor
 
-final class AppSettingsTests: XCTestCase {
-    private let suiteName = "AppSettingsTests"
-    private var defaults: UserDefaults!
+/// Each test gets its own UserDefaults suite, so they can run in parallel
+/// and in any order without writing over each other (or over the real app's
+/// settings on this Mac).
+final class AppSettingsTests {
+    private let suiteName = "AppSettingsTests-\(UUID().uuidString)"
+    private let defaults: UserDefaults
 
-    override func setUp() {
-        defaults = UserDefaults(suiteName: suiteName)!
-        defaults.removePersistentDomain(forName: suiteName)
+    init() throws {
+        defaults = try #require(UserDefaults(suiteName: suiteName))
     }
 
-    override func tearDown() {
-        defaults.removePersistentDomain(forName: suiteName)
+    deinit {
+        UserDefaults().removePersistentDomain(forName: suiteName)
     }
 
-    func testUnsetSettingsReadTheirDefaults() {
-        XCTAssertEqual(defaults[AppSettings.previewFontSize], 16)
-        XCTAssertEqual(
-            PreviewStyle.current(in: defaults),
-            PreviewStyle(fontName: FontOption.systemSans, fontSize: 16, lineHeight: 1.65, strictLineBreaks: false)
-        )
+    @Test func unsetSettingsReadTheirDefaults() {
+        #expect(defaults[AppSettings.previewFontSize] == 16)
+        #expect(PreviewStyle.current(in: defaults)
+            == PreviewStyle(fontName: FontOption.systemSans, fontSize: 16, lineHeight: 1.65, strictLineBreaks: false))
     }
 
-    func testStoredValuesWin() {
+    @Test func storedValuesWin() {
         defaults[AppSettings.previewFontSize] = 20
         defaults[AppSettings.strictLineBreaks] = true
         let style = PreviewStyle.current(in: defaults)
-        XCTAssertEqual(style.fontSize, 20)
-        XCTAssertTrue(style.strictLineBreaks)
+        #expect(style.fontSize == 20)
+        #expect(style.strictLineBreaks)
     }
 
-    func testRestoreDefaultsResetsPreferencesButKeepsRememberedState() {
+    @Test func restoreDefaultsResetsPreferencesButKeepsRememberedState() {
         defaults[AppSettings.editorFontSize] = 20
         defaults[AppSettings.appearanceMode] = AppearanceMode.dark.rawValue
         defaults[AppSettings.lastViewMode] = ViewMode.previewOnly.rawValue
 
         AppSettings.restoreDefaults(in: defaults)
 
-        XCTAssertEqual(defaults[AppSettings.editorFontSize], 14)
-        XCTAssertEqual(defaults[AppSettings.appearanceMode], AppearanceMode.light.rawValue)
-        XCTAssertEqual(defaults[AppSettings.lastViewMode], ViewMode.previewOnly.rawValue)
+        #expect(defaults[AppSettings.editorFontSize] == 14)
+        #expect(defaults[AppSettings.appearanceMode] == AppearanceMode.light.rawValue)
+        #expect(defaults[AppSettings.lastViewMode] == ViewMode.previewOnly.rawValue)
     }
 
-    func testEverySettingHasItsOwnKey() {
+    @Test func everySettingHasItsOwnKey() {
         let keys = (AppSettings.preferences + AppSettings.rememberedState).map(\.key)
-        XCTAssertEqual(Set(keys).count, keys.count)
+        #expect(Set(keys).count == keys.count)
     }
 
-    func testRegisteredDefaultsAnswerPlainReads() {
+    @Test func registeredDefaultsAnswerPlainReads() {
         AppSettings.registerDefaults(in: defaults)
-        XCTAssertEqual(defaults.double(forKey: AppSettings.previewLineHeight.key), 1.65)
-        XCTAssertEqual(defaults.string(forKey: AppSettings.editorFontName.key), FontOption.systemMono)
+        #expect(defaults.double(forKey: AppSettings.previewLineHeight.key) == 1.65)
+        #expect(defaults.string(forKey: AppSettings.editorFontName.key) == FontOption.systemMono)
     }
 }

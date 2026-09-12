@@ -1,59 +1,56 @@
-import XCTest
+import Foundation
+import Testing
 @testable import MarkEditor
 
-final class PreviewSecurityTests: XCTestCase {
+struct PreviewSecurityTests {
     // MARK: - Links
 
-    func testKeepsExternalRelativeAndFragmentLinks() {
-        let destinations = [
-            "https://example.com", "http://example.com", "mailto:someone@example.com",
-            "notes.md", "./img/a.png", "#section", "folder/page?x=a:b",
-        ]
-        for destination in destinations {
-            let html = HTMLRenderer.render("[x](\(destination))")
-            XCTAssertTrue(html.contains("<a href="), "\(destination): \(html)")
-        }
+    @Test(arguments: [
+        "https://example.com", "http://example.com", "mailto:someone@example.com",
+        "notes.md", "./img/a.png", "#section", "folder/page?x=a:b",
+    ])
+    func keepsExternalRelativeAndFragmentLinks(destination: String) {
+        let html = HTMLRenderer.render("[x](\(destination))")
+        #expect(html.contains("<a href="), "\(destination): \(html)")
     }
 
-    func testDropsScriptAndDataLinksButKeepsTheirText() {
-        let destinations = ["javascript:alert(1)", "JavaScript:alert(1)", "data:text/html,hi", "file:///etc/passwd"]
-        for destination in destinations {
-            let html = HTMLRenderer.render("[click me](\(destination))")
-            XCTAssertFalse(html.contains("<a"), "\(destination): \(html)")
-            XCTAssertTrue(html.contains("click me"), html)
-        }
+    @Test(arguments: ["javascript:alert(1)", "JavaScript:alert(1)", "data:text/html,hi", "file:///etc/passwd"])
+    func dropsScriptAndDataLinksButKeepsTheirText(destination: String) {
+        let html = HTMLRenderer.render("[click me](\(destination))")
+        #expect(!html.contains("<a"), "\(destination): \(html)")
+        #expect(html.contains("click me"), "\(html)")
     }
 
-    func testSchemeCheckIgnoresWhitespaceAndControlCharacters() {
-        XCTAssertFalse(HTMLRenderer.isAllowedLinkDestination(" java\tscript:alert(1)"))
-        XCTAssertFalse(HTMLRenderer.isAllowedLinkDestination("java\nscript:alert(1)"))
-        XCTAssertTrue(HTMLRenderer.isAllowedLinkDestination("page.md#part:two"))
+    @Test func schemeCheckIgnoresWhitespaceAndControlCharacters() {
+        #expect(!HTMLRenderer.isAllowedLinkDestination(" java\tscript:alert(1)"))
+        #expect(!HTMLRenderer.isAllowedLinkDestination("java\nscript:alert(1)"))
+        #expect(HTMLRenderer.isAllowedLinkDestination("page.md#part:two"))
     }
 
     // MARK: - Page policies
 
-    func testPreviewPageBlocksDocumentScripts() {
+    @Test func previewPageBlocksDocumentScripts() {
         let policy = PreviewTemplate.previewContentSecurityPolicy
-        XCTAssertTrue(PreviewTemplate.html.contains("<meta http-equiv=\"Content-Security-Policy\" content=\"\(policy)\">"))
-        XCTAssertTrue(policy.hasPrefix("default-src 'none'"), policy)
-        XCTAssertFalse(policy.contains("script-src"), policy)
-        XCTAssertFalse(policy.contains("connect-src"), policy)
+        #expect(PreviewTemplate.html.contains("<meta http-equiv=\"Content-Security-Policy\" content=\"\(policy)\">"))
+        #expect(policy.hasPrefix("default-src 'none'"), "\(policy)")
+        #expect(!policy.contains("script-src"), "\(policy)")
+        #expect(!policy.contains("connect-src"), "\(policy)")
         // The app's script is injected into its own content world, not the page.
-        XCTAssertFalse(PreviewTemplate.html.contains("<script"))
-        XCTAssertTrue(PreviewTemplate.script.contains("function setContent("))
+        #expect(!PreviewTemplate.html.contains("<script"))
+        #expect(PreviewTemplate.script.contains("function setContent("))
     }
 
-    func testPreviewPageStillShowsImagesFromEverywhere() {
+    @Test func previewPageStillShowsImagesFromEverywhere() {
         let policy = PreviewTemplate.previewContentSecurityPolicy
-        XCTAssertTrue(policy.contains("img-src \(DocumentSchemeHandler.scheme): data: https: http:"), policy)
+        #expect(policy.contains("img-src \(DocumentSchemeHandler.scheme): data: https: http:"), "\(policy)")
     }
 
-    func testExportedDocumentBlocksScripts() {
+    @Test func exportedDocumentBlocksScripts() {
         let html = PreviewTemplate.standalone(
             title: "T", bodyHTML: "<p>x</p>", fontFamily: "x", fontSize: 16, lineHeight: 1.6
         )
-        XCTAssertTrue(html.contains("content=\"\(PreviewTemplate.exportContentSecurityPolicy)\""))
-        XCTAssertTrue(PreviewTemplate.exportContentSecurityPolicy.hasPrefix("script-src 'none'"))
+        #expect(html.contains("content=\"\(PreviewTemplate.exportContentSecurityPolicy)\""))
+        #expect(PreviewTemplate.exportContentSecurityPolicy.hasPrefix("script-src 'none'"))
     }
 
     // MARK: - Local images
@@ -65,7 +62,7 @@ final class PreviewSecurityTests: XCTestCase {
         )
     }
 
-    func testSymlinkPointingOutsideTheFolderIsNotServed() throws {
+    @Test func symlinkPointingOutsideTheFolderIsNotServed() throws {
         let fileManager = FileManager.default
         let root = fileManager.temporaryDirectory.appendingPathComponent("scheme-\(UUID().uuidString)")
         let folder = root.appendingPathComponent("doc")
@@ -80,12 +77,12 @@ final class PreviewSecurityTests: XCTestCase {
             withDestinationURL: outside.appendingPathComponent("secret.png")
         )
 
-        XCTAssertNotNil(resolve("inside.png", in: folder))
-        XCTAssertNil(resolve("link.png", in: folder))
+        #expect(resolve("inside.png", in: folder) != nil)
+        #expect(resolve("link.png", in: folder) == nil)
     }
 
-    func testIconFilesCountAsImagesInEditorAndPreview() {
-        XCTAssertTrue(ImageImporter.isImageFile(URL(fileURLWithPath: "/x/favicon.ico")))
-        XCTAssertNotNil(resolve("favicon.ico", in: URL(fileURLWithPath: "/Users/someone/doc")))
+    @Test func iconFilesCountAsImagesInEditorAndPreview() {
+        #expect(ImageImporter.isImageFile(URL(fileURLWithPath: "/x/favicon.ico")))
+        #expect(resolve("favicon.ico", in: URL(fileURLWithPath: "/Users/someone/doc")) != nil)
     }
 }

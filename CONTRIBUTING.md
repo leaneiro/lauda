@@ -96,6 +96,21 @@ request.
 Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/),
 for example `fix(preview): …` or `feat(editor): …`.
 
+### Tests
+
+Tests use [Swift Testing](https://developer.apple.com/documentation/testing)
+(`@Test`, `#expect`, `#require`). It runs tests in parallel and in no
+particular order, so each one has to stand on its own. A test that writes
+settings makes its own `UserDefaults` suite, and a test that touches the
+disk makes its own temporary folder, both named with a fresh UUID and
+cleaned up when the test ends. Never write to `UserDefaults.standard`:
+those are the real settings of whoever is running the tests.
+
+Suites that drive AppKit are marked `@MainActor`. Two of them are also
+`@Suite(.serialized)`, so their tests run one at a time: `UndoGranularityTests`,
+which pumps the runloop while NSTextView coalesces undo by timing, and
+`PDFExportTests`, which drives WebKit printing.
+
 ### Settings and logs
 
 - Every stored setting is declared once in `AppSettings`, with its key and

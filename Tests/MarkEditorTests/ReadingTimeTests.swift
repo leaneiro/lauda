@@ -1,18 +1,18 @@
-import XCTest
+import Foundation
+import Testing
 @testable import MarkEditor
 
-final class ReadingTimeTests: XCTestCase {
-    func testEmptyDocumentShowsNothing() {
-        XCTAssertNil(ReadingTime.label(forWordCount: 0))
+struct ReadingTimeTests {
+    @Test func emptyDocumentShowsNothing() {
+        #expect(ReadingTime.label(forWordCount: 0) == nil)
     }
 
-    func testShortTextShowsLessThanOneMinute() {
-        XCTAssertEqual(ReadingTime.label(forWordCount: 50), "less than 1 min read")
+    @Test func shortTextShowsLessThanOneMinute() {
+        #expect(ReadingTime.label(forWordCount: 50) == "less than 1 min read")
     }
 
-    func testRoundsToNearestMinute() {
-        XCTAssertEqual(ReadingTime.label(forWordCount: 200), "~1 min read")
-        XCTAssertEqual(ReadingTime.label(forWordCount: 350), "~2 min read")
-        XCTAssertEqual(ReadingTime.label(forWordCount: 1000), "~5 min read")
+    @Test(arguments: [(200, "~1 min read"), (350, "~2 min read"), (1000, "~5 min read")])
+    func roundsToNearestMinute(words: Int, label: String) {
+        #expect(ReadingTime.label(forWordCount: words) == label)
     }
 }
