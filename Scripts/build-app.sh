@@ -20,12 +20,9 @@ cp "$BIN_PATH" "$APP_PATH/Contents/MacOS/Lauda"
 GIT_HASH="$(git rev-parse --short HEAD 2>/dev/null || echo dev)"
 /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $GIT_HASH" "$APP_PATH/Contents/Info.plist"
 
-# App icon, and the icon Finder shows on Markdown files (Info.plist maps it).
-for icon in AppIcon DocumentIcon; do
-    if [[ -f "Resources/$icon.icns" ]]; then
-        cp "Resources/$icon.icns" "$APP_PATH/Contents/Resources/$icon.icns"
-    fi
-done
+if [[ -f Resources/AppIcon.icns ]]; then
+    cp Resources/AppIcon.icns "$APP_PATH/Contents/Resources/AppIcon.icns"
+fi
 
 # Localizations: compile the string catalogs into <lang>.lproj folders.
 # xcstringstool ships with Xcode; without it the app still runs, in English.

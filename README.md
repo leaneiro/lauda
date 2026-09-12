@@ -62,7 +62,7 @@ make app     # builds build/Lauda.app
 make run     # builds and opens the app
 make dev     # debug build (swift build)
 make dmg     # disk image for distribution
-make icon    # rebuilds the app and document icons from Resources/Icons
+make icon    # rebuilds the app icon from Resources/Icons
 make clean
 ```
 

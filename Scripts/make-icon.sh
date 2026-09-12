@@ -1,5 +1,5 @@
 #!/bin/bash
-# Builds Resources/AppIcon.icns and Resources/DocumentIcon.icns from the PNGs
+# Builds Resources/AppIcon.icns from the PNGs
 # in Resources/Icons. Every size is its own hand-tuned drawing, so the small
 # ones stay crisp instead of being scaled down from 1024.
 set -euo pipefail
@@ -19,4 +19,3 @@ build_icns() {
 }
 
 build_icns AppIcon
-build_icns DocumentIcon
