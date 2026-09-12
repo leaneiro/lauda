@@ -1,21 +1,22 @@
 #!/bin/bash
-# Regenerates Resources/AppIcon.icns from Scripts/GenerateIcon.swift.
+# Builds Resources/AppIcon.icns and Resources/DocumentIcon.icns from the PNGs
+# in Resources/Icons. Every size is its own hand-tuned drawing, so the small
+# ones stay crisp instead of being scaled down from 1024.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-WORK_DIR="build/icon"
-ICONSET="$WORK_DIR/AppIcon.iconset"
-rm -rf "$WORK_DIR"
-mkdir -p "$ICONSET"
+build_icns() {
+    local name="$1"
+    local iconset="build/icon/$name.iconset"
+    rm -rf "$iconset"
+    mkdir -p "$iconset"
+    for size in 16 32 128 256 512; do
+        cp "Resources/Icons/$name-$size.png" "$iconset/icon_${size}x${size}.png"
+        cp "Resources/Icons/$name-$((size * 2)).png" "$iconset/icon_${size}x${size}@2x.png"
+    done
+    iconutil -c icns -o "Resources/$name.icns" "$iconset"
+    echo "OK: Resources/$name.icns"
+}
 
-swift Scripts/GenerateIcon.swift "$WORK_DIR/icon_1024.png"
-
-for size in 16 32 128 256 512; do
-    sips -z "$size" "$size" "$WORK_DIR/icon_1024.png" --out "$ICONSET/icon_${size}x${size}.png" >/dev/null
-    double=$((size * 2))
-    sips -z "$double" "$double" "$WORK_DIR/icon_1024.png" --out "$ICONSET/icon_${size}x${size}@2x.png" >/dev/null
-done
-
-mkdir -p Resources
-iconutil -c icns -o Resources/AppIcon.icns "$ICONSET"
-echo "OK: Resources/AppIcon.icns"
+build_icns AppIcon
+build_icns DocumentIcon

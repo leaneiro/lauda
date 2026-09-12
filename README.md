@@ -62,7 +62,7 @@ make app     # builds build/Lauda.app
 make run     # builds and opens the app
 make dev     # debug build (swift build)
 make dmg     # disk image for distribution
-make icon    # regenerates Resources/AppIcon.icns
+make icon    # rebuilds the app and document icons from Resources/Icons
 make clean
 ```
 
@@ -85,7 +85,7 @@ Sources/Lauda/
   Export/                    # HTML and PDF export
   Settings/                  # settings model and Settings window
   Outline.swift              # document outline
-Resources/                   # string catalogs, welcome guides, app icon
+Resources/                   # string catalogs, welcome guides, icons
 Support/Info.plist           # document types and bundle metadata
 Scripts/                     # .app, DMG and icon builds
 Tests/LaudaTests/       # unit tests
