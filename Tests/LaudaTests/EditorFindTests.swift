@@ -1,6 +1,6 @@
 import AppKit
 import Testing
-@testable import MarkEditor
+@testable import Lauda
 
 @MainActor
 struct EditorFindTests {

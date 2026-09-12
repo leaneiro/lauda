@@ -23,7 +23,7 @@ struct PreviewWebView: NSViewRepresentable {
     /// Where the app's preview script runs: its own content world, apart from
     /// the document's raw HTML, which shares the page but can't run script
     /// under the template's Content-Security-Policy.
-    static let contentWorld = WKContentWorld.world(name: "MarkEditorPreview")
+    static let contentWorld = WKContentWorld.world(name: "LaudaPreview")
 
     func makeNSView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()

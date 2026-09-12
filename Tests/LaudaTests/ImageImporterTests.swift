@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 import Testing
-@testable import MarkEditor
+@testable import Lauda
 
 /// Main actor throughout: the paste and coordinator cases drive AppKit
 /// views. Each test gets its own folder and its own named pasteboard, so

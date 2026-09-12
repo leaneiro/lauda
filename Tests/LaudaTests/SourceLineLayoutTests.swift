@@ -1,6 +1,6 @@
 import AppKit
 import Testing
-@testable import MarkEditor
+@testable import Lauda
 
 /// The line ↔ position math behind scroll sync and outline navigation.
 @MainActor

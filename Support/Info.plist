@@ -15,17 +15,17 @@
         <string>zh-Hans</string>
     </array>
     <key>CFBundleExecutable</key>
-    <string>MarkEditor</string>
+    <string>Lauda</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>CFBundleIdentifier</key>
-    <string>dev.leandro.markeditor</string>
+    <string>dev.leandro.lauda</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>MarkEditor</string>
+    <string>Lauda</string>
     <key>CFBundleDisplayName</key>
-    <string>MarkEditor</string>
+    <string>Lauda</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>

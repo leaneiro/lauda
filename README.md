@@ -1,4 +1,4 @@
-# MarkEditor
+# Lauda
 
 A native macOS Markdown editor with a dual-pane layout: you write on the left
 and see the rendered Markdown on the right, updated as you type.
@@ -44,7 +44,7 @@ and see the rendered Markdown on the right, updated as you type.
 
 ## Requirements
 
-macOS 14 Sonoma or later. MarkEditor is built on SwiftUI's document
+macOS 14 Sonoma or later. Lauda is built on SwiftUI's document
 architecture and on APIs that arrived between macOS 11 and 14: the
 document window, menus and settings, `String(localized:)` for the
 translations, and the isolated script world that keeps the preview safe.
@@ -58,7 +58,7 @@ still builds, in English only.
 ## Building
 
 ```bash
-make app     # builds build/MarkEditor.app
+make app     # builds build/Lauda.app
 make run     # builds and opens the app
 make dev     # debug build (swift build)
 make dmg     # disk image for distribution
@@ -70,12 +70,12 @@ Run the tests with `swift test`.
 
 The project is a plain SwiftPM package. `Scripts/build-app.sh` assembles the
 `.app` bundle from the executable and `Support/Info.plist` and signs it ad
-hoc. You can also open the folder in Xcode and run the `MarkEditor` target.
+hoc. You can also open the folder in Xcode and run the `Lauda` target.
 
 ## Project layout
 
 ```
-Sources/MarkEditor/
+Sources/Lauda/
   App/                       # app entry, menus, menu-to-window bridges
   Window/                    # document window: split view, toolbar, find bar
   Document/                  # Markdown document, recent files, welcome guide
@@ -88,7 +88,7 @@ Sources/MarkEditor/
 Resources/                   # string catalogs, welcome guides, app icon
 Support/Info.plist           # document types and bundle metadata
 Scripts/                     # .app, DMG and icon builds
-Tests/MarkEditorTests/       # unit tests
+Tests/LaudaTests/       # unit tests
 ```
 
 ## Contributing
@@ -98,4 +98,4 @@ for how to review a language, add a new one and test it.
 
 ## License
 
-MarkEditor is released under the MIT License. See [LICENSE](LICENSE).
+Lauda is released under the MIT License. See [LICENSE](LICENSE).

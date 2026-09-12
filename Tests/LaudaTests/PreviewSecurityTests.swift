@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import MarkEditor
+@testable import Lauda
 
 struct PreviewSecurityTests {
     // MARK: - Links

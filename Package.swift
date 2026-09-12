@@ -2,7 +2,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "MarkEditor",
+    name: "Lauda",
     platforms: [
         .macOS(.v14)
     ],
@@ -11,20 +11,20 @@ let package = Package(
     ],
     targets: [
         .executableTarget(
-            name: "MarkEditor",
+            name: "Lauda",
             dependencies: [
                 .product(name: "Markdown", package: "swift-markdown"),
             ],
-            path: "Sources/MarkEditor",
+            path: "Sources/Lauda",
             resources: [
                 .copy("Preview/preview.css"),
                 .copy("Preview/preview.js"),
             ]
         ),
         .testTarget(
-            name: "MarkEditorTests",
-            dependencies: ["MarkEditor"],
-            path: "Tests/MarkEditorTests"
+            name: "LaudaTests",
+            dependencies: ["Lauda"],
+            path: "Tests/LaudaTests"
         ),
     ]
 )

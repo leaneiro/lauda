@@ -1,6 +1,6 @@
-# Boas-vindas ao MarkEditor 👋
+# Boas-vindas ao Lauda 👋
 
-O MarkEditor é um editor de Markdown com dois painéis: você escreve à esquerda e vê o resultado formatado à direita, atualizado enquanto digita.
+O Lauda é um editor de Markdown com dois painéis: você escreve à esquerda e vê o resultado formatado à direita, atualizado enquanto digita.
 
 Este é um documento sem nome, então fique à vontade para experimentar. Para guardar, salve com ⌘S; se não quiser, é só fechar. Você pode reabrir este guia quando quiser em **Ajuda → Guia de Boas-Vindas**.
 
@@ -23,7 +23,7 @@ Digite `->` ou `<-` fora de código e eles viram → e ←.
 
 ### Tarefas
 
-- [x] Abrir o MarkEditor
+- [x] Abrir o Lauda
 - [ ] Escrever algo incrível
 
 ## Código

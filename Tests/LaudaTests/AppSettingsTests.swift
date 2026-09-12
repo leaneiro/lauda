@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import MarkEditor
+@testable import Lauda
 
 /// Each test gets its own UserDefaults suite, so they can run in parallel
 /// and in any order without writing over each other (or over the real app's

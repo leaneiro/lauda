@@ -1,5 +1,5 @@
 #!/bin/bash
-# Builds MarkEditor.app from the SwiftPM executable + Support/Info.plist.
+# Builds Lauda.app from the SwiftPM executable + Support/Info.plist.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -7,16 +7,16 @@ CONFIGURATION="${1:-release}"
 
 swift build -c "$CONFIGURATION"
 
-BIN_PATH="$(swift build -c "$CONFIGURATION" --show-bin-path)/MarkEditor"
-APP_PATH="build/MarkEditor.app"
+BIN_PATH="$(swift build -c "$CONFIGURATION" --show-bin-path)/Lauda"
+APP_PATH="build/Lauda.app"
 
 rm -rf "$APP_PATH"
 mkdir -p "$APP_PATH/Contents/MacOS" "$APP_PATH/Contents/Resources"
 
 cp Support/Info.plist "$APP_PATH/Contents/Info.plist"
-cp "$BIN_PATH" "$APP_PATH/Contents/MacOS/MarkEditor"
+cp "$BIN_PATH" "$APP_PATH/Contents/MacOS/Lauda"
 
-# Stamp the build with the git hash so "Sobre o MarkEditor" identifies it.
+# Stamp the build with the git hash so "About Lauda" identifies it.
 GIT_HASH="$(git rev-parse --short HEAD 2>/dev/null || echo dev)"
 /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $GIT_HASH" "$APP_PATH/Contents/Info.plist"
 
@@ -39,8 +39,8 @@ if [[ -d Resources/Welcome ]]; then
     cp -R Resources/Welcome/ "$APP_PATH/Contents/Resources/"
 fi
 
-# The preview's stylesheet and script (Sources/MarkEditor/Preview).
-cp Sources/MarkEditor/Preview/preview.css Sources/MarkEditor/Preview/preview.js "$APP_PATH/Contents/Resources/"
+# The preview's stylesheet and script (Sources/Lauda/Preview).
+cp Sources/Lauda/Preview/preview.css Sources/Lauda/Preview/preview.js "$APP_PATH/Contents/Resources/"
 
 codesign --force --sign - "$APP_PATH"
 

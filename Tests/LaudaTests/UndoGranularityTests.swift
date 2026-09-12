@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 import Testing
-@testable import MarkEditor
+@testable import Lauda
 
 /// Exercises the real Coordinator + NSTextView undo pipeline: typing goes
 /// through insertText (delegate callbacks included) with a runloop turn per

@@ -1,13 +1,13 @@
 ---
 name: Translation review
-about: Help review MarkEditor in your language
+about: Help review Lauda in your language
 title: "Translation review: [language]"
 labels: ["help wanted", "translation"]
 ---
 
 **Language:**
 
-MarkEditor ships machine-drafted translations that still need a native
+Lauda ships machine-drafted translations that still need a native
 speaker's review. If you speak this language, a review of the ~60 short
 strings takes about 10 minutes. The steps are in `CONTRIBUTING.md`, under
 "Reviewing a draft".

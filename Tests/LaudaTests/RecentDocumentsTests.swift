@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import MarkEditor
+@testable import Lauda
 
 /// Own defaults suite and own folder per test, so order and parallelism
 /// don't matter.

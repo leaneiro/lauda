@@ -1,4 +1,4 @@
-# Contributing to MarkEditor
+# Contributing to Lauda
 
 Thanks for your interest in helping! Translations are the easiest way to
 contribute, and they make a real difference for everyone using the app in
@@ -6,7 +6,7 @@ your language.
 
 ## Translations
 
-MarkEditor follows the macOS system language, with English as the base
+Lauda follows the macOS system language, with English as the base
 language.
 
 | Language | Status |
@@ -77,7 +77,7 @@ the app in a given language, such as `de`, `es`, `fr`, `ja`, `zh-Hans` or
 
 ```bash
 make app
-open build/MarkEditor.app --args -AppleLanguages "(de)"
+open build/Lauda.app --args -AppleLanguages "(de)"
 ```
 
 Check the menus, the Settings window (⌘,) and the status bar at the bottom
@@ -88,7 +88,7 @@ System Settings → General → Language & Region → Applications.
 
 ## Working on the code
 
-MarkEditor is a plain SwiftPM package, with no Xcode project. `make run`
+Lauda is a plain SwiftPM package, with no Xcode project. `make run`
 builds and opens the app, and `swift test` runs the unit tests. CI builds
 the package, runs the tests and assembles the app bundle for every pull
 request.
@@ -117,7 +117,7 @@ which pumps the runloop while NSTextView coalesces undo by timing, and
   default. Views bind to it with `@AppStorage(AppSettings.…)`, and other
   code reads `UserDefaults.standard[AppSettings.…]`.
 - Failures worth diagnosing go to the system log through `Log`
-  (`os.Logger`, subsystem `dev.leandro.markeditor`). Never log document
+  (`os.Logger`, subsystem `dev.leandro.lauda`). Never log document
   text or file names: people may attach these logs to public bug reports.
 
 ### The editor uses TextKit 1 on purpose
@@ -142,7 +142,7 @@ fences included. Don't remove that line.
 ### Preview files
 
 The preview's stylesheet and script are plain files:
-`Sources/MarkEditor/Preview/preview.css` and `preview.js`. `PreviewTemplate`
+`Sources/Lauda/Preview/preview.css` and `preview.js`. `PreviewTemplate`
 loads them, `Scripts/build-app.sh` copies them into the app, and tests read
 them from the package's resource bundle.
 

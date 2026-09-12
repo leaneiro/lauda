@@ -1,6 +1,6 @@
-# Welcome to MarkEditor 👋
+# Welcome to Lauda 👋
 
-MarkEditor is a Markdown editor with two panes: you write on the left and see the formatted result on the right, updated as you type.
+Lauda is a Markdown editor with two panes: you write on the left and see the formatted result on the right, updated as you type.
 
 This is an untitled document, so feel free to experiment. To keep it, save it with ⌘S; otherwise just close it. You can reopen this guide anytime from **Help → Welcome Guide**.
 
@@ -23,7 +23,7 @@ Type `->` or `<-` outside code and they become → and ←.
 
 ### Tasks
 
-- [x] Open MarkEditor
+- [x] Open Lauda
 - [ ] Write something great
 
 ## Code

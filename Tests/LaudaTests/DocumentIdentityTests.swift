@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import MarkEditor
+@testable import Lauda
 
 struct DocumentIdentityTests {
     /// Two windows can hold the same text; a save must mark only its own.

@@ -7,9 +7,9 @@ app:
 	Scripts/build-app.sh release
 
 run: app
-	@osascript -e 'quit app "MarkEditor"' 2>/dev/null || true
+	@osascript -e 'quit app "Lauda"' 2>/dev/null || true
 	@sleep 1
-	open build/MarkEditor.app
+	open build/Lauda.app
 
 dev:
 	swift build

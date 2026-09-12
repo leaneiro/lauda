@@ -1,11 +1,11 @@
 import Foundation
 import Testing
-@testable import MarkEditor
+@testable import Lauda
 
 struct DocumentSchemeHandlerTests {
     private func resolve(_ path: String) -> URL? {
         DocumentSchemeHandler.resolveTarget(
-            for: URL(string: "markeditor-doc://\(path)")!,
+            for: URL(string: "lauda-doc://\(path)")!,
             baseDirectory: URL(fileURLWithPath: "/Users/someone/Documents/notes")
         )
     }

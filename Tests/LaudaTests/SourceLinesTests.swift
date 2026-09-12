@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import MarkEditor
+@testable import Lauda
 
 struct SourceLinesTests {
     @Test(arguments: [("", 1), ("a", 1), ("a\nb", 2), ("a\nb\n", 3)])

@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct MarkEditorApp: App {
+struct LaudaApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     var body: some Scene {

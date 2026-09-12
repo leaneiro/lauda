@@ -6,7 +6,7 @@ import UniformTypeIdentifiers
 /// image files, only inside the document's directory — page JS gets no general
 /// file-system access (a malicious .md must not be able to read local files).
 final class DocumentSchemeHandler: NSObject, WKURLSchemeHandler {
-    static let scheme = "markeditor-doc"
+    static let scheme = "lauda-doc"
     static let baseURL = URL(string: "\(scheme):///")!
 
     /// The open document's folder; updated when the file is (re)saved elsewhere.

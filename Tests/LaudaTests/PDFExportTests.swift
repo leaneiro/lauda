@@ -1,7 +1,7 @@
 import Foundation
 import PDFKit
 import Testing
-@testable import MarkEditor
+@testable import Lauda
 
 @MainActor
 @Suite(.serialized)
