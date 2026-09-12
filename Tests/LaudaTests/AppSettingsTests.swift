@@ -39,8 +39,15 @@ final class AppSettingsTests {
         AppSettings.restoreDefaults(in: defaults)
 
         #expect(defaults[AppSettings.editorFontSize] == 14)
-        #expect(defaults[AppSettings.appearanceMode] == AppearanceMode.light.rawValue)
+        #expect(defaults[AppSettings.appearanceMode] == AppearanceMode.auto.rawValue)
         #expect(defaults[AppSettings.lastViewMode] == ViewMode.previewOnly.rawValue)
+    }
+
+    /// The app follows the system unless the user pins a mode, and the
+    /// picker offers Automatic before Light and Dark.
+    @Test func appearanceIsAutomaticByDefaultAndListedFirst() {
+        #expect(AppearanceMode(rawValue: defaults[AppSettings.appearanceMode]) == .auto)
+        #expect(AppearanceMode.allCases == [.auto, .light, .dark])
     }
 
     @Test func everySettingHasItsOwnKey() {

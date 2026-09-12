@@ -35,7 +35,7 @@ and see the rendered Markdown on the right, updated as you type.
 - **Small comforts**: pasting a URL over a selection creates `[text](url)`;
   `->` and `<-` become → and ← outside code; the status bar shows the word
   count, reading time and save state.
-- **Settings** (⌘,): appearance (light, dark or automatic; light by default),
+- **Settings** (⌘,): appearance (automatic, light or dark; automatic by default),
   editor font and size, preview font, size and line height, and strict line
   breaks. By default each Return breaks the line in the preview; in strict
   mode, standard Markdown rules apply.

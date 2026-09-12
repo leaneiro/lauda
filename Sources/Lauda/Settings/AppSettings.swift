@@ -12,7 +12,7 @@ struct Setting<Value> {
 /// reads `UserDefaults.standard[AppSettings.editorFontSize]`.
 enum AppSettings {
     // The Settings window, reset by Restore Defaults.
-    static let appearanceMode = Setting(key: "appearanceMode", defaultValue: AppearanceMode.light.rawValue)
+    static let appearanceMode = Setting(key: "appearanceMode", defaultValue: AppearanceMode.auto.rawValue)
     static let editorFontName = Setting(key: "editorFontName", defaultValue: FontOption.systemMono)
     static let editorFontSize = Setting(key: "editorFontSize", defaultValue: 14.0)
     static let previewFontName = Setting(key: "previewFontName", defaultValue: FontOption.systemSans)
@@ -133,10 +133,11 @@ enum PreviewWidth: Int, CaseIterable, Identifiable {
     }
 }
 
+/// Listed in the Settings picker in declaration order, Automatic first.
 enum AppearanceMode: String, CaseIterable, Identifiable {
+    case auto
     case light
     case dark
-    case auto
 
     var id: String { rawValue }
 
@@ -159,7 +160,7 @@ enum AppearanceMode: String, CaseIterable, Identifiable {
     }
 
     static var stored: AppearanceMode {
-        AppearanceMode(rawValue: UserDefaults.standard[AppSettings.appearanceMode]) ?? .light
+        AppearanceMode(rawValue: UserDefaults.standard[AppSettings.appearanceMode]) ?? .auto
     }
 }
 
