@@ -36,6 +36,13 @@ struct OutlineTests {
         #expect(Outline.items(in: "#\n\n## Real").map(\.title) == ["Real"])
     }
 
+    /// The welcome guide sets the app's name in a styled span; the outline
+    /// lists the words, not the tags.
+    @Test func inlineHTMLTagsAreLeftOutOfTitles() {
+        let items = Outline.items(in: "# Welcome to <span class=\"wordmark\">Lauda</span> 👋\n\n## Plain *emphasis*")
+        #expect(items.map(\.title) == ["Welcome to Lauda 👋", "Plain emphasis"])
+    }
+
     @Test func documentWithoutHeadingsHasEmptyOutline() {
         #expect(Outline.items(in: "just text\n\n- list").isEmpty)
     }

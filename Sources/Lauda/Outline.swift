@@ -17,11 +17,25 @@ enum Outline {
         return collector.items
     }
 
+    /// A heading's text as the outline shows it: like `plainText`, but raw
+    /// HTML tags are left out, so `<span class="wordmark">Lauda</span>`
+    /// reads as "Lauda".
+    static func title(of heading: Heading) -> String {
+        func text(_ markup: Markup) -> String {
+            if markup is InlineHTML { return "" }
+            guard markup.childCount > 0 else {
+                return (markup as? PlainTextConvertibleMarkup)?.plainText ?? ""
+            }
+            return markup.children.map(text).joined()
+        }
+        return text(heading)
+    }
+
     private struct HeadingCollector: MarkupWalker {
         var items: [OutlineItem] = []
 
         mutating func visitHeading(_ heading: Heading) {
-            let title = heading.plainText.trimmingCharacters(in: .whitespaces)
+            let title = Outline.title(of: heading).trimmingCharacters(in: .whitespaces)
             guard !title.isEmpty, let range = heading.range else { return }
             items.append(OutlineItem(
                 id: items.count,
