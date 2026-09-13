@@ -42,8 +42,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// stay forgotten, so shortly after the close we resync the system
     /// list from our store.
     @objc private func windowWillClose(_ notification: Notification) {
-        guard let window = notification.object as? NSWindow,
-              let url = window.representedURL else { return }
+        guard let window = notification.object as? NSWindow else { return }
+        if SettingsWindow.shouldClose(whenClosing: window, among: NSApp.windows) {
+            DispatchQueue.main.async { SettingsWindow.current?.close() }
+        }
+        guard let url = window.representedURL else { return }
         if RecentDocuments.contains(url) {
             RecentDocuments.note(url)
         }

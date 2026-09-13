@@ -10,6 +10,17 @@ struct SettingsView: View {
     @AppStorage(AppSettings.strictLineBreaks) private var strictLineBreaks: Bool
 
     var body: some View {
+        settingsForm
+            // Float above the documents, so a click in a document window
+            // can't bury Settings behind it. They still hide with the app.
+            .background(WindowConfigurator { window in
+                window.level = .floating
+                window.hidesOnDeactivate = true
+                SettingsWindow.current = window
+            })
+    }
+
+    private var settingsForm: some View {
         Form {
             Section("General") {
                 Picker("Appearance", selection: $appearanceMode) {
