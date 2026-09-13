@@ -52,6 +52,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// File > Open. The document controller's own panel isn't modal, so a
+    /// click on a document window sends it behind that window, where it's
+    /// easy to lose. Handled here, ahead of the controller in the responder
+    /// chain, the panel runs app-modal and stays in front until dismissed.
+    /// The menu item stays native: replacing it made SwiftUI bring the
+    /// original back whenever it rebuilt the menu bar.
+    @objc func openDocument(_ sender: Any?) {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = MarkdownDocument.readableContentTypes
+        panel.allowsMultipleSelection = true
+        panel.canChooseDirectories = false
+        guard panel.runModal() == .OK else { return }
+        for url in panel.urls {
+            NSDocumentController.shared.openDocument(withContentsOf: url, display: true) { _, _, error in
+                if let error {
+                    Log.documents.failure("Opening a document", error)
+                    NSApp.presentError(error)
+                }
+            }
+        }
+    }
+
     /// "Clear Menu" targets the responder chain; the app delegate comes
     /// before NSDocumentController, so we clear our persisted copy too —
     /// otherwise the cleared list would resurrect on the next launch.
