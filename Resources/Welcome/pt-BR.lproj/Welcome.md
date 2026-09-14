@@ -1,6 +1,6 @@
-# Boas-vindas ao Lauda 👋
+# Boas-vindas ao <span class="wordmark">Lauda</span> 👋
 
-O Lauda é um editor de Markdown com dois painéis: você escreve à esquerda e vê o resultado formatado à direita, atualizado enquanto digita.
+O <span class="wordmark">Lauda</span> é um editor de Markdown com dois painéis: você escreve à esquerda e vê o resultado formatado à direita, atualizado enquanto digita.
 
 Este é um documento sem nome, então fique à vontade para experimentar. Para guardar, salve com ⌘S; se não quiser, é só fechar. Você pode reabrir este guia quando quiser em **Ajuda → Guia de Boas-Vindas**.
 
@@ -23,7 +23,7 @@ Digite `->` ou `<-` fora de código e eles viram → e ←.
 
 ### Tarefas
 
-- [x] Abrir o Lauda
+- [x] Abrir o <span class="wordmark">Lauda</span>
 - [ ] Escrever algo incrível
 
 ## Código

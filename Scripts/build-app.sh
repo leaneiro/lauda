@@ -40,7 +40,9 @@ if [[ -d Resources/Welcome ]]; then
 fi
 
 # The preview's stylesheet and script (Sources/Lauda/Preview).
-cp Sources/Lauda/Preview/preview.css Sources/Lauda/Preview/preview.js "$APP_PATH/Contents/Resources/"
+cp Sources/Lauda/Preview/preview.css Sources/Lauda/Preview/preview.js \
+    Sources/Lauda/Preview/LaudaWordmark.woff Sources/Lauda/Preview/Newsreader-OFL.txt \
+    "$APP_PATH/Contents/Resources/"
 
 codesign --force --sign - "$APP_PATH"
 

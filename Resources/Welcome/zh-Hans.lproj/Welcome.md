@@ -1,6 +1,6 @@
-# 欢迎使用 Lauda 👋
+# 欢迎使用 <span class="wordmark">Lauda</span> 👋
 
-Lauda 是一款双栏 Markdown 编辑器：你在左侧书写，右侧会随着输入实时显示排版后的结果。
+<span class="wordmark">Lauda</span> 是一款双栏 Markdown 编辑器：你在左侧书写，右侧会随着输入实时显示排版后的结果。
 
 这是一份未命名的文稿，尽管随意尝试。如果想保留，请按 ⌘S 保存；否则直接关闭即可。你可以随时通过**帮助 → 欢迎指南**重新打开本指南。
 
@@ -23,7 +23,7 @@ Lauda 是一款双栏 Markdown 编辑器：你在左侧书写，右侧会随着�
 
 ### 任务
 
-- [x] 打开 Lauda
+- [x] 打开 <span class="wordmark">Lauda</span>
 - [ ] 写点精彩的内容
 
 ## 代码

@@ -58,6 +58,17 @@ struct ExportTests {
         #expect(html.contains("<pre><code"), "got: \(html)")
     }
 
+    /// Exports carry the wordmark face themselves, so the app's name keeps its
+    /// typeface in HTML and PDF, offline.
+    @Test func stylesEmbedTheWordmarkFont() throws {
+        let styles = PreviewTemplate.styles
+        #expect(styles.contains(#"font-family: "Lauda Wordmark""#))
+        let start = try #require(styles.range(of: "data:font/woff;base64,"))
+        let encoded = styles[start.upperBound...].prefix { $0 != "\"" }
+        let font = try #require(Data(base64Encoded: String(encoded)))
+        #expect(font.prefix(4) == Data("wOFF".utf8))
+    }
+
     /// The style is passed in, not read from the running Mac's settings, so
     /// the test says the same thing on every machine.
     @Test func standaloneHTMLAppliesTheGivenStyle() {

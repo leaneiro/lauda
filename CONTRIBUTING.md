@@ -59,6 +59,8 @@ Help → Welcome Guide: `Resources/Welcome/<language>.lproj/Welcome.md`. The
 versions other than English and Portuguese are machine drafts too. Review
 them like the strings, and keep the Markdown structure (headings, lists,
 the code block and the table), since the guide demonstrates each feature.
+Keep the app's name wrapped in `<span class="wordmark">Lauda</span>`: the
+preview sets it in the typeface of the app icon.
 
 ### Adding a new language
 
@@ -145,6 +147,14 @@ The preview's stylesheet and script are plain files:
 `Sources/Lauda/Preview/preview.css` and `preview.js`. `PreviewTemplate`
 loads them, `Scripts/build-app.sh` copies them into the app, and tests read
 them from the package's resource bundle.
+
+`LaudaWordmark.woff`, next to them, is Newsreader SemiBold at the 72 pt
+optical size, the typeface of the icon's L, cut down to the letters of
+"Lauda". `PreviewTemplate` embeds it as a data URI for the `.wordmark`
+class, so it also travels inside exported HTML and PDF. The font is under
+the SIL Open Font License (`Newsreader-OFL.txt`), and
+`Scripts/make-wordmark-font.sh` regenerates it from the Newsreader variable
+font (it needs fontTools).
 
 ### Preview security
 

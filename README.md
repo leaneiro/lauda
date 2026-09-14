@@ -99,3 +99,7 @@ for how to review a language, add a new one and test it.
 ## License
 
 Lauda is released under the MIT License. See [LICENSE](LICENSE).
+
+The preview embeds a small subset of [Newsreader](https://github.com/productiontype/Newsreader),
+used for the app's name, under the SIL Open Font License 1.1
+(`Sources/Lauda/Preview/Newsreader-OFL.txt`).

@@ -19,6 +19,8 @@ let package = Package(
             resources: [
                 .copy("Preview/preview.css"),
                 .copy("Preview/preview.js"),
+                .copy("Preview/LaudaWordmark.woff"),
+                .copy("Preview/Newsreader-OFL.txt"),
             ]
         ),
         .testTarget(

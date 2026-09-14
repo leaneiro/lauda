@@ -122,6 +122,14 @@ img { max-width: 100%; border-radius: 6px; }
 ::selection { background: var(--selection); }
 mark.find-hit { background: rgba(255, 214, 10, 0.30); color: inherit; border-radius: 2px; padding: 0; }
 mark.find-hit.current { background: #ff9f0a; color: #1d1d1f; }
+/* The app's name as drawn in its icon, wherever a document wraps it in
+   <span class="wordmark"> (the welcome guide does). The embedded face only
+   has the letters of "Lauda"; anything else falls back to Georgia. */
+.wordmark {
+    font-family: "Lauda Wordmark", Georgia, serif;
+    font-weight: 600;
+}
+
 @media print {
     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     article { max-width: none; padding: 0; }

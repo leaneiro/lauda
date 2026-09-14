@@ -40,6 +40,12 @@ struct PreviewSecurityTests {
         #expect(PreviewTemplate.script.contains("function setContent("))
     }
 
+    /// Fonts only come embedded (the wordmark face), never from the network.
+    @Test func previewPageLoadsFontsOnlyFromDataURIs() {
+        let policy = PreviewTemplate.previewContentSecurityPolicy
+        #expect(policy.contains("font-src data:; "), "\(policy)")
+    }
+
     @Test func previewPageStillShowsImagesFromEverywhere() {
         let policy = PreviewTemplate.previewContentSecurityPolicy
         #expect(policy.contains("img-src \(DocumentSchemeHandler.scheme): data: https: http:"), "\(policy)")

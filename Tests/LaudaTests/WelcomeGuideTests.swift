@@ -16,7 +16,12 @@ struct WelcomeGuideTests {
         let outline = Outline.items(in: text)
         #expect(outline.first?.level == 1, "\(language)")
         #expect(outline.count == 8, "\(language): the guide shows off the outline")
+        let html = HTMLRenderer.render(text)
         // Emphasis next to CJK punctuation can fail to parse; none may leak.
-        #expect(!HTMLRenderer.render(text).contains("**"), "\(language)")
+        #expect(!html.contains("**"), "\(language)")
+        // The app's name is set in the icon's typeface wherever the guide names it.
+        #expect(html.contains(#"<span class="wordmark">Lauda</span>"#), "\(language)")
+        #expect(outline.first?.title.contains("Lauda") == true, "\(language)")
+        #expect(outline.first?.title.contains("<") == false, "\(language)")
     }
 }
