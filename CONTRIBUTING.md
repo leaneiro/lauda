@@ -119,7 +119,7 @@ which pumps the runloop while NSTextView coalesces undo by timing, and
   default. Views bind to it with `@AppStorage(AppSettings.…)`, and other
   code reads `UserDefaults.standard[AppSettings.…]`.
 - Failures worth diagnosing go to the system log through `Log`
-  (`os.Logger`, subsystem `dev.leandro.lauda`). Never log document
+  (`os.Logger`, subsystem `com.carneirolabs.lauda`). Never log document
   text or file names: people may attach these logs to public bug reports.
 
 ### The editor uses TextKit 1 on purpose

@@ -2,11 +2,11 @@ import Foundation
 import os
 
 /// System log for the rare failures worth diagnosing; they show in Console
-/// under the subsystem dev.leandro.lauda. Messages leave out document
+/// under the subsystem com.carneirolabs.lauda. Messages leave out document
 /// text and file names, since people may attach these logs to public bug
 /// reports.
 enum Log {
-    private static let subsystem = "dev.leandro.lauda"
+    private static let subsystem = "com.carneirolabs.lauda"
 
     static let preview = Logger(subsystem: subsystem, category: "preview")
     static let export = Logger(subsystem: subsystem, category: "export")
