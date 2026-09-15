@@ -32,3 +32,22 @@ jobs:
       # Also compiles the string catalogs, so a broken translation fails here.
       - name: Build the app bundle
         run: Scripts/build-app.sh release
+
+  # The app bundle is universal, but the job above only runs arm64 code.
+  # This one builds and tests natively on an Intel Mac.
+  test-intel:
+    runs-on: macos-15-intel
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Toolchain
+        run: |
+          uname -m
+          xcodebuild -version
+          swift --version
+
+      - name: Build
+        run: swift build
+
+      - name: Test
+        run: swift test

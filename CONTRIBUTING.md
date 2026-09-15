@@ -91,9 +91,10 @@ System Settings → General → Language & Region → Applications.
 ## Working on the code
 
 Lauda is a plain SwiftPM package, with no Xcode project. `make run`
-builds and opens the app, and `swift test` runs the unit tests. CI builds
-the package, runs the tests and assembles the app bundle for every pull
-request.
+builds and opens the app, and `swift test` runs the unit tests. For every
+pull request, CI builds the package, runs the tests and assembles the
+universal app bundle on Apple silicon, then builds and tests again on an
+Intel Mac.
 
 Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/),
 for example `fix(preview): …` or `feat(editor): …`.
