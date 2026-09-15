@@ -8,22 +8,21 @@ struct StatusBar: View {
     let lastSavedText: String?
     let lastSaveDate: Date?
 
-    /// Words in the document; nil until the first count finishes.
-    @State private var wordCount: Int?
+    @State private var wordCounter = WordCountModel()
 
     var body: some View {
         HStack(spacing: 16) {
-            if let wordCount {
+            if let wordCount = wordCounter.wordCount {
                 Text("\(wordCount) words")
             }
             Text("\(text.count) characters")
-            if let readingTime = wordCount.flatMap(ReadingTime.label(forWordCount:)) {
+            if let readingTime = wordCounter.wordCount.flatMap(ReadingTime.label(forWordCount:)) {
                 Text(readingTime)
             }
             Spacer()
             saveStatusView
         }
-        .task(id: text) { await updateWordCount() }
+        .task(id: text) { await wordCounter.update(for: text) }
         .font(.caption)
         .foregroundStyle(.secondary)
         .padding(.horizontal, 20)
@@ -31,21 +30,6 @@ struct StatusBar: View {
         .background(.bar)
         .overlay(alignment: .top) {
             Divider()
-        }
-    }
-
-    /// Counting walks the whole text (slow for long Japanese or Chinese
-    /// documents), so while typing it waits for a pause and runs off the
-    /// main thread. The first count, when the window opens, runs right away.
-    private func updateWordCount() async {
-        if wordCount != nil {
-            try? await Task.sleep(for: .milliseconds(300))
-            if Task.isCancelled { return }
-        }
-        let text = self.text
-        let count = await Task.detached(priority: .userInitiated) { WordCount.count(in: text) }.value
-        if !Task.isCancelled {
-            wordCount = count
         }
     }
 
