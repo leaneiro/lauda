@@ -130,6 +130,12 @@ mark.find-hit.current { background: #ff9f0a; color: #1d1d1f; }
     font-weight: 600;
 }
 
+/* Set for an instant while the preview reflows and puts the top line back
+   (preview.js); the width transition would otherwise move the text again. */
+.reflowing, .reflowing * {
+    transition: none !important;
+}
+
 @media print {
     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     article { max-width: none; padding: 0; }

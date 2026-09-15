@@ -170,7 +170,7 @@ struct PreviewWebView: NSViewRepresentable {
             lastContentWidthRem = rem
             guard let webView, isReady else { return }
             webView.callAsyncJavaScript(
-                "document.documentElement.style.setProperty('--article-max', rem + 'rem')",
+                "setContentWidth(rem)",
                 arguments: ["rem": rem],
                 in: nil,
                 in: PreviewWebView.contentWorld

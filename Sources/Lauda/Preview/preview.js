@@ -2,6 +2,12 @@
 // one are echoes (or reflows), not the user scrolling the preview.
 let suppressScrollEventsUntil = 0;
 
+// Where the page should stay when its text reflows (a narrower or wider pane,
+// the column width, the font): the arguments of the last setScrollPosition
+// call, the line the reader scrolled to here, or { atEnd: true }. The browser
+// keeps the pixel offset instead, which by then shows another line.
+let lastPosition = null;
+
 // Block-level DOM diff: only blocks that actually changed are replaced,
 // so typing repaints one paragraph instead of relaying the whole page.
 // Parsing via a detached div's innerHTML keeps <script> tags inert, and
@@ -36,10 +42,58 @@ function setContent(html, lines, lineCount) {
     }
 }
 function setStyle(family, size, lineHeight) {
-    const style = document.documentElement.style;
-    style.setProperty("--pfont", family);
-    style.setProperty("--psize", size + "px");
-    style.setProperty("--plh", lineHeight);
+    reflowing(() => {
+        const style = document.documentElement.style;
+        style.setProperty("--pfont", family);
+        style.setProperty("--psize", size + "px");
+        style.setProperty("--plh", lineHeight);
+    });
+}
+function setContentWidth(rem) {
+    reflowing(() => {
+        document.documentElement.style.setProperty("--article-max", rem + "rem");
+    });
+}
+// Applies a change that reflows the text (column width, font) and puts the
+// page back at lastPosition. The change applies at once: an animated reflow
+// would keep moving the text after the page was put back.
+function reflowing(change) {
+    if (!lastPosition) {
+        rememberTopOfPage();
+    }
+    suppressScrollEventsUntil = Date.now() + 300;
+    const root = document.documentElement;
+    root.classList.add("reflowing");
+    change();
+    document.body.getBoundingClientRect(); // lay out the new text now
+    realign();
+    root.classList.remove("reflowing");
+}
+// Takes the current position as lastPosition: the end of the page, or the
+// line at the top.
+function rememberTopOfPage() {
+    const max = maxScroll();
+    const y = window.scrollY;
+    const points = lineAnchors();
+    if (max > 0 && y >= max - 1) {
+        lastPosition = { atEnd: true };
+    } else if (points) {
+        lastPosition = {
+            line: interpolate(points, y, 1, 0), hasLine: true, endLine: 0, hasEndLine: false,
+            fraction: max > 0 ? y / max : 0, toEndDistance: 0, convergence: 1,
+        };
+    }
+}
+// Puts the page back at lastPosition after its text reflowed.
+function realign() {
+    if (!lastPosition) { return; }
+    if (lastPosition.atEnd) {
+        suppressScrollEventsUntil = Date.now() + 200;
+        window.scrollTo(0, maxScroll());
+        return;
+    }
+    const p = lastPosition;
+    setScrollPosition(p.line, p.hasLine, p.endLine, p.hasEndLine, p.fraction, p.toEndDistance, p.convergence);
 }
 function maxScroll() {
     return Math.max(document.documentElement.scrollHeight - window.innerHeight, 0);
@@ -75,6 +129,7 @@ function interpolate(points, value, from, to) {
     return points[points.length - 1][to];
 }
 function setScrollPosition(line, hasLine, endLine, hasEndLine, fraction, toEndDistance, convergence) {
+    lastPosition = { line, hasLine, endLine, hasEndLine, fraction, toEndDistance, convergence };
     const max = maxScroll();
     if (max <= 0) { return; }
     const points = hasLine ? lineAnchors() : null;
@@ -145,9 +200,12 @@ function findRun(query, forward, restart) {
     return [findState.index + 1, findState.marks.length];
 }
 // Resizes re-flow content and can fire scroll events with drifted
-// positions — those are not the user scrolling.
+// A resize (a view mode switch, the divider, the window) reflows the text:
+// stay at lastPosition, and don't report the drifted offsets as the reader
+// scrolling.
 window.addEventListener("resize", () => {
     suppressScrollEventsUntil = Date.now() + 300;
+    realign();
 });
 window.addEventListener("scroll", () => {
     if (Date.now() < suppressScrollEventsUntil) { return; }
@@ -158,5 +216,9 @@ window.addEventListener("scroll", () => {
     const points = lineAnchors();
     const line = points ? interpolate(points, y, 1, 0) : null;
     const endLine = points ? interpolate(points, max, 1, 0) : null;
+    lastPosition = max > 0 && y >= max - 1
+        ? { atEnd: true }
+        : { line: line === null ? 0 : line, hasLine: line !== null, endLine: 0, hasEndLine: false,
+            fraction, toEndDistance: 0, convergence: 1 };
     window.webkit.messageHandlers.previewScrolled.postMessage([line, endLine, fraction, toEndDistance]);
 }, { passive: true });
