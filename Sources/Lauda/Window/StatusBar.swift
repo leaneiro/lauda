@@ -50,26 +50,17 @@ struct StatusBar: View {
     }
 
     private var saveStatusView: some View {
-        let status = saveStatus
+        let status = SaveStatus(
+            text: text,
+            fileURL: fileURL,
+            lastSavedText: lastSavedText,
+            lastSaveDate: lastSaveDate
+        )
         return HStack(spacing: 5) {
             Image(systemName: status.icon)
                 .foregroundStyle(status.color)
             Text(status.label)
         }
         .help("macOS saves automatically; ⌘S saves right away.")
-    }
-
-    private var saveStatus: (icon: String, label: String, color: Color) {
-        if fileURL == nil && lastSavedText == nil {
-            return ("circle.dotted", String(localized: "Not saved yet"), .secondary)
-        }
-        if text == lastSavedText {
-            if let date = lastSaveDate {
-                let time = date.formatted(date: .omitted, time: .shortened)
-                return ("checkmark.circle.fill", String(localized: "Saved · \(time)"), .green)
-            }
-            return ("checkmark.circle.fill", String(localized: "Saved"), .green)
-        }
-        return ("ellipsis.circle.fill", String(localized: "Editing…"), .orange)
     }
 }
