@@ -119,10 +119,11 @@ struct ContentView: View {
         }
         .focusedSceneValue(\.viewMode, viewModeBinding)
         .focusedSceneValue(\.editorActions, editorActions)
-        .focusedSceneValue(\.exportActions, ExportActions(
-            exportHTML: exportHTML,
-            exportPDF: exportPDF
-        ))
+        .focusedSceneValue(\.exportActions, WindowExporter(
+            markdown: { document.text },
+            fileURL: fileURL,
+            window: hostWindow
+        ).actions)
         .focusedSceneValue(\.findActions, FindActions(
             find: { findSession.open(in: viewMode) },
             findNext: { findSession.step(forward: true, in: viewMode) },
@@ -163,39 +164,11 @@ struct ContentView: View {
 
     private func navigate(to item: OutlineItem) {
         outlinePresented = false
-        let lineCount = max(SourceLines.count(in: document.text), 1)
-        scrollSync = ScrollSync(
-            line: Double(item.line),
-            fraction: CGFloat(item.line) / CGFloat(lineCount),
-            source: .navigation
-        )
-        if viewMode != .previewOnly {
-            editorActions.placeCaret(atSourceLine: item.line)
+        let jump = OutlineJump(to: item, in: document.text, mode: viewMode)
+        scrollSync = jump.scrollSync
+        if let line = jump.caretLine {
+            editorActions.placeCaret(atSourceLine: line)
         }
-    }
-
-    // MARK: - Export
-
-    private var exportTitle: String {
-        fileURL?.deletingPathExtension().lastPathComponent ?? String(localized: "Untitled")
-    }
-
-    private func exportHTML() {
-        DocumentExporter.promptAndExportHTML(
-            markdown: document.text,
-            title: exportTitle,
-            baseDirectory: fileURL?.deletingLastPathComponent(),
-            window: hostWindow.window
-        )
-    }
-
-    private func exportPDF() {
-        DocumentExporter.promptAndExportPDF(
-            markdown: document.text,
-            title: exportTitle,
-            baseDirectory: fileURL?.deletingLastPathComponent(),
-            window: hostWindow.window
-        )
     }
 
     /// Width level applies only in full-preview mode; other modes stay normal.

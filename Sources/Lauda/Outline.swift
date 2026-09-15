@@ -47,6 +47,25 @@ enum Outline {
     }
 }
 
+/// Where picking a heading in the outline takes the window: both panes
+/// scroll to its line, and the editor's caret moves there when the editor
+/// is showing.
+struct OutlineJump: Equatable {
+    let scrollSync: ScrollSync
+    /// The line for the editor's caret; nil when the editor is hidden.
+    let caretLine: Int?
+
+    init(to item: OutlineItem, in text: String, mode: ViewMode) {
+        let lineCount = max(SourceLines.count(in: text), 1)
+        scrollSync = ScrollSync(
+            line: Double(item.line),
+            fraction: CGFloat(item.line) / CGFloat(lineCount),
+            source: .navigation
+        )
+        caretLine = mode == .previewOnly ? nil : item.line
+    }
+}
+
 /// Toolbar popover listing the headings; picking one scrolls both panes to it.
 struct OutlinePopover: View {
     let items: [OutlineItem]
