@@ -95,44 +95,23 @@ struct ContentView: View {
             DispatchQueue.main.async { runFind() }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            statusBar
+            StatusBar(
+                text: document.text,
+                fileURL: fileURL,
+                lastSavedText: lastSavedText,
+                lastSaveDate: lastSaveDate
+            )
         }
         .background(WindowReader(reference: hostWindow))
         .toolbar {
-            ToolbarItem(placement: .principal) {
-                Picker("View Mode", selection: viewModeBinding) {
-                    Label("Editor Only", systemImage: "doc.plaintext")
-                        .tag(ViewMode.editorOnly)
-                    Label("Editor and Preview", systemImage: "rectangle.split.2x1")
-                        .tag(ViewMode.split)
-                    Label("Preview Only", systemImage: "doc.richtext")
-                        .tag(ViewMode.previewOnly)
-                }
-                .pickerStyle(.segmented)
-                .labelStyle(.iconOnly)
-            }
-            ToolbarItem(placement: .automatic) {
-                Button {
-                    outlinePresented.toggle()
-                } label: {
-                    Label("Outline", systemImage: "list.bullet")
-                }
-                .help("Document outline")
-                .popover(isPresented: $outlinePresented, arrowEdge: .bottom) {
-                    OutlinePopover(items: Outline.items(in: document.text), onSelect: navigate(to:))
-                }
-            }
-            ToolbarItem(placement: .automatic) {
-                if viewMode == .previewOnly {
-                    Button {
-                        previewWidthLevel = effectivePreviewWidth.next.rawValue
-                    } label: {
-                        WidthLevelIcon(level: effectivePreviewWidth)
-                    }
-                    .help("Text width: \(effectivePreviewWidth.label). Next: \(effectivePreviewWidth.next.label)")
-                    .accessibilityLabel("Text width: \(effectivePreviewWidth.label)")
-                }
-            }
+            DocumentToolbar(
+                viewMode: viewModeBinding,
+                outlinePresented: $outlinePresented,
+                text: document.text,
+                previewWidth: effectivePreviewWidth,
+                onSelectHeading: navigate(to:),
+                onCycleWidth: { previewWidthLevel = effectivePreviewWidth.next.rawValue }
+            )
         }
         .focusedSceneValue(\.viewMode, viewModeBinding)
         .focusedSceneValue(\.editorActions, editorActions)
@@ -173,29 +152,6 @@ struct ContentView: View {
                   save.documentID == document.id else { return }
             lastSavedText = save.text
             lastSaveDate = Date()
-        }
-    }
-
-    private var statusBar: some View {
-        HStack(spacing: 16) {
-            if let wordCount {
-                Text("\(wordCount) words")
-            }
-            Text("\(document.text.count) characters")
-            if let readingTime = wordCount.flatMap(ReadingTime.label(forWordCount:)) {
-                Text(readingTime)
-            }
-            Spacer()
-            saveStatusView
-        }
-        .task(id: document.text) { await updateWordCount() }
-        .font(.caption)
-        .foregroundStyle(.secondary)
-        .padding(.horizontal, 20)
-        .padding(.vertical, 5)
-        .background(.bar)
-        .overlay(alignment: .top) {
-            Divider()
         }
     }
 
@@ -312,48 +268,6 @@ struct ContentView: View {
     private var effectivePreviewWidth: PreviewWidth {
         guard viewMode == .previewOnly else { return .normal }
         return PreviewWidth(rawValue: previewWidthLevel) ?? .normal
-    }
-
-    /// Words in the document; nil until the first count finishes.
-    @State private var wordCount: Int?
-
-    /// Counting walks the whole text (slow for long Japanese or Chinese
-    /// documents), so while typing it waits for a pause and runs off the
-    /// main thread. The first count, when the window opens, runs right away.
-    private func updateWordCount() async {
-        if wordCount != nil {
-            try? await Task.sleep(for: .milliseconds(300))
-            if Task.isCancelled { return }
-        }
-        let text = document.text
-        let count = await Task.detached(priority: .userInitiated) { WordCount.count(in: text) }.value
-        if !Task.isCancelled {
-            wordCount = count
-        }
-    }
-
-    private var saveStatusView: some View {
-        let status = saveStatus
-        return HStack(spacing: 5) {
-            Image(systemName: status.icon)
-                .foregroundStyle(status.color)
-            Text(status.label)
-        }
-        .help("macOS saves automatically; ⌘S saves right away.")
-    }
-
-    private var saveStatus: (icon: String, label: String, color: Color) {
-        if fileURL == nil && lastSavedText == nil {
-            return ("circle.dotted", String(localized: "Not saved yet"), .secondary)
-        }
-        if document.text == lastSavedText {
-            if let date = lastSaveDate {
-                let time = date.formatted(date: .omitted, time: .shortened)
-                return ("checkmark.circle.fill", String(localized: "Saved · \(time)"), .green)
-            }
-            return ("checkmark.circle.fill", String(localized: "Saved"), .green)
-        }
-        return ("ellipsis.circle.fill", String(localized: "Editing…"), .orange)
     }
 
     /// Display width of the editor pane: the stored fraction, clamped so both
