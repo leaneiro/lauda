@@ -5,9 +5,18 @@ cd "$(dirname "$0")/.."
 
 CONFIGURATION="${1:-release}"
 
-swift build -c "$CONFIGURATION"
+# Universal by default, so the app runs natively on Apple silicon and Intel
+# Macs. ARCHS="$(uname -m)" builds for this Mac only, which is quicker while
+# iterating.
+ARCHS="${ARCHS:-arm64 x86_64}"
+ARCH_FLAGS=()
+for arch in $ARCHS; do
+    ARCH_FLAGS+=(--arch "$arch")
+done
 
-BIN_PATH="$(swift build -c "$CONFIGURATION" --show-bin-path)/Lauda"
+swift build -c "$CONFIGURATION" "${ARCH_FLAGS[@]}"
+
+BIN_PATH="$(swift build -c "$CONFIGURATION" "${ARCH_FLAGS[@]}" --show-bin-path)/Lauda"
 APP_PATH="build/Lauda.app"
 
 rm -rf "$APP_PATH"
@@ -15,6 +24,12 @@ mkdir -p "$APP_PATH/Contents/MacOS" "$APP_PATH/Contents/Resources"
 
 cp Support/Info.plist "$APP_PATH/Contents/Info.plist"
 cp "$BIN_PATH" "$APP_PATH/Contents/MacOS/Lauda"
+for arch in $ARCHS; do
+    if ! lipo "$APP_PATH/Contents/MacOS/Lauda" -verify_arch "$arch"; then
+        echo "error: the app binary has no $arch code" >&2
+        exit 1
+    fi
+done
 
 # Stamp the build with the git hash so "About Lauda" identifies it.
 GIT_HASH="$(git rev-parse --short HEAD 2>/dev/null || echo dev)"

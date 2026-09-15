@@ -51,6 +51,8 @@ translations, and the isolated script world that keeps the preview safe.
 Supporting older versions would mean rewriting those parts, and macOS 14
 already covers every version that still receives security updates.
 
+The app is universal: it runs natively on Apple silicon and on Intel Macs.
+
 Building needs Xcode, or the Command Line Tools with Swift 5.10 or later.
 Xcode's `xcstringstool` compiles the translations; without it the app
 still builds, in English only.
@@ -58,7 +60,7 @@ still builds, in English only.
 ## Building
 
 ```bash
-make app     # builds build/Lauda.app
+make app     # builds build/Lauda.app (universal)
 make run     # builds and opens the app
 make dev     # debug build (swift build)
 make dmg     # disk image for distribution
@@ -66,7 +68,8 @@ make icon    # rebuilds the app icon from Resources/Icons
 make clean
 ```
 
-Run the tests with `swift test`.
+Run the tests with `swift test`. While iterating, `ARCHS=arm64 make run`
+(or `x86_64` on an Intel Mac) builds for your Mac only, which is quicker.
 
 The project is a plain SwiftPM package. `Scripts/build-app.sh` assembles the
 `.app` bundle from the executable and `Support/Info.plist` and signs it ad
