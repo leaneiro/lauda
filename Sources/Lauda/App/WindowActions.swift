@@ -19,7 +19,7 @@ extension FocusedValues {
 }
 
 /// Bridges menu commands to the focused window's editor coordinator.
-final class EditorActions {
+final class EditorActions: EditorFinding {
     weak var coordinator: MarkdownTextView.Coordinator?
 
     func toggleBold() { coordinator?.toggleInlineMarker("**") }
@@ -33,6 +33,9 @@ final class EditorActions {
         coordinator?.find.step(forward: forward) ?? (0, 0)
     }
     func findClear() { coordinator?.find.clear() }
+    func setFindCountsHandler(_ handler: @escaping (Int, Int) -> Void) {
+        coordinator?.find.countsChanged = handler
+    }
     func placeCaret(atSourceLine line: Int) { coordinator?.placeCaret(atSourceLine: line) }
 }
 
@@ -48,7 +51,7 @@ extension FocusedValues {
 }
 
 /// Bridges the find bar to the focused window's preview coordinator.
-final class PreviewActions {
+final class PreviewActions: PreviewFinding {
     weak var coordinator: PreviewWebView.Coordinator?
 
     func find(_ query: String, forward: Bool, restart: Bool, completion: @escaping (Int, Int) -> Void) {

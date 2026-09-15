@@ -26,19 +26,27 @@ struct ContentView: View {
     @SceneStorage("splitFraction") private var splitFraction: Double = 0.5
     @AppStorage(AppSettings.previewWidthLevel) private var previewWidthLevel: Int
     @State private var scrollSync = ScrollSync()
-    @State private var editorActions = EditorActions()
-    @State private var previewActions = PreviewActions()
+    @State private var editorActions: EditorActions
+    @State private var previewActions: PreviewActions
+    @State private var findSession: FindSession
     @State private var lastSavedText: String?
     @State private var lastSaveDate: Date?
-    @State private var findPresented = false
-    @State private var findQuery = ""
-    @State private var findCurrent = 0
-    @State private var findTotal = 0
     @State private var outlinePresented = false
     /// The window this view lives in, for sheets such as the export panel.
     @State private var hostWindow = WindowReference()
 
     private static let minPaneWidth: CGFloat = 280
+
+    init(document: Binding<MarkdownDocument>, fileURL: URL?) {
+        _document = document
+        self.fileURL = fileURL
+        // The find session talks to the same pane bridges the window keeps.
+        let editor = EditorActions()
+        let preview = PreviewActions()
+        _editorActions = State(initialValue: editor)
+        _previewActions = State(initialValue: preview)
+        _findSession = State(initialValue: FindSession(editor: editor, preview: preview))
+    }
 
     var body: some View {
         GeometryReader { geometry in
@@ -74,25 +82,21 @@ struct ContentView: View {
         }
         .coordinateSpace(name: "split")
         .overlay(alignment: .topTrailing) {
-            if findPresented {
+            if findSession.isPresented {
                 FindBar(
-                    query: $findQuery,
-                    current: findCurrent,
-                    total: findTotal,
-                    onQueryChanged: { runFind() },
-                    onNext: { stepFind(forward: true) },
-                    onPrevious: { stepFind(forward: false) },
-                    onClose: closeFind
+                    query: $findSession.query,
+                    current: findSession.current,
+                    total: findSession.total,
+                    onQueryChanged: { findSession.search(in: viewMode) },
+                    onNext: { findSession.step(forward: true, in: viewMode) },
+                    onPrevious: { findSession.step(forward: false, in: viewMode) },
+                    onClose: findSession.close
                 )
             }
         }
         .frame(minWidth: 700, minHeight: 440)
         .onChange(of: viewMode) {
-            guard findPresented else { return }
-            // The panes are recreated on mode switches — re-target the search.
-            editorActions.findClear()
-            previewActions.clearFind()
-            DispatchQueue.main.async { runFind() }
+            findSession.modeChanged(to: viewMode)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             StatusBar(
@@ -120,10 +124,10 @@ struct ContentView: View {
             exportPDF: exportPDF
         ))
         .focusedSceneValue(\.findActions, FindActions(
-            find: startFind,
-            findNext: { stepFind(forward: true) },
-            findPrevious: { stepFind(forward: false) },
-            replace: startReplace
+            find: { findSession.open(in: viewMode) },
+            findNext: { findSession.step(forward: true, in: viewMode) },
+            findPrevious: { findSession.step(forward: false, in: viewMode) },
+            replace: { findSession.replace(in: viewMode) }
         ))
         .onAppear {
             if let fileURL {
@@ -192,76 +196,6 @@ struct ContentView: View {
             baseDirectory: fileURL?.deletingLastPathComponent(),
             window: hostWindow.window
         )
-    }
-
-    // MARK: - Find routing (unified bar, all modes)
-
-    private func startFind() {
-        findPresented = true
-        editorActions.coordinator?.find.countsChanged = { current, total in
-            DispatchQueue.main.async {
-                findCurrent = current
-                findTotal = total
-            }
-        }
-        if !findQuery.isEmpty {
-            runFind()
-        }
-    }
-
-    private func runFind() {
-        guard findPresented else { return }
-        guard !findQuery.isEmpty else {
-            findCurrent = 0
-            findTotal = 0
-            editorActions.findClear()
-            previewActions.clearFind()
-            return
-        }
-        if viewMode == .previewOnly {
-            previewActions.find(findQuery, forward: true, restart: true) { current, total in
-                findCurrent = current
-                findTotal = total
-            }
-        } else {
-            let counts = editorActions.findUpdate(findQuery)
-            findCurrent = counts.current
-            findTotal = counts.total
-        }
-    }
-
-    private func stepFind(forward: Bool) {
-        guard findPresented, !findQuery.isEmpty else {
-            startFind()
-            return
-        }
-        if viewMode == .previewOnly {
-            previewActions.find(findQuery, forward: forward, restart: false) { current, total in
-                findCurrent = current
-                findTotal = total
-            }
-        } else {
-            let counts = editorActions.findStep(forward: forward)
-            findCurrent = counts.current
-            findTotal = counts.total
-        }
-    }
-
-    private func startReplace() {
-        if viewMode == .previewOnly {
-            startFind()
-        } else {
-            closeFind()
-            editorActions.performFind(.showReplaceInterface)
-        }
-    }
-
-    private func closeFind() {
-        findPresented = false
-        findCurrent = 0
-        findTotal = 0
-        editorActions.findClear()
-        previewActions.clearFind()
     }
 
     /// Width level applies only in full-preview mode; other modes stay normal.
