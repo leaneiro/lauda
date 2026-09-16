@@ -35,8 +35,6 @@ struct ContentView: View {
     /// The window this view lives in, for sheets such as the export panel.
     @State private var hostWindow = WindowReference()
 
-    private static let minPaneWidth: CGFloat = 280
-
     init(document: Binding<MarkdownDocument>, fileURL: URL?) {
         _document = document
         self.fileURL = fileURL
@@ -49,38 +47,16 @@ struct ContentView: View {
     }
 
     var body: some View {
-        GeometryReader { geometry in
-            let totalWidth = geometry.size.width
-            HStack(spacing: 0) {
-                if viewMode != .previewOnly {
-                    MarkdownTextView(
-                        text: $document.text,
-                        scrollSync: $scrollSync,
-                        actions: editorActions,
-                        fileURL: fileURL
-                    )
-                        .frame(width: viewMode == .split ? editorWidth(in: totalWidth) : totalWidth)
-                }
-                if viewMode == .split {
-                    SplitDivider(
-                        fraction: $splitFraction,
-                        totalWidth: totalWidth,
-                        minPaneWidth: Self.minPaneWidth
-                    )
-                }
-                if viewMode != .editorOnly {
-                    PreviewWebView(
-                        markdown: document.text,
-                        baseURL: fileURL?.deletingLastPathComponent(),
-                        scrollSync: $scrollSync,
-                        contentWidthRem: effectivePreviewWidth.rem,
-                        actions: previewActions
-                    )
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
-            }
-        }
-        .coordinateSpace(name: "split")
+        EditorPanes(
+            text: $document.text,
+            fileURL: fileURL,
+            viewMode: viewMode,
+            splitFraction: $splitFraction,
+            scrollSync: $scrollSync,
+            editorActions: editorActions,
+            previewActions: previewActions,
+            previewWidth: effectivePreviewWidth
+        )
         .overlay(alignment: .topTrailing) {
             if findSession.isPresented {
                 FindBar(
@@ -175,13 +151,5 @@ struct ContentView: View {
     private var effectivePreviewWidth: PreviewWidth {
         guard viewMode == .previewOnly else { return .normal }
         return PreviewWidth(rawValue: previewWidthLevel) ?? .normal
-    }
-
-    /// Display width of the editor pane: the stored fraction, clamped so both
-    /// panes keep a usable width when the window shrinks (the stored value is
-    /// untouched, so enlarging the window restores the user's position).
-    private func editorWidth(in totalWidth: CGFloat) -> CGFloat {
-        (totalWidth - SplitDivider.thickness)
-            * SplitDivider.clamp(splitFraction, totalWidth: totalWidth, minPaneWidth: Self.minPaneWidth)
     }
 }

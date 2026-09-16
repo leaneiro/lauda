@@ -8,6 +8,9 @@ struct MarkdownTextView: NSViewRepresentable {
     @Binding var scrollSync: ScrollSync
     let actions: EditorActions
     let fileURL: URL?
+    /// False while a pane shows text it has no way to save yet, so typing
+    /// can't quietly produce changes that go nowhere.
+    var isEditable: Bool = true
 
     @AppStorage(AppSettings.editorFontName) private var fontName: String
     @AppStorage(AppSettings.editorFontSize) private var fontSize: Double
@@ -42,6 +45,7 @@ struct MarkdownTextView: NSViewRepresentable {
 
         textView.delegate = context.coordinator
         textView.isRichText = false
+        textView.isEditable = isEditable
         // This view holds Markdown as plain text. Left on the system
         // default, Writing Tools may answer a rewrite with text attributes,
         // reading "**bold**" as bold and dropping the asterisks it came
@@ -94,6 +98,10 @@ struct MarkdownTextView: NSViewRepresentable {
         actions.coordinator = coordinator
         coordinator.scrolling.restoreIfNeeded()
         guard let textView = coordinator.textView else { return }
+
+        if textView.isEditable != isEditable {
+            textView.isEditable = isEditable
+        }
 
         // Never replace text mid-IME-composition: the marked text makes the
         // strings differ, and resetting would kill the accent being composed.
