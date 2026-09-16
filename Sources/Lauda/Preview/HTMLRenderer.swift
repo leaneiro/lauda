@@ -15,26 +15,54 @@ struct HTMLRenderer: MarkupVisitor {
         return renderer.visit(document)
     }
 
-    /// Preview rendering plus the 0-based source line where each top-level
-    /// block starts (one entry per top-level element of the HTML), which the
-    /// preview uses to line its scroll up with the editor's.
+    /// Preview rendering plus the 0-based source lines the preview anchors its
+    /// scroll on, in the order it walks the DOM: every top-level block,
+    /// followed by the list items and table rows inside it.
+    ///
+    /// Anchoring inside blocks is what keeps long lists aligned. Between two
+    /// anchors the preview can only interpolate by line number, while the
+    /// rendered height of each line depends on how its text wraps at the
+    /// current width — so a document made of a few huge blocks (a list of
+    /// hundreds of items) drifted the more the window narrowed.
     static func renderWithLines(
         _ markdown: String,
         strictLineBreaks: Bool = false
-    ) -> (html: String, blockLines: [Int], lineCount: Int) {
+    ) -> (html: String, anchorLines: [Int], lineCount: Int) {
         let document = Document(parsing: markdown)
         var renderer = HTMLRenderer(strictLineBreaks: strictLineBreaks)
         var html = ""
-        var blockLines: [Int] = []
+        var anchorLines: [Int] = []
         for child in document.children {
             let piece = renderer.visit(child)
             // Raw HTML can hold zero or several top-level elements; a wrapper
-            // keeps the one-element-per-block correspondence.
-            html += child is HTMLBlock ? "<div>\(piece)</div>\n" : piece
-            let line = child.range.map { $0.lowerBound.line - 1 } ?? blockLines.last ?? 0
-            blockLines.append(line)
+            // keeps the one-element-per-block correspondence. Its class tells
+            // the preview not to look for anchors inside, where the elements
+            // are the document's own and map to no source line of ours.
+            html += child is HTMLBlock ? "<div class=\"raw\">\(piece)</div>\n" : piece
+            anchorLines.append(startLine(of: child) ?? anchorLines.last ?? 0)
+            if !(child is HTMLBlock) {
+                appendInnerAnchors(of: child, to: &anchorLines)
+            }
         }
-        return (html, blockLines, SourceLines.count(in: markdown))
+        return (html, anchorLines, SourceLines.count(in: markdown))
+    }
+
+    /// 0-based source line a piece of markup starts on.
+    private static func startLine(of markup: Markup) -> Int? {
+        markup.range.map { $0.lowerBound.line - 1 }
+    }
+
+    /// Source lines of the list items and table rows inside a block, in
+    /// document order: the same order the preview's `anchorElements()` walks
+    /// them in, which pairs each line with the element's measured position.
+    private static func appendInnerAnchors(of markup: Markup, to anchorLines: inout [Int]) {
+        for child in markup.children {
+            // A table's head renders as the row inside <thead>.
+            if child is ListItem || child is Markdown.Table.Head || child is Markdown.Table.Row {
+                anchorLines.append(startLine(of: child) ?? anchorLines.last ?? 0)
+            }
+            appendInnerAnchors(of: child, to: &anchorLines)
+        }
     }
 
     /// Print-oriented rendering: each top-level heading is wrapped together

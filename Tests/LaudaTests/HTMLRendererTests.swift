@@ -109,15 +109,35 @@ struct HTMLRendererTests {
     @Test func renderWithLinesMapsEachTopLevelBlock() {
         let markdown = "# Title\n\nParagraph one\ncontinues\n\n- a\n- b\n\n```\ncode\n```\n"
         let result = HTMLRenderer.renderWithLines(markdown)
-        #expect(result.blockLines == [0, 2, 5, 8])
+        // The heading, the paragraph, the list with its two items, the code.
+        #expect(result.anchorLines == [0, 2, 5, 5, 6, 8])
         #expect(result.lineCount == 12)
         #expect(result.html == HTMLRenderer.render(markdown))
     }
 
+    @Test func renderWithLinesAnchorsTableRows() {
+        let result = HTMLRenderer.renderWithLines("| h |\n| - |\n| r |\n| s |")
+        // The table, its head row, then one anchor per body row.
+        #expect(result.anchorLines == [0, 0, 2, 3])
+    }
+
+    @Test func renderWithLinesAnchorsNestedItemsInDocumentOrder() {
+        let result = HTMLRenderer.renderWithLines("- a\n  - b\n- c")
+        // The list, item a, the nested item b inside it, then item c.
+        #expect(result.anchorLines == [0, 0, 1, 2])
+    }
+
     @Test func renderWithLinesWrapsRawHTMLIntoOneElement() {
         let result = HTMLRenderer.renderWithLines("<div>a</div>\n<div>b</div>\n\ntext")
-        #expect(result.blockLines == [0, 3])
-        #expect(result.html.hasPrefix("<div><div>a</div>\n<div>b</div>"), "got: \(result.html)")
+        #expect(result.anchorLines == [0, 3])
+        #expect(result.html.hasPrefix("<div class=\"raw\"><div>a</div>\n<div>b</div>"), "got: \(result.html)")
+    }
+
+    /// Elements inside raw HTML map to no source line, so they must not
+    /// shift the anchors that follow them.
+    @Test func renderWithLinesSkipsItemsInsideRawHTML() {
+        let result = HTMLRenderer.renderWithLines("<ul><li>raw</li></ul>\n\n- real")
+        #expect(result.anchorLines == [0, 2, 2])
     }
 
     @Test func blankLineStillStartsNewParagraph() {

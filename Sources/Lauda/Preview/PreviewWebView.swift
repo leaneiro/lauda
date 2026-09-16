@@ -113,7 +113,7 @@ struct PreviewWebView: NSViewRepresentable {
             }
         }
 
-        typealias RenderedContent = (html: String, blockLines: [Int], lineCount: Int)
+        typealias RenderedContent = (html: String, anchorLines: [Int], lineCount: Int)
 
         private func pushContent(_ content: RenderedContent, completion: @escaping () -> Void) {
             guard let webView, isReady else {
@@ -125,7 +125,7 @@ struct PreviewWebView: NSViewRepresentable {
                 "setContent(html, lines, lineCount)",
                 arguments: [
                     "html": content.html,
-                    "lines": content.blockLines,
+                    "lines": content.anchorLines,
                     "lineCount": content.lineCount,
                 ],
                 in: nil,

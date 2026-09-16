@@ -12,15 +12,15 @@ let lastPosition = null;
 // so typing repaints one paragraph instead of relaying the whole page.
 // Parsing via a detached div's innerHTML keeps <script> tags inert, and
 // the page's Content-Security-Policy blocks inline handlers as well.
-// Source line where each top-level block starts (parallel to the
-// container's children) and the document's line count, so scroll sync
-// can align both panes by content instead of by proportion.
-let blockLines = [];
+// Source line of each element the scroll sync anchors on (parallel to
+// anchorElements()) and the document's line count, so scroll sync can
+// align both panes by content instead of by proportion.
+let anchorLines = [];
 let totalLines = 1;
 
 function setContent(html, lines, lineCount) {
     suppressScrollEventsUntil = Date.now() + 200;
-    blockLines = lines || [];
+    anchorLines = lines || [];
     totalLines = Math.max(lineCount || 1, 1);
     const container = document.getElementById("content");
     const parsed = document.createElement("div");
@@ -98,18 +98,32 @@ function realign() {
 function maxScroll() {
     return Math.max(document.documentElement.scrollHeight - window.innerHeight, 0);
 }
-// [sourceLine, y] anchors: the top padding (line -1 at y 0), each
-// top-level block and the document end. null when the DOM and the line
-// map disagree (raw HTML can make the parser split a block); callers
-// then fall back to proportional sync.
+// Elements the line map names, in its order: every top-level block, then
+// the list items and table rows inside it. Anchoring inside blocks keeps
+// long lists aligned, where a single <ol> can span hundreds of source
+// lines whose heights depend on how each one wraps. Raw HTML maps to no
+// source line of ours, so nothing inside it is an anchor.
+function anchorElements() {
+    const elements = [];
+    for (const block of document.getElementById("content").children) {
+        elements.push(block);
+        if (block.classList.contains("raw")) { continue; }
+        for (const inner of block.querySelectorAll("li, tr")) { elements.push(inner); }
+    }
+    return elements;
+}
+// [sourceLine, y] anchors: the top padding (line -1 at y 0), each mapped
+// element and the document end. null when the DOM and the line map
+// disagree (raw HTML can make the parser split a block); callers then
+// fall back to proportional sync.
 function lineAnchors() {
-    const blocks = document.getElementById("content").children;
-    if (blockLines.length === 0 || blocks.length !== blockLines.length) { return null; }
+    const elements = anchorElements();
+    if (anchorLines.length === 0 || elements.length !== anchorLines.length) { return null; }
     const points = [[-1, 0]];
-    for (let i = 0; i < blocks.length; i++) {
-        const y = blocks[i].getBoundingClientRect().top + window.scrollY;
+    for (let i = 0; i < elements.length; i++) {
+        const y = elements[i].getBoundingClientRect().top + window.scrollY;
         const prev = points[points.length - 1];
-        if (blockLines[i] > prev[0] && y >= prev[1]) { points.push([blockLines[i], y]); }
+        if (anchorLines[i] > prev[0] && y >= prev[1]) { points.push([anchorLines[i], y]); }
     }
     const last = points[points.length - 1];
     const endY = document.documentElement.scrollHeight;

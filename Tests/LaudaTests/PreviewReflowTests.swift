@@ -38,7 +38,7 @@ private final class PreviewPage: NSObject, WKNavigationDelegate {
         }
         let content = HTMLRenderer.renderWithLines(markdown)
         try await run("setContent(html, lines, lineCount)", [
-            "html": content.html, "lines": content.blockLines, "lineCount": content.lineCount,
+            "html": content.html, "lines": content.anchorLines, "lineCount": content.lineCount,
         ])
     }
 
@@ -59,8 +59,18 @@ private final class PreviewPage: NSObject, WKNavigationDelegate {
         try await webView.callAsyncJavaScript(script, arguments: arguments, contentWorld: PreviewWebView.contentWorld)
     }
 
-    func number(_ script: String) async throws -> Double {
-        (try await run(script) as? NSNumber)?.doubleValue ?? .nan
+    func number(_ script: String, _ arguments: [String: Any] = [:]) async throws -> Double {
+        (try await run(script, arguments) as? NSNumber)?.doubleValue ?? .nan
+    }
+
+    /// Where the list item whose text starts with `text` sits, in points from
+    /// the top of the viewport: the ground truth a synced line must land on.
+    func offsetOfItem(startingWith text: String) async throws -> Double {
+        try await number("""
+            const item = Array.from(document.querySelectorAll("li"))
+                .find((element) => element.textContent.startsWith(text));
+            return item ? item.getBoundingClientRect().top : NaN;
+            """, ["text": text])
     }
 
     /// The fractional source line at the top of the page.
@@ -172,5 +182,53 @@ struct PreviewReflowTests {
         let max = try await page.number("return maxScroll()")
         #expect(max > 0)
         #expect(abs(offset - max) < 1, "scrollY \(offset) of \(max)")
+    }
+}
+
+/// A document shaped like the ones that drift: hundreds of source lines under
+/// a handful of top-level blocks. Anchoring only those blocks left the preview
+/// interpolating by line number across a whole list, which lands wide of the
+/// mark when the items wrap into very different heights.
+@MainActor
+@Suite(.serialized, .timeLimit(.minutes(1)))
+struct PreviewListAnchorTests {
+    /// 200 items on consecutive lines after a heading and a blank line, so
+    /// item N starts on source line N + 1. Every fifth one is long enough to
+    /// wrap several times, and the narrower the page the more it wraps.
+    private static let markdown = "# List\n\n" + (1...200).map { index in
+        "\(index). Item \(index). " + String(repeating: "palavra ", count: index % 5 == 0 ? 60 : 3)
+    }.joined(separator: "\n")
+
+    private func openPage(width: CGFloat) async throws -> PreviewPage {
+        let page = PreviewPage(width: width, height: 700)
+        try await page.load(markdown: Self.markdown)
+        return page
+    }
+
+    /// The synced line has to land on the item that starts it, at any width:
+    /// the window size is the user's, not something the sync can assume.
+    @Test(arguments: [1600.0, 900.0, 640.0])
+    func aSyncedLineLandsOnItsItem(width: Double) async throws {
+        let page = try await openPage(width: width)
+        try await page.scroll(toLine: 121)
+        let offset = try await page.offsetOfItem(startingWith: "Item 120.")
+        #expect(abs(offset) < 8, "at \(width) px wide, item 120 sits \(offset) px from the top")
+    }
+
+    /// Resizing the pane re-measures every anchor, so the line stays put.
+    @Test func narrowingThePaneKeepsTheSyncedLineOnItsItem() async throws {
+        let page = try await openPage(width: 1600)
+        try await page.scroll(toLine: 121)
+        page.resize(width: 640)
+        _ = try await page.topLine(settlingWithin: 0.5, of: 121)
+        let offset = try await page.offsetOfItem(startingWith: "Item 120.")
+        #expect(abs(offset) < 8, "after narrowing, item 120 sits \(offset) px from the top")
+    }
+
+    @Test func everyItemIsAnAnchor() async throws {
+        let page = try await openPage(width: 900)
+        // The padding above the text, the heading, the list, its 200 items
+        // (the first shares the list's line) and the document's end.
+        #expect(try await page.number("return lineAnchors().length") == 203)
     }
 }
