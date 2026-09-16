@@ -86,6 +86,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillFinishLaunching(_ notification: Notification) {
+        // No window tabbing: a document window holds one file, and merging
+        // windows into tabs only muddles that. Set before the menus are
+        // built, so AppKit leaves out "Show Tab Bar", "Show All Tabs" and
+        // "Merge All Windows" instead of us fighting them later.
+        NSWindow.allowsAutomaticWindowTabbing = false
         AppSettings.registerDefaults()
         // Follows the system appearance by default; Settings can pin Light or Dark.
         AppearanceMode.stored.apply()
