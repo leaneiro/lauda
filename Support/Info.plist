@@ -47,6 +47,8 @@
         <dict>
             <key>CFBundleTypeName</key>
             <string>Markdown Document</string>
+            <key>NSDocumentClass</key>
+            <string>MarkdownDocument</string>
             <key>CFBundleTypeRole</key>
             <string>Editor</string>
             <key>LSHandlerRank</key>
@@ -59,6 +61,8 @@
         <dict>
             <key>CFBundleTypeName</key>
             <string>Plain Text Document</string>
+            <key>NSDocumentClass</key>
+            <string>MarkdownDocument</string>
             <key>CFBundleTypeRole</key>
             <string>Editor</string>
             <key>LSHandlerRank</key>

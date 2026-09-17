@@ -1,8 +1,8 @@
 import SwiftUI
 
 /// The editor and the preview side by side, with the draggable divider: the
-/// part of a window that shows one piece of markdown. A document window owns
-/// one of these; a folder window owns one per tab.
+/// part of the window that shows one document's markdown. Every open
+/// document has its own.
 struct EditorPanes: View {
     @Binding var text: String
     /// Where the text came from, so relative images resolve.
@@ -13,8 +13,6 @@ struct EditorPanes: View {
     let editorActions: EditorActions
     let previewActions: PreviewActions
     let previewWidth: PreviewWidth
-    /// False while a pane shows text it has no way to save yet.
-    var isEditable: Bool = true
 
     private static let minPaneWidth: CGFloat = 280
 
@@ -27,8 +25,7 @@ struct EditorPanes: View {
                         text: $text,
                         scrollSync: $scrollSync,
                         actions: editorActions,
-                        fileURL: fileURL,
-                        isEditable: isEditable
+                        fileURL: fileURL
                     )
                         .frame(width: viewMode == .split ? editorWidth(in: totalWidth) : totalWidth)
                 }

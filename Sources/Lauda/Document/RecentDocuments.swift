@@ -9,6 +9,15 @@ enum RecentDocuments {
     private static let key = "recentDocumentBookmarks"
     private static let limit = 10
 
+    /// Bumped on every change. SwiftUI builds a menu once and only rebuilds
+    /// it for state it can see, so the File menu watches this number to keep
+    /// Open Recent current.
+    static let revisionKey = "recentDocumentsRevision"
+
+    private static func bumpRevision(_ defaults: UserDefaults) {
+        defaults.set(defaults.integer(forKey: revisionKey) + 1, forKey: revisionKey)
+    }
+
     static func note(_ url: URL, defaults: UserDefaults = .standard) {
         // Bookmarks resolve to canonical paths (e.g. /private/var vs /var),
         // so dedupe must compare canonical forms.
@@ -24,6 +33,7 @@ enum RecentDocuments {
             }
         }
         defaults.set(bookmarks, forKey: key)
+        bumpRevision(defaults)
     }
 
     private static func canonicalPath(of url: URL) -> String {
@@ -32,6 +42,7 @@ enum RecentDocuments {
 
     static func clear(defaults: UserDefaults = .standard) {
         defaults.removeObject(forKey: key)
+        bumpRevision(defaults)
     }
 
     static func storedURLs(defaults: UserDefaults = .standard) -> [URL] {

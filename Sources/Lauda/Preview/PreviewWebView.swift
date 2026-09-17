@@ -212,6 +212,13 @@ struct PreviewWebView: NSViewRepresentable {
             webView.callAsyncJavaScript("findClear()", arguments: [:], in: nil, in: PreviewWebView.contentWorld) { Self.logScriptFailure($0) }
         }
 
+        /// Gives the preview the keyboard, which is what scrolls it from
+        /// there; false while it isn't in a window yet.
+        func focus() -> Bool {
+            guard let webView, let window = webView.window else { return false }
+            return window.makeFirstResponder(webView)
+        }
+
         // MARK: - Scroll sync (bidirectional)
 
         private var pendingScroll: ScrollSync?

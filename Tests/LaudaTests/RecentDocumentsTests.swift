@@ -52,4 +52,17 @@ final class RecentDocumentsTests {
         #expect(!names.contains("doc1.md"))
         #expect(!names.contains("doc2.md"))
     }
+
+    /// The File menu watches this number; a change that leaves it alone
+    /// would leave Open Recent showing the old list.
+    @Test func everyChangeMovesTheRevisionTheMenuWatches() throws {
+        let start = defaults.integer(forKey: RecentDocuments.revisionKey)
+
+        RecentDocuments.note(try makeFile("a.md"), defaults: defaults)
+        let afterNote = defaults.integer(forKey: RecentDocuments.revisionKey)
+        #expect(afterNote > start)
+
+        RecentDocuments.clear(defaults: defaults)
+        #expect(defaults.integer(forKey: RecentDocuments.revisionKey) > afterNote)
+    }
 }

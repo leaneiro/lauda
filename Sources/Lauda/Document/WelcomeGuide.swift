@@ -5,25 +5,13 @@ import SwiftUI
 /// (`Resources/Welcome/<language>.lproj/Welcome.md`). It opens as an untitled
 /// copy, so people can experiment freely and save it only if they want to.
 enum WelcomeGuide {
-    /// First launch without a file to open: show the guide. SwiftUI puts up
-    /// its "Open" panel at launch by itself (it never asks the app
-    /// delegate), so that panel is dismissed if it shows up meanwhile.
-    static func showOnFirstLaunch() {
+    /// First launch without a file to open: show the guide. Returns whether
+    /// it did, so the launch knows not to offer anything else.
+    static func showOnFirstLaunch() -> Bool {
         let defaults = UserDefaults.standard
-        guard !defaults[AppSettings.hasShownWelcomeGuide] else { return }
+        guard !defaults[AppSettings.hasShownWelcomeGuide] else { return false }
         defaults[AppSettings.hasShownWelcomeGuide] = true
-        guard open() else { return }
-        dismissLaunchOpenPanel(until: Date().addingTimeInterval(3))
-    }
-
-    private static func dismissLaunchOpenPanel(until deadline: Date) {
-        for panel in NSApp.windows.compactMap({ $0 as? NSOpenPanel }) where panel.isVisible {
-            panel.cancel(nil)
-        }
-        guard Date() < deadline else { return }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-            dismissLaunchOpenPanel(until: deadline)
-        }
+        return open()
     }
 
     /// Opens the guide; returns false when it isn't bundled or can't open.

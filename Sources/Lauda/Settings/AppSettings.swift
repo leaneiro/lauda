@@ -24,6 +24,7 @@ enum AppSettings {
     static let lastViewMode = Setting(key: "lastViewMode", defaultValue: ViewMode.split.rawValue)
     static let previewWidthLevel = Setting(key: "previewWidthLevel", defaultValue: PreviewWidth.normal.rawValue)
     static let hasShownWelcomeGuide = Setting(key: "hasShownWelcomeGuide", defaultValue: false)
+    static let splitFraction = Setting(key: "splitFraction", defaultValue: 0.5)
 
     /// The options in the Settings window.
     static let preferences: [(key: String, defaultValue: Any)] = [
@@ -34,6 +35,7 @@ enum AppSettings {
 
     static let rememberedState: [(key: String, defaultValue: Any)] = [
         entry(lastViewMode), entry(previewWidthLevel), entry(hasShownWelcomeGuide),
+        entry(splitFraction),
     ]
 
     private static func entry<Value>(_ setting: Setting<Value>) -> (key: String, defaultValue: Any) {
@@ -130,6 +132,13 @@ enum PreviewWidth: Int, CaseIterable, Identifiable {
 
     var next: PreviewWidth {
         PreviewWidth(rawValue: (rawValue + 1) % Self.allCases.count) ?? .normal
+    }
+
+    /// The width a window shows for a stored level: levels only apply in
+    /// preview-only mode, every other mode stays normal.
+    static func showing(level: Int, in mode: ViewMode) -> PreviewWidth {
+        guard mode == .previewOnly else { return .normal }
+        return PreviewWidth(rawValue: level) ?? .normal
     }
 }
 
