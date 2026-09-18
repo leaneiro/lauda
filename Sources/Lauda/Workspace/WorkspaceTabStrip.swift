@@ -25,7 +25,7 @@ struct WorkspaceTabStrip: View {
     /// capsule where the system has them, a segmented control elsewhere.
     /// Measured.
     static var viewModesWidth: CGFloat {
-        if #available(macOS 26.0, *) { 112 } else { 115 }
+        if #available(macOS 26.0, *) { 138 } else { 115 }
     }
 
     /// What the title bar has left for the tabs once the window's own

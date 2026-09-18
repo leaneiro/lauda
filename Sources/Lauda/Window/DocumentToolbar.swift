@@ -88,17 +88,22 @@ struct DocumentToolbar: ToolbarContent {
         }
     }
 
-    /// One mode's button, held down while its mode is the one showing.
+    /// One mode's button, with a quiet pill behind the mode that is showing.
+    /// A toggle would say the same, but the system fills one that is on with
+    /// the accent colour and turns its icon white, which is loud up here; a
+    /// grey tint only leaves that white icon unreadable.
     private func viewModeButton(_ mode: ViewMode, _ title: LocalizedStringKey, systemImage: String) -> some View {
-        Toggle(isOn: Binding(
-            get: { viewMode == mode },
-            // Pressing the mode that is showing leaves it showing.
-            set: { isOn in if isOn { viewMode = mode } }
-        )) {
+        let isShowing = viewMode == mode
+        return Button {
+            viewMode = mode
+        } label: {
             Label(title, systemImage: systemImage)
+                .labelStyle(.iconOnly)
+                .frame(width: 30, height: 26)
+                .background(Color.primary.opacity(isShowing ? 0.1 : 0), in: Capsule())
         }
-        .toggleStyle(.button)
         .help(title)
+        .accessibilityAddTraits(isShowing ? .isSelected : [])
     }
 
     private var viewModePicker: some View {
