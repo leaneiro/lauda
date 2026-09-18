@@ -7,19 +7,16 @@ import SwiftUI
 /// comes back exactly as it was left.
 ///
 /// AppKit does the stacking because a hidden NSView is out of everything at
-/// once: drawing, the mouse, the keyboard loop and accessibility.
+/// once: drawing, the mouse, the keyboard loop and accessibility. The
+/// workspace keeps the stack current; SwiftUI only gives it its place.
 struct DocumentStack: NSViewRepresentable {
-    let documents: [MarkdownDocument]
-    let selected: MarkdownDocument?
     let workspace: Workspace
 
     func makeNSView(context: Context) -> DocumentStackView {
-        DocumentStackView()
+        workspace.stack
     }
 
-    func updateNSView(_ stack: DocumentStackView, context: Context) {
-        stack.show(documents, selected: selected, in: workspace)
-    }
+    func updateNSView(_ stack: DocumentStackView, context: Context) {}
 }
 
 final class DocumentStackView: NSView {

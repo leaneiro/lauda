@@ -14,6 +14,7 @@ struct WorkspaceTabStrip: View {
     let width: CGFloat
 
     @State private var hovered: ObjectIdentifier?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private static let height: CGFloat = 28
     private static let spacing: CGFloat = 6
@@ -44,6 +45,16 @@ struct WorkspaceTabStrip: View {
     var body: some View {
         container
             .frame(width: width, height: Self.height, alignment: .leading)
+            // The strip animates its own tabs. Done from the workspace, with
+            // the whole change inside an animation, the window's update
+            // sometimes stopped halfway (see Workspace.stack).
+            .animation(reduceMotion ? nil : .easeOut(duration: Workspace.tabAnimation), value: shownTabs.map(\.tabID))
+    }
+
+    /// A lone document has a title, not a tab: on the way from two documents
+    /// to one both tabs go, and the title bar changes once they have.
+    private var shownTabs: [MarkdownDocument] {
+        workspace.documents.count >= 2 ? workspace.documents : []
     }
 
     /// Glass shapes that sit close to each other render as one pass, and
@@ -59,7 +70,7 @@ struct WorkspaceTabStrip: View {
 
     private var row: some View {
         HStack(spacing: Self.spacing) {
-            ForEach(workspace.documents, id: \.tabID) { document in
+            ForEach(shownTabs, id: \.tabID) { document in
                 tab(document)
                     .transition(.opacity.combined(with: .scale(scale: 0.85, anchor: .leading)))
             }

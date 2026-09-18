@@ -43,15 +43,27 @@ final class Workspace: NSObject {
     var selectedIndex: Int? { tabs.selectedIndex }
     var window: NSWindow? { windowController?.window }
 
-    /// Two or more documents: the title gives way to the tabs.
-    var showsTabs: Bool { tabs.items.count >= 2 }
+    /// Whether the title bar is laid out for tabs: two or more documents,
+    /// and the title gives way to them. Going back to one document, the
+    /// layout waits for the tabs to fade out before it changes.
+    private(set) var showsTabs = false
+
+    /// Every open document's panes. The workspace keeps it current itself,
+    /// as the tabs change, rather than leaving it to a SwiftUI update: what
+    /// is on screen and has the keyboard must never be a closed document's,
+    /// and an update can come late (measured: with the tabs changing inside
+    /// an animation, about one close in three left the closed document's
+    /// panes up, and typing went to them).
+    @ObservationIgnored let stack = DocumentStackView()
+
+    /// How long a tab takes to come or go, which the title bar waits for.
+    static let tabAnimation: TimeInterval = 0.2
 
     // MARK: - Tabs
 
     func add(_ document: MarkdownDocument) {
-        withAnimation(.easeOut(duration: 0.2)) {
-            tabs.add(document)
-        }
+        tabs.add(document)
+        tabsChanged()
         show(document)
         refresh()
     }
@@ -59,8 +71,28 @@ final class Workspace: NSObject {
     func select(_ document: MarkdownDocument) {
         guard tabs.contains(document) else { return }
         tabs.select(document)
+        tabsChanged()
         show(document)
         refresh()
+    }
+
+    /// The panes follow the tabs at once. The title bar's layout follows
+    /// their number, late on the way back to one document: the strip drops
+    /// its tabs as soon as one is left, and the layout changes once they
+    /// have faded out.
+    private func tabsChanged() {
+        stack.show(documents, selected: selected, in: self)
+        let wantsTabs = documents.count >= 2
+        guard wantsTabs != showsTabs else { return }
+        if wantsTabs || NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+            showsTabs = wantsTabs
+            return
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.tabAnimation) { [weak self] in
+            guard let self, self.documents.count < 2 else { return }
+            self.showsTabs = false
+            self.refresh()
+        }
     }
 
     /// The tab of an open file, when there is one; what the last session's
@@ -117,9 +149,8 @@ final class Workspace: NSObject {
     /// does take the window with it.
     func willClose(_ document: MarkdownDocument) {
         guard tabs.contains(document) else { return }
-        withAnimation(.easeOut(duration: 0.2)) {
-            tabs.remove(document)
-        }
+        tabs.remove(document)
+        tabsChanged()
         if let next = tabs.selected {
             if (windowController?.document as AnyObject?) !== next {
                 show(next)

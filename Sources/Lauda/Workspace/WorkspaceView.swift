@@ -26,7 +26,7 @@ struct WorkspaceView: View {
     }
 
     var body: some View {
-        DocumentStack(documents: workspace.documents, selected: workspace.selected, workspace: workspace)
+        DocumentStack(workspace: workspace)
             .frame(minWidth: 700, minHeight: 440)
             .background(GeometryReader { proxy in
                 Color.clear.onChange(of: proxy.size.width, initial: true) { _, width in
