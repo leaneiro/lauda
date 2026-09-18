@@ -127,6 +127,8 @@ struct WorkspaceTabStrip: View {
         .modifier(TabCapsule(isSelected: isSelected))
         .contentShape(Capsule())
         .onTapGesture { workspace.select(document) }
+        // The wheel closes the tab it is clicked on, wherever on it.
+        .onMiddleClick(in: Capsule(), isEnabled: workspace.tabsAreIn) { workspace.close(document) }
         .onHover { hovering in
             hovered = hovering ? id : (hovered == id ? nil : hovered)
         }
