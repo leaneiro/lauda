@@ -19,7 +19,10 @@ struct WorkspaceView: View {
     }
 
     private var tabStripWidth: CGFloat {
-        WorkspaceTabStrip.width(in: windowWidth, showsWidthButton: workspace.viewMode == .previewOnly)
+        WorkspaceTabStrip.width(
+            in: windowWidth,
+            showsWidthButton: DocumentToolbar.keepsWidthButtonPlace || workspace.viewMode == .previewOnly
+        )
     }
 
     var body: some View {

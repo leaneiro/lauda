@@ -14,13 +14,17 @@ struct WidthLevelIcon: View {
         }
     }
 
+    /// A colour rather than the `.secondary` style: on glass, a style is
+    /// drawn vibrant, which left the column much paler than the outline.
+    private static let ink = Color(nsColor: .secondaryLabelColor)
+
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 3.5)
-                .strokeBorder(.secondary, lineWidth: 1.2)
+                .strokeBorder(Self.ink, lineWidth: 1.2)
                 .frame(width: 19, height: 14)
             RoundedRectangle(cornerRadius: 1.5)
-                .fill(.secondary)
+                .fill(Self.ink)
                 .frame(width: columnWidth, height: 8)
         }
         .frame(width: 22, height: 16)
