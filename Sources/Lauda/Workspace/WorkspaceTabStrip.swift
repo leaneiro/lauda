@@ -21,11 +21,11 @@ struct WorkspaceTabStrip: View {
     private static let minTabWidth: CGFloat = 120
     private static let maxTabWidth: CGFloat = 220
 
-    /// How wide the view modes are in the toolbar: three glass buttons in one
-    /// capsule where the system has them, a segmented control elsewhere.
-    /// Measured.
+    /// How wide the view modes are in the toolbar: our own glass capsule
+    /// where the system has Liquid Glass, a segmented control (measured)
+    /// elsewhere.
     static var viewModesWidth: CGFloat {
-        if #available(macOS 26.0, *) { 138 } else { 115 }
+        if #available(macOS 26.0, *) { GlassViewModePicker.width } else { 115 }
     }
 
     /// What the title bar has left for the tabs once the window's own

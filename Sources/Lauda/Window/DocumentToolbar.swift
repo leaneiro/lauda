@@ -25,11 +25,11 @@ struct DocumentToolbar: ToolbarContent {
             // middle to push them across.
             viewModeItem(placement: .primaryAction)
             widthItem(placement: .primaryAction)
-            ToolbarItem(placement: .primaryAction) { outlineButton }
+            outlineItem(placement: .primaryAction)
         } else {
             viewModeItem(placement: .principal)
             widthItem(placement: .automatic)
-            ToolbarItem(placement: .automatic) { outlineButton }
+            outlineItem(placement: .automatic)
         }
     }
 
@@ -70,50 +70,42 @@ struct DocumentToolbar: ToolbarContent {
         }
     }
 
-    /// The three view modes. Where the system has Liquid Glass they are three
-    /// toolbar buttons sharing one capsule, which light up and give under
-    /// the pointer like the buttons beside them; a segmented control sits in
-    /// the same capsule but stays flat. Earlier systems keep the segmented
-    /// control, which is what looks native there.
+    /// The three view modes: a capsule of our own glass where the system has
+    /// Liquid Glass (see GlassToolbarControls), the segmented control, which
+    /// is what looks native, before it.
     @ToolbarContentBuilder
     private func viewModeItem(placement: ToolbarItemPlacement) -> some ToolbarContent {
         if #available(macOS 26.0, *) {
-            ToolbarItemGroup(placement: placement) {
-                viewModeButton(.editorOnly, "Editor Only", systemImage: "doc.plaintext")
-                viewModeButton(.split, "Editor and Preview", systemImage: "rectangle.split.2x1")
-                viewModeButton(.previewOnly, "Preview Only", systemImage: "doc.richtext")
+            ToolbarItem(placement: placement) {
+                GlassViewModePicker(viewMode: $viewMode)
             }
+            .sharedBackgroundVisibility(.hidden)
         } else {
             ToolbarItem(placement: placement) { viewModePicker }
         }
     }
 
-    /// One mode's button, with a quiet pill behind the mode that is showing.
-    /// A toggle would say the same, but the system fills one that is on with
-    /// the accent colour and turns its icon white, which is loud up here; a
-    /// grey tint only leaves that white icon unreadable.
-    private func viewModeButton(_ mode: ViewMode, _ title: LocalizedStringKey, systemImage: String) -> some View {
-        let isShowing = viewMode == mode
-        return Button {
-            viewMode = mode
-        } label: {
-            Label(title, systemImage: systemImage)
-                .labelStyle(.iconOnly)
-                .frame(width: 30, height: 26)
-                // As large as the highlight the system draws under the
-                // pointer (40 by 28, measured on a capture), so the two are
-                // one shape when the pointer is over the mode showing. It
-                // reaches past the label, whose size is what sets the
-                // button's.
-                .background {
-                    Capsule()
-                        .fill(Color.primary.opacity(isShowing ? 0.1 : 0))
-                        .padding(.horizontal, -5)
-                        .padding(.vertical, -1)
+    @ToolbarContentBuilder
+    private func outlineItem(placement: ToolbarItemPlacement) -> some ToolbarContent {
+        if #available(macOS 26.0, *) {
+            ToolbarItem(placement: placement) {
+                GlassToolbarButton {
+                    outlinePresented.toggle()
+                } icon: {
+                    Image(systemName: "list.bullet")
+                        .font(ToolbarIcon.font)
+                        .foregroundStyle(ToolbarIcon.ink)
                 }
+                .help("Document outline")
+                .accessibilityLabel("Outline")
+                .popover(isPresented: $outlinePresented, arrowEdge: .bottom) {
+                    OutlinePopover(items: Outline.items(in: text), onSelect: onSelectHeading)
+                }
+            }
+            .sharedBackgroundVisibility(.hidden)
+        } else {
+            ToolbarItem(placement: placement) { outlineButton }
         }
-        .help(title)
-        .accessibilityAddTraits(isShowing ? .isSelected : [])
     }
 
     private var viewModePicker: some View {
@@ -164,17 +156,10 @@ private struct FadingWidthButton: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    /// A toolbar button's size.
-    private static let side: CGFloat = 36
-
     var body: some View {
-        Button(action: action) {
+        GlassToolbarButton(action: action) {
             WidthLevelIcon(level: level)
-                .frame(width: Self.side, height: Self.side)
-                .contentShape(Circle())
         }
-        .buttonStyle(.plain)
-        .glassEffect(.regular.interactive(), in: .circle)
         .opacity(isShown ? 1 : 0)
         .scaleEffect(isShown ? 1 : 0.8)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: isShown)
