@@ -47,6 +47,11 @@ final class Workspace: NSObject {
     /// and the title gives way to them. Going back to one document, the
     /// layout waits for the tabs to fade out before it changes.
     private(set) var showsTabs = false
+    /// Whether the tabs have come into view. With the second document the
+    /// title bar is laid out for tabs at once, and they fade in a moment
+    /// later, once the strip has been on screen: what is already there when
+    /// the strip is first drawn is simply there.
+    private(set) var tabsAreIn = false
 
     /// Every open document's panes. The workspace keeps it current itself,
     /// as the tabs change, rather than leaving it to a SwiftUI update: what
@@ -58,6 +63,8 @@ final class Workspace: NSObject {
 
     /// How long a tab takes to come or go, which the title bar waits for.
     static let tabAnimation: TimeInterval = 0.2
+    /// How long the title bar takes to change its layout and show it.
+    private static let titleBarSettling: TimeInterval = 0.12
 
     // MARK: - Tabs
 
@@ -84,14 +91,22 @@ final class Workspace: NSObject {
         stack.show(documents, selected: selected, in: self)
         let wantsTabs = documents.count >= 2
         guard wantsTabs != showsTabs else { return }
-        if wantsTabs || NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+        if NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
             showsTabs = wantsTabs
-            return
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + Self.tabAnimation) { [weak self] in
-            guard let self, self.documents.count < 2 else { return }
-            self.showsTabs = false
-            self.refresh()
+            tabsAreIn = wantsTabs
+        } else if wantsTabs {
+            showsTabs = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + Self.titleBarSettling) { [weak self] in
+                guard let self, self.showsTabs else { return }
+                self.tabsAreIn = true
+            }
+        } else {
+            DispatchQueue.main.asyncAfter(deadline: .now() + Self.tabAnimation) { [weak self] in
+                guard let self, self.documents.count < 2 else { return }
+                self.showsTabs = false
+                self.tabsAreIn = false
+                self.refresh()
+            }
         }
     }
 

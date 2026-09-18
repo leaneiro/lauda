@@ -56,6 +56,13 @@ struct WorkspaceTabStrip: View {
             // the whole change inside an animation, the window's update
             // sometimes stopped halfway (see Workspace.stack).
             .animation(reduceMotion ? nil : .easeOut(duration: Workspace.tabAnimation), value: shownTabs.map(\.tabID))
+            // The first tabs fade in rather than arrive: they are in the
+            // strip from the start, because a toolbar leaves out for good
+            // an item that holds nothing when it is made.
+            .opacity(workspace.tabsAreIn ? 1 : 0)
+            .scaleEffect(workspace.tabsAreIn ? 1 : 0.94, anchor: .leading)
+            .allowsHitTesting(workspace.tabsAreIn)
+            .animation(reduceMotion ? nil : .easeOut(duration: Workspace.tabAnimation), value: workspace.tabsAreIn)
     }
 
     /// A lone document has a title, not a tab: on the way from two documents
