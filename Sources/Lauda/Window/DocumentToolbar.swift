@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// The window's toolbar: the view mode picker, the outline and, in
-/// preview-only mode, the text width button. With two or more documents
+/// The window's toolbar: the view mode picker, in preview-only mode the text
+/// width button, and the outline, which is always the last one so it stays
+/// put when the width button comes and goes. With two or more documents
 /// open, the tabs take the title's place and the controls line up on the
 /// right; a single document keeps the picker in the middle, as always.
 struct DocumentToolbar: ToolbarContent {
@@ -23,12 +24,12 @@ struct DocumentToolbar: ToolbarContent {
             // these pile up right after the tabs once nothing sits in the
             // middle to push them across.
             ToolbarItem(placement: .primaryAction) { viewModePicker }
-            ToolbarItem(placement: .primaryAction) { outlineButton }
             ToolbarItem(placement: .primaryAction) { widthButton }
+            ToolbarItem(placement: .primaryAction) { outlineButton }
         } else {
             ToolbarItem(placement: .principal) { viewModePicker }
-            ToolbarItem(placement: .automatic) { outlineButton }
             ToolbarItem(placement: .automatic) { widthButton }
+            ToolbarItem(placement: .automatic) { outlineButton }
         }
     }
 
