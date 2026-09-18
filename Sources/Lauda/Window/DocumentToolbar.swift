@@ -100,7 +100,17 @@ struct DocumentToolbar: ToolbarContent {
             Label(title, systemImage: systemImage)
                 .labelStyle(.iconOnly)
                 .frame(width: 30, height: 26)
-                .background(Color.primary.opacity(isShowing ? 0.1 : 0), in: Capsule())
+                // As large as the highlight the system draws under the
+                // pointer (40 by 28, measured on a capture), so the two are
+                // one shape when the pointer is over the mode showing. It
+                // reaches past the label, whose size is what sets the
+                // button's.
+                .background {
+                    Capsule()
+                        .fill(Color.primary.opacity(isShowing ? 0.1 : 0))
+                        .padding(.horizontal, -5)
+                        .padding(.vertical, -1)
+                }
         }
         .help(title)
         .accessibilityAddTraits(isShowing ? .isSelected : [])
