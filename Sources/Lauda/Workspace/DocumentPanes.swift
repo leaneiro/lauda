@@ -19,7 +19,8 @@ struct DocumentPanes: View {
             scrollSync: $document.scrollSync,
             editorActions: document.editorActions,
             previewActions: document.previewActions,
-            previewWidth: PreviewWidth.showing(level: previewWidthLevel, in: workspace.viewMode)
+            previewWidth: PreviewWidth.showing(level: previewWidthLevel, in: workspace.viewMode),
+            animatesModeChanges: workspace.selected === document
         )
         .overlay(alignment: .topTrailing) {
             DocumentFindBar(session: document.findSession, mode: workspace.viewMode)
