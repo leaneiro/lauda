@@ -187,6 +187,22 @@ final class Workspace: NSObject {
     }
 
     private static let frameName = "workspace"
+
+    /// The tab strip is as wide as the window leaves it, so it changes width
+    /// after the window does, once the toolbar has already laid itself out
+    /// for the new width with the strip's old one. Measured: shrinking the
+    /// window comes out right, growing it leaves the strip in its old slot
+    /// and the controls behind it in the middle of the bar, and telling the
+    /// toolbar that its items' sizes are no longer good is what makes it lay
+    /// out anew.
+    func layOutToolbarAgain() {
+        DispatchQueue.main.async { [weak self] in
+            guard let toolbar = self?.window?.toolbar else { return }
+            for item in toolbar.items {
+                item.view?.invalidateIntrinsicContentSize()
+            }
+        }
+    }
 }
 
 private final class WorkspaceWindow: NSWindow {

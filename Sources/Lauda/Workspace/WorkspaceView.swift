@@ -18,6 +18,10 @@ struct WorkspaceView: View {
         .showing(level: previewWidthLevel, in: workspace.viewMode)
     }
 
+    private var tabStripWidth: CGFloat {
+        WorkspaceTabStrip.width(in: windowWidth, showsWidthButton: workspace.viewMode == .previewOnly)
+    }
+
     var body: some View {
         DocumentStack(documents: workspace.documents, selected: workspace.selected, workspace: workspace)
             .frame(minWidth: 700, minHeight: 440)
@@ -35,11 +39,13 @@ struct WorkspaceView: View {
                     previewWidth: effectivePreviewWidth,
                     onSelectHeading: navigate(to:),
                     onCycleWidth: { previewWidthLevel = effectivePreviewWidth.next.rawValue },
-                    tabStripWidth: WorkspaceTabStrip.width(
-                        in: windowWidth,
-                        showsWidthButton: workspace.viewMode == .previewOnly
-                    )
+                    tabStripWidth: tabStripWidth
                 )
+            }
+            .onChange(of: tabStripWidth) {
+                if workspace.showsTabs {
+                    workspace.layOutToolbarAgain()
+                }
             }
     }
 
