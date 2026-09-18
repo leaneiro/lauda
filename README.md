@@ -39,15 +39,19 @@ and see the rendered Markdown on the right, updated as you type.
   editor font and size, preview font, size and line height, and strict line
   breaks. By default each Return breaks the line in the preview; in strict
   mode, standard Markdown rules apply.
+- **Tabs**: every document opens as a tab of one window, and the files you
+  leave open come back when you open Lauda again. ⇧⌘] and ⇧⌘[ switch tabs;
+  ⌘W or a middle click closes one.
 - **Native documents**: open and save `.md` files, autosave, undo, rename
   from the window title, and recent files.
 
 ## Requirements
 
-macOS 14 Sonoma or later. Lauda is built on SwiftUI's document
-architecture and on APIs that arrived between macOS 11 and 14: the
-document window, menus and settings, `String(localized:)` for the
-translations, and the isolated script world that keeps the preview safe.
+macOS 14 Sonoma or later. Lauda keeps its documents with AppKit and draws
+its window with SwiftUI, on APIs that arrived between macOS 11 and 14:
+SwiftUI's toolbar and title in an AppKit window, Observation, menus and
+settings, `String(localized:)` for the translations, and the isolated
+script world that keeps the preview safe.
 Supporting older versions would mean rewriting those parts, and macOS 14
 already covers every version that still receives security updates.
 
@@ -80,7 +84,8 @@ hoc. You can also open the folder in Xcode and run the `Lauda` target.
 ```
 Sources/Lauda/
   App/                       # app entry, menus, menu-to-window bridges
-  Window/                    # document window: split view, toolbar, find bar
+  Workspace/                 # the one window: its tabs and each document's panes
+  Window/                    # document view: split view, toolbar, find bar
   Document/                  # Markdown document, recent files, welcome guide
   Editor/                    # NSTextView editor: highlighting, lists, formatting, find, images
   Preview/                   # WKWebView, HTML renderer, preview.css and preview.js
