@@ -18,6 +18,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # The toolbar's Liquid Glass needs the macOS 26 SDK. The image ships
+      # Xcode 26 releases next to its default Xcode 16; take the newest.
+      - name: Select Xcode 26
+        run: sudo xcode-select -s "$(ls -d /Applications/Xcode_26.*.app | grep -vi -e beta -e release_candidate | sort -V | tail -1)"
+
       - name: Toolchain
         run: |
           xcodebuild -version
@@ -39,6 +44,9 @@ jobs:
     runs-on: macos-15-intel
     steps:
       - uses: actions/checkout@v7
+
+      - name: Select Xcode 26
+        run: sudo xcode-select -s "$(ls -d /Applications/Xcode_26.*.app | grep -vi -e beta -e release_candidate | sort -V | tail -1)"
 
       - name: Toolchain
         run: |

@@ -57,7 +57,9 @@ already covers every version that still receives security updates.
 
 The app is universal: it runs natively on Apple silicon and on Intel Macs.
 
-Building needs Xcode, or the Command Line Tools with Swift 5.10 or later.
+Building needs Xcode 26 or later, or the matching Command Line Tools: the
+toolbar's Liquid Glass comes from the macOS 26 SDK. The app itself still
+runs on macOS 14.
 Xcode's `xcstringstool` compiles the translations; without it the app
 still builds, in English only.
 
