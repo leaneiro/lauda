@@ -21,13 +21,20 @@ struct WorkspaceTabStrip: View {
     private static let minTabWidth: CGFloat = 120
     private static let maxTabWidth: CGFloat = 220
 
+    /// How wide the view modes are in the toolbar: three glass buttons in one
+    /// capsule where the system has them, a segmented control elsewhere.
+    /// Measured.
+    static var viewModesWidth: CGFloat {
+        if #available(macOS 26.0, *) { 112 } else { 115 }
+    }
+
     /// What the title bar has left for the tabs once the window's own
     /// buttons on one side and the controls on the other have their room.
     ///
     /// A toolbar lays its items out one after another and never grows one
     /// past the width it asks for, so it is this width that carries the
     /// controls to the trailing edge. The figures are measured: 96 points
-    /// before the first item, a picker 115 wide, buttons of 36, and 8 between
+    /// before the first item, the view modes, buttons of 36, and 8 between
     /// items and at the edge. An exact fit is too tight, and the toolbar then
     /// moves the controls into its overflow menu; four spare points were
     /// enough when measured, six leaves room for a width that isn't whole.
@@ -35,7 +42,7 @@ struct WorkspaceTabStrip: View {
         let leading: CGFloat = 96
         let gap: CGFloat = 8
         let spare: CGFloat = 6
-        var controls = gap + 115 + gap + 36 + gap
+        var controls = gap + viewModesWidth + gap + 36 + gap
         if showsWidthButton {
             controls += 36 + gap
         }

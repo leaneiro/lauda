@@ -6,9 +6,10 @@ import Testing
 /// edge, so it is worked out rather than left to the toolbar.
 @Suite struct TabStripWidthTests {
     @Test func theStripTakesWhatTheControlsLeave() {
-        // 1200 - 96 before the first item - (8 + 115 + 8 + 36 + 8) of controls
-        // - 6 spare, without which the toolbar overflows the controls.
-        #expect(WorkspaceTabStrip.width(in: 1200, showsWidthButton: false) == 923)
+        // 96 before the first item, then the controls with 8 around each,
+        // and 6 spare, without which the toolbar overflows the controls.
+        let controls = 8 + WorkspaceTabStrip.viewModesWidth + 8 + 36 + 8
+        #expect(WorkspaceTabStrip.width(in: 1200, showsWidthButton: false) == 1200 - 96 - controls - 6)
     }
 
     /// Preview-only mode brings the text width button, which needs its room

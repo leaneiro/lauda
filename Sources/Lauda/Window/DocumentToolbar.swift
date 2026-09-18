@@ -23,11 +23,11 @@ struct DocumentToolbar: ToolbarContent {
             // primaryAction is the trailing edge on macOS. Left automatic,
             // these pile up right after the tabs once nothing sits in the
             // middle to push them across.
-            ToolbarItem(placement: .primaryAction) { viewModePicker }
+            viewModeItem(placement: .primaryAction)
             widthItem(placement: .primaryAction)
             ToolbarItem(placement: .primaryAction) { outlineButton }
         } else {
-            ToolbarItem(placement: .principal) { viewModePicker }
+            viewModeItem(placement: .principal)
             widthItem(placement: .automatic)
             ToolbarItem(placement: .automatic) { outlineButton }
         }
@@ -68,6 +68,37 @@ struct DocumentToolbar: ToolbarContent {
                 WorkspaceTabStrip(workspace: workspace, width: tabStripWidth)
             }
         }
+    }
+
+    /// The three view modes. Where the system has Liquid Glass they are three
+    /// toolbar buttons sharing one capsule, which light up and give under
+    /// the pointer like the buttons beside them; a segmented control sits in
+    /// the same capsule but stays flat. Earlier systems keep the segmented
+    /// control, which is what looks native there.
+    @ToolbarContentBuilder
+    private func viewModeItem(placement: ToolbarItemPlacement) -> some ToolbarContent {
+        if #available(macOS 26.0, *) {
+            ToolbarItemGroup(placement: placement) {
+                viewModeButton(.editorOnly, "Editor Only", systemImage: "doc.plaintext")
+                viewModeButton(.split, "Editor and Preview", systemImage: "rectangle.split.2x1")
+                viewModeButton(.previewOnly, "Preview Only", systemImage: "doc.richtext")
+            }
+        } else {
+            ToolbarItem(placement: placement) { viewModePicker }
+        }
+    }
+
+    /// One mode's button, held down while its mode is the one showing.
+    private func viewModeButton(_ mode: ViewMode, _ title: LocalizedStringKey, systemImage: String) -> some View {
+        Toggle(isOn: Binding(
+            get: { viewMode == mode },
+            // Pressing the mode that is showing leaves it showing.
+            set: { isOn in if isOn { viewMode = mode } }
+        )) {
+            Label(title, systemImage: systemImage)
+        }
+        .toggleStyle(.button)
+        .help(title)
     }
 
     private var viewModePicker: some View {
