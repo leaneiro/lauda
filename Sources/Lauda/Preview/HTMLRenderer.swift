@@ -114,12 +114,16 @@ struct HTMLRenderer: MarkupVisitor {
 
     // MARK: - Escaping
 
+    /// Compared unit by unit: a combining mark right after one of these
+    /// characters (a quote, then U+0301) makes a single Character with it,
+    /// which a plain search passes over, leaving a raw quote that closes the
+    /// attribute it sits in.
     static func escape(_ string: String) -> String {
         string
-            .replacingOccurrences(of: "&", with: "&amp;")
-            .replacingOccurrences(of: "<", with: "&lt;")
-            .replacingOccurrences(of: ">", with: "&gt;")
-            .replacingOccurrences(of: "\"", with: "&quot;")
+            .replacingOccurrences(of: "&", with: "&amp;", options: .literal)
+            .replacingOccurrences(of: "<", with: "&lt;", options: .literal)
+            .replacingOccurrences(of: ">", with: "&gt;", options: .literal)
+            .replacingOccurrences(of: "\"", with: "&quot;", options: .literal)
     }
 
     // MARK: - Visitor
@@ -195,14 +199,14 @@ struct HTMLRenderer: MarkupVisitor {
     /// Anything else (javascript:, data:, file:…) is dropped, keeping the text.
     static func isAllowedLinkDestination(_ destination: String) -> Bool {
         // Browsers skip whitespace and control characters inside a scheme.
-        let text = String(String.UnicodeScalarView(
-            destination.unicodeScalars.filter { $0.value > 0x20 && $0.value != 0x7F }
-        ))
-        guard let colon = text.firstIndex(of: ":") else { return true }
-        let scheme = text[..<colon]
+        // Read scalar by scalar, as they read it: a combining mark after the
+        // colon would hide it inside a single Character.
+        let scalars = destination.unicodeScalars.filter { $0.value > 0x20 && $0.value != 0x7F }
+        guard let colon = scalars.firstIndex(of: ":") else { return true }
+        let scheme = scalars[..<colon]
         // A colon after a path, query or fragment separator isn't a scheme.
-        if scheme.contains(where: { "/?#".contains($0) }) { return true }
-        return ExternalLinks.allowedSchemes.contains(scheme.lowercased())
+        if scheme.contains(where: { "/?#".unicodeScalars.contains($0) }) { return true }
+        return ExternalLinks.allowedSchemes.contains(String(String.UnicodeScalarView(scheme)).lowercased())
     }
 
     mutating func visitImage(_ image: Markdown.Image) -> String {

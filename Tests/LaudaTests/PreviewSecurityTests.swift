@@ -27,6 +27,29 @@ struct PreviewSecurityTests {
         #expect(HTMLRenderer.isAllowedLinkDestination("page.md#part:two"))
     }
 
+    /// A combining mark right after the colon joins it into one Character
+    /// with it; the scheme is found all the same.
+    @Test func schemeCheckSeesAColonWithACombiningMarkAfterIt() {
+        #expect(!HTMLRenderer.isAllowedLinkDestination("javascript:\u{301}alert(1)"))
+        let html = HTMLRenderer.render("[click me](javascript:\u{301}alert(1))")
+        #expect(!html.contains("<a"), "\(html)")
+        #expect(html.contains("click me"), "\(html)")
+    }
+
+    // MARK: - Escaping
+
+    /// A combining mark after one of HTML's special characters makes a single
+    /// Character with it; the special character is escaped all the same.
+    @Test(arguments: [("&", "&amp;"), ("<", "&lt;"), (">", "&gt;"), ("\"", "&quot;")])
+    func escapesMarkupCharactersFollowedByACombiningMark(pair: (String, String)) {
+        #expect(HTMLRenderer.escape("a\(pair.0)\u{301}b") == "a\(pair.1)\u{301}b")
+    }
+
+    @Test func anImagesAltTextStaysInsideItsAttribute() {
+        let html = HTMLRenderer.render("![photo &quot;\u{301} beach](a.png)")
+        #expect(html.contains("alt=\"photo &quot;\u{301} beach\""), "\(html)")
+    }
+
     // MARK: - Page policies
 
     @Test func previewPageBlocksDocumentScripts() {
