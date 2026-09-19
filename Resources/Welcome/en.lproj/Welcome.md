@@ -10,6 +10,8 @@ Text can be **bold** (⌘B), *italic* (⌘I), or `code`. Select some text and pr
 
 Type `->` or `<-` outside code and they become → and ←.
 
+Type `(`, `[`, `*` or `"` and the closing one comes along, with the caret in between. With text selected, the pair wraps it.
+
 > Quotes look like this.
 
 ## Lists

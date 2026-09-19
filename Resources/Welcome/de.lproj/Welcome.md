@@ -10,6 +10,8 @@ Text kann **fett** (⌘B), *kursiv* (⌘I) oder `Code` sein. Markiere Text und d
 
 Tippe außerhalb von Code `->` oder `<-`, und daraus wird → bzw. ←.
 
+Tippe `(`, `[`, `*` oder `"`, und das schließende Zeichen kommt gleich mit, der Cursor dazwischen. Ist Text markiert, umschließt ihn das Paar.
+
 > Zitate sehen so aus.
 
 ## Listen

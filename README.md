@@ -32,6 +32,8 @@ and see the rendered Markdown on the right, updated as you type.
   [CONTRIBUTING.md](CONTRIBUTING.md)).
 - **Writing shortcuts**: ⌘B, ⌘I and ⌘K in the Format menu; Return continues
   lists (including task and numbered lists); Tab and Shift-Tab indent items.
+  Brackets, quotes and the `*`, `_` and `` ` `` markers close themselves, and
+  typed over a selection they wrap it.
 - **Small comforts**: pasting a URL over a selection creates `[text](url)`;
   `->` and `<-` become → and ← outside code; the status bar shows the word
   count, reading time and save state.

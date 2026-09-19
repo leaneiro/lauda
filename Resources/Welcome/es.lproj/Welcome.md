@@ -10,6 +10,8 @@ El texto puede ir en **negrita** (⌘B), *cursiva* (⌘I) o como `código`. Sele
 
 Escribe `->` o `<-` fuera del código y se convertirán en → y ←.
 
+Escribe `(`, `[`, `*` o `"` y el cierre llega solo, con el cursor en medio. Si hay texto seleccionado, el par lo envuelve.
+
 > Las citas se ven así.
 
 ## Listas

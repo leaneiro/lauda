@@ -17,6 +17,29 @@ final class EditorTextView: NSTextView {
         return origin
     }
 
+    // MARK: - Pairs
+
+    /// Typing comes through here, keys and input methods alike, so an
+    /// opening character can bring its closing one (see AutoPairing). Undo
+    /// doesn't, so it never pairs anything.
+    override func insertText(_ string: Any, replacementRange: NSRange) {
+        guard let typed = (string as? String) ?? (string as? NSAttributedString)?.string,
+              let coordinator = delegate as? MarkdownTextView.Coordinator,
+              let pairing = coordinator.pairing(forTyping: typed, replacementRange: replacementRange)
+        else {
+            super.insertText(string, replacementRange: replacementRange)
+            return
+        }
+        let edit = pairing.edit
+        if edit.range.length > 0 || !edit.replacement.isEmpty {
+            super.insertText(edit.replacement, replacementRange: edit.range)
+        }
+        setSelectedRange(edit.selection)
+        if let opener = pairing.opensPairAt {
+            coordinator.openPairs.opened(at: opener)
+        }
+    }
+
     // MARK: - Image drag & drop
 
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {

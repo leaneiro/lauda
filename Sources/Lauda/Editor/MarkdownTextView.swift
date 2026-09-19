@@ -103,8 +103,10 @@ struct MarkdownTextView: NSViewRepresentable {
             coordinator.lines.invalidate()
             let length = (text as NSString).length
             textView.setSelectedRange(NSRange(location: min(selection.location, length), length: 0))
-            // The text view's undo entries hold ranges into the replaced text.
+            // The text view's undo entries hold ranges into the replaced text,
+            // and so do the pairs it typed.
             coordinator.textUndoManager.removeAllActions()
+            coordinator.openPairs.removeAll()
             coordinator.highlight()
         }
         if coordinator.appliedFontName != fontName || coordinator.appliedFontSize != fontSize {
@@ -158,9 +160,19 @@ struct MarkdownTextView: NSViewRepresentable {
             textUndoManager
         }
 
+        /// The pairs this editor typed that the caret is still inside of.
+        var openPairs = OpenPairs()
+
+        private var isUndoingOrRedoing: Bool {
+            textUndoManager.isUndoing || textUndoManager.isRedoing
+        }
+
         func textDidChange(_ notification: Notification) {
             guard let textView else { return }
             lines.invalidate()
+            if isUndoingOrRedoing {
+                openPairs.removeAll()
+            }
             // During IME composition (dead keys: ´ + a → á) the text contains
             // uncommitted marked text; committing fires textDidChange again.
             guard !textView.hasMarkedText() else { return }
@@ -259,9 +271,44 @@ struct MarkdownTextView: NSViewRepresentable {
                 return handleIndent(textView, outdent: false)
             case #selector(NSResponder.insertBacktab(_:)):
                 return handleIndent(textView, outdent: true)
+            case #selector(NSResponder.deleteBackward(_:)):
+                return handleDeleteBackward(textView)
             default:
                 return false
             }
+        }
+
+        func textViewDidChangeSelection(_ notification: Notification) {
+            guard let textView else { return }
+            openPairs.selectionDidChange(to: textView.selectedRange())
+        }
+
+        /// What typing a character does when it opens or closes a pair (see
+        /// AutoPairing); nil when it is simply inserted.
+        func pairing(forTyping typed: String, replacementRange: NSRange) -> AutoPairing.Typing? {
+            guard let textView, typed.count == 1 else { return nil }
+            let composing = textView.hasMarkedText()
+            let range = replacementRange.location != NSNotFound ? replacementRange
+                : composing ? textView.markedRange() : textView.selectedRange()
+            return AutoPairing.typing(
+                typed,
+                replacing: range,
+                composing: composing,
+                in: textView.string as NSString,
+                openPair: openPairs.innermost,
+                isCode: { isInsideCode(at: range.location, textView: textView) }
+            )
+        }
+
+        private func handleDeleteBackward(_ textView: NSTextView) -> Bool {
+            guard !textView.hasMarkedText(),
+                  let edit = AutoPairing.deletingBackward(
+                      selection: textView.selectedRange(), openPair: openPairs.innermost
+                  )
+            else { return false }
+            textView.insertText(edit.replacement, replacementRange: edit.range)
+            textView.setSelectedRange(edit.selection)
+            return true
         }
 
         func textView(
@@ -284,18 +331,28 @@ struct MarkdownTextView: NSViewRepresentable {
                     textView.breakUndoCoalescing()
                 }
             }
-            guard let replacement = replacementString,
-                  !textView.hasMarkedText(),
-                  let substitution = TypingSubstitutions.substitution(
-                      in: textView.string as NSString,
-                      affectedRange: affectedRange,
-                      replacement: replacement
-                  ),
-                  !isInsideCode(at: affectedRange.location, textView: textView)
-            else { return true }
+            if let replacement = replacementString,
+               !textView.hasMarkedText(),
+               let substitution = TypingSubstitutions.substitution(
+                   in: textView.string as NSString,
+                   affectedRange: affectedRange,
+                   replacement: replacement
+               ),
+               !isInsideCode(at: affectedRange.location, textView: textView) {
+                textView.insertText(substitution.replacement, replacementRange: substitution.range)
+                return false
+            }
 
-            textView.insertText(substitution.replacement, replacementRange: substitution.range)
-            return false
+            // The pairs the editor typed move with the text around them.
+            // Undo puts back text from before they were typed, so it ends them.
+            if isUndoingOrRedoing {
+                openPairs.removeAll()
+            } else if let replacement = replacementString {
+                openPairs.textWillChange(
+                    in: affectedRange, replacementLength: (replacement as NSString).length
+                )
+            }
+            return true
         }
 
         /// Arrows shouldn't be substituted inside code (```blocks``` or `inline`),

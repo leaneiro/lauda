@@ -10,6 +10,8 @@ O texto pode ficar em **negrito** (⌘B), *itálico* (⌘I) ou virar `código`. 
 
 Digite `->` ou `<-` fora de código e eles viram → e ←.
 
+Digite `(`, `[`, `*` ou `"` e o fechamento vem junto, com o cursor no meio. Com um texto selecionado, o par envolve a seleção.
+
 > Citações ficam assim.
 
 ## Listas

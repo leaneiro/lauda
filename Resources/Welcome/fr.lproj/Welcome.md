@@ -10,6 +10,8 @@ Le texte peut être en **gras** (⌘B), en *italique* (⌘I) ou en `code`. Séle
 
 Tapez `->` ou `<-` en dehors du code et ils deviennent → et ←.
 
+Tapez `(`, `[`, `*` ou `"` et le caractère fermant suit, avec le curseur entre les deux. Si du texte est sélectionné, la paire l’entoure.
+
 > Les citations ressemblent à ceci.
 
 ## Listes
