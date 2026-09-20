@@ -40,8 +40,8 @@ enum ImageImporter {
     /// and returns the path to reference in markdown, relative to `directory`.
     /// Throws when the copy fails, e.g. in a read-only folder.
     static func importImage(from source: URL, into directory: URL) throws -> String {
-        let base = directory.resolvingSymlinksInPath().standardizedFileURL
-        let canonicalSource = source.resolvingSymlinksInPath().standardizedFileURL
+        let base = directory.canonical
+        let canonicalSource = source.canonical
 
         // Already inside the document's folder: just reference it.
         if canonicalSource.path == base.path.appending("/").appending(canonicalSource.lastPathComponent)

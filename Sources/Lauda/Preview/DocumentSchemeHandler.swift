@@ -18,8 +18,8 @@ final class DocumentSchemeHandler: NSObject, WKURLSchemeHandler {
 
         // Symlinks are resolved on both sides, so a link inside the folder
         // can't serve a file from outside it.
-        let base = baseDirectory.standardizedFileURL.resolvingSymlinksInPath()
-        let target = base.appendingPathComponent(relativePath).standardizedFileURL.resolvingSymlinksInPath()
+        let base = baseDirectory.canonical
+        let target = base.appendingPathComponent(relativePath).canonical
         guard target.path == base.path || target.path.hasPrefix(base.path + "/") else {
             return nil // path traversal (e.g. ../../…) or a symlink pointing out
         }

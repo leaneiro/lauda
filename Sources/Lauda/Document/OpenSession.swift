@@ -15,14 +15,7 @@ enum OpenSession {
     private static let selectedKey = "openSessionSelected"
 
     static func store(_ contents: Contents, defaults: UserDefaults = .standard) {
-        let bookmarks = contents.urls.compactMap { url -> Data? in
-            do {
-                return try url.bookmarkData()
-            } catch {
-                Log.documents.failure("Remembering an open document", error)
-                return nil
-            }
-        }
+        let bookmarks = contents.urls.compactMap { Bookmarks.data(for: $0, remembering: "Remembering an open document") }
         defaults.set(bookmarks, forKey: key)
         if let selected = contents.selected, let index = contents.urls.firstIndex(of: selected) {
             defaults.set(index, forKey: selectedKey)
@@ -34,16 +27,7 @@ enum OpenSession {
     /// The last session, without the files that no longer exist.
     static func stored(defaults: UserDefaults = .standard, fileManager: FileManager = .default) -> Contents {
         let bookmarks = defaults.array(forKey: key) as? [Data] ?? []
-        let urls = bookmarks.map { data -> URL? in
-            var isStale = false
-            guard let url = try? URL(
-                resolvingBookmarkData: data,
-                options: [],
-                relativeTo: nil,
-                bookmarkDataIsStale: &isStale
-            ) else { return nil }
-            return fileManager.fileExists(atPath: url.path) ? url : nil
-        }
+        let urls = bookmarks.map { Bookmarks.url(from: $0, existingOnly: true, fileManager: fileManager) }
         var contents = Contents(urls: urls.compactMap { $0 })
         if let index = defaults.object(forKey: selectedKey) as? Int, urls.indices.contains(index) {
             contents.selected = urls[index]

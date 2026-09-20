@@ -21,23 +21,12 @@ enum RecentDocuments {
     static func note(_ url: URL, defaults: UserDefaults = .standard) {
         // Bookmarks resolve to canonical paths (e.g. /private/var vs /var),
         // so dedupe must compare canonical forms.
-        let canonical = canonicalPath(of: url)
-        var urls = storedURLs(defaults: defaults).filter { canonicalPath(of: $0) != canonical }
+        let canonical = url.canonicalPath
+        var urls = storedURLs(defaults: defaults).filter { $0.canonicalPath != canonical }
         urls.insert(url, at: 0)
-        let bookmarks = urls.prefix(limit).compactMap { url -> Data? in
-            do {
-                return try url.bookmarkData()
-            } catch {
-                Log.documents.failure("Remembering a recent document", error)
-                return nil
-            }
-        }
+        let bookmarks = urls.prefix(limit).compactMap { Bookmarks.data(for: $0, remembering: "Remembering a recent document") }
         defaults.set(bookmarks, forKey: key)
         bumpRevision(defaults)
-    }
-
-    private static func canonicalPath(of url: URL) -> String {
-        url.resolvingSymlinksInPath().standardizedFileURL.path
     }
 
     static func clear(defaults: UserDefaults = .standard) {
@@ -47,20 +36,12 @@ enum RecentDocuments {
 
     static func storedURLs(defaults: UserDefaults = .standard) -> [URL] {
         let bookmarks = defaults.array(forKey: key) as? [Data] ?? []
-        return bookmarks.compactMap { data in
-            var isStale = false
-            return try? URL(
-                resolvingBookmarkData: data,
-                options: [],
-                relativeTo: nil,
-                bookmarkDataIsStale: &isStale
-            )
-        }
+        return bookmarks.compactMap { Bookmarks.url(from: $0) }
     }
 
     static func contains(_ url: URL, defaults: UserDefaults = .standard) -> Bool {
-        let canonical = canonicalPath(of: url)
-        return storedURLs(defaults: defaults).contains { canonicalPath(of: $0) == canonical }
+        let canonical = url.canonicalPath
+        return storedURLs(defaults: defaults).contains { $0.canonicalPath == canonical }
     }
 
     /// Makes the system list mirror ours — oldest first, so the most recent
