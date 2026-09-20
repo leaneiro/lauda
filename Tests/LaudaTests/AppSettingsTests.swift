@@ -6,16 +6,7 @@ import Testing
 /// and in any order without writing over each other (or over the real app's
 /// settings on this Mac).
 final class AppSettingsTests {
-    private let suiteName = "AppSettingsTests-\(UUID().uuidString)"
-    private let defaults: UserDefaults
-
-    init() throws {
-        defaults = try #require(UserDefaults(suiteName: suiteName))
-    }
-
-    deinit {
-        UserDefaults().removePersistentDomain(forName: suiteName)
-    }
+    private let defaults: UserDefaults = TestDefaults()
 
     @Test func unsetSettingsReadTheirDefaults() {
         #expect(defaults[AppSettings.previewFontSize] == 16)

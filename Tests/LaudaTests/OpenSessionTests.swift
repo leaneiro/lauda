@@ -11,7 +11,7 @@ import Testing
 
         init() throws {
             suite = "lauda-session-\(UUID().uuidString)"
-            defaults = try #require(UserDefaults(suiteName: suite))
+            defaults = TestDefaults()
             folder = FileManager.default.temporaryDirectory.appendingPathComponent(suite)
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         }
@@ -23,7 +23,6 @@ import Testing
         }
 
         func cleanUp() {
-            defaults.removePersistentDomain(forName: suite)
             try? FileManager.default.removeItem(at: folder)
         }
     }

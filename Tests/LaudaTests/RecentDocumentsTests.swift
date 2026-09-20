@@ -5,19 +5,16 @@ import Testing
 /// Own defaults suite and own folder per test, so order and parallelism
 /// don't matter.
 final class RecentDocumentsTests {
-    private let suiteName = "RecentDocumentsTests-\(UUID().uuidString)"
-    private let defaults: UserDefaults
+    private let defaults: UserDefaults = TestDefaults()
     private let directory: URL
 
     init() throws {
-        defaults = try #require(UserDefaults(suiteName: suiteName))
         directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("recents-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     }
 
     deinit {
-        UserDefaults().removePersistentDomain(forName: suiteName)
         try? FileManager.default.removeItem(at: directory)
     }
 

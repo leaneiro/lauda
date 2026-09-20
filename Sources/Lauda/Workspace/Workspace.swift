@@ -16,13 +16,18 @@ final class Workspace: NSObject {
 
     private var tabs = TabList<MarkdownDocument>()
 
+    /// Where the settings and the session are kept. Injected, as everywhere
+    /// else in the app, so a test drives its own tabs without writing to the
+    /// reader's preferences.
+    @ObservationIgnored private let defaults: UserDefaults
+
     /// Which panes the window shows; a new session starts in the last one used.
     var viewMode: ViewMode = .split {
-        didSet { UserDefaults.standard[AppSettings.lastViewMode] = viewMode.rawValue }
+        didSet { defaults[AppSettings.lastViewMode] = viewMode.rawValue }
     }
     /// Where the divider between editor and preview sits.
     var splitFraction: Double = 0.5 {
-        didSet { UserDefaults.standard[AppSettings.splitFraction] = splitFraction }
+        didSet { defaults[AppSettings.splitFraction] = splitFraction }
     }
 
     /// The window, for sheets such as the export panel.
@@ -32,10 +37,11 @@ final class Workspace: NSObject {
     /// closing tabs, and the next launch should bring them back.
     @ObservationIgnored var remembersSession = true
 
-    override init() {
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
         super.init()
-        viewMode = ViewMode(rawValue: UserDefaults.standard[AppSettings.lastViewMode]) ?? .split
-        splitFraction = UserDefaults.standard[AppSettings.splitFraction]
+        viewMode = ViewMode(rawValue: defaults[AppSettings.lastViewMode]) ?? .split
+        splitFraction = defaults[AppSettings.splitFraction]
     }
 
     var documents: [MarkdownDocument] { tabs.items }
@@ -61,8 +67,9 @@ final class Workspace: NSObject {
     /// panes up, and typing went to them).
     @ObservationIgnored let stack = DocumentStackView()
 
-    /// How long a tab takes to come or go, which the title bar waits for.
-    static let tabAnimation: TimeInterval = 0.2
+    /// How long a tab takes to come or go, which the title bar waits for:
+    /// the same as a change of layout, since the two often run together.
+    static let tabAnimation: TimeInterval = ModeChange.duration
     /// How long the title bar takes to change its layout and show it.
     private static let titleBarSettling: TimeInterval = 0.12
 
@@ -72,7 +79,7 @@ final class Workspace: NSObject {
         tabs.add(document)
         tabsChanged()
         show(document)
-        refresh()
+        tabsChangedInWindow()
     }
 
     func select(_ document: MarkdownDocument) {
@@ -80,7 +87,7 @@ final class Workspace: NSObject {
         tabs.select(document)
         tabsChanged()
         show(document)
-        refresh()
+        tabsChangedInWindow()
     }
 
     /// The panes follow the tabs at once. The title bar's layout follows
@@ -105,7 +112,7 @@ final class Workspace: NSObject {
                 guard let self, self.documents.count < 2 else { return }
                 self.showsTabs = false
                 self.tabsAreIn = false
-                self.refresh()
+                self.tabsChangedInWindow()
             }
         }
     }
@@ -113,9 +120,9 @@ final class Workspace: NSObject {
     /// The tab of an open file, when there is one; what the last session's
     /// front tab comes back as.
     func select(fileAt url: URL) {
-        let path = url.standardizedFileURL.resolvingSymlinksInPath().path
+        let path = url.canonicalPath
         if let document = documents.first(where: {
-            $0.fileURL?.standardizedFileURL.resolvingSymlinksInPath().path == path
+            $0.fileURL?.canonicalPath == path
         }) {
             select(document)
         }
@@ -174,24 +181,34 @@ final class Workspace: NSObject {
             windowController = nil
             windowReference.window = nil
         }
-        refresh()
+        tabsChangedInWindow()
     }
 
     /// Save As, Rename and Move change where a document lives.
     func documentDidSave() {
-        refresh()
+        tabsChangedInWindow()
     }
 
     func clearRecents() {
-        RecentDocuments.clear()
+        RecentDocuments.clear(defaults: defaults)
         NSDocumentController.shared.clearRecentDocuments(nil)
     }
 
-    private func refresh() {
+    /// After a change to the tabs: the title bar shows a title or the tabs,
+    /// never both, and the session is written so the next launch opens what
+    /// is open now.
+    private func tabsChangedInWindow() {
+        updateTitleVisibility()
+        storeSession()
+    }
+
+    private func updateTitleVisibility() {
         window?.titleVisibility = showsTabs ? .hidden : .visible
-        if remembersSession {
-            OpenSession.store(.init(urls: documents.compactMap(\.fileURL), selected: selected?.fileURL))
-        }
+    }
+
+    private func storeSession() {
+        guard remembersSession else { return }
+        OpenSession.store(.init(urls: documents.compactMap(\.fileURL), selected: selected?.fileURL), defaults: defaults)
     }
 
     // MARK: - The window

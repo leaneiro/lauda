@@ -5,8 +5,10 @@ import Testing
 /// Each open document keeps panes of its own; a tab only decides whose show.
 @MainActor
 @Suite(.serialized)
-struct DocumentStackTests {
-    private let workspace = Workspace()
+final class DocumentStackTests {
+    /// Its own preferences, so the tests never write to the reader's: the
+    /// view mode and the open session are stored the moment they change.
+    private let workspace = Workspace(defaults: TestDefaults())
 
     private func makeDocument(_ text: String) -> MarkdownDocument {
         let document = MarkdownDocument()
