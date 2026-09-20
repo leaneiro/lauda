@@ -295,7 +295,7 @@ struct MarkdownTextView: NSViewRepresentable {
                 composing: composing,
                 in: textView.string as NSString,
                 openPair: openPairs.innermost,
-                isCode: { isInsideCode(at: range.location, textView: textView) }
+                isCode: { self.highlighter.isInsideCode(at: range.location, in: textView.string as NSString) }
             )
         }
 
@@ -337,7 +337,7 @@ struct MarkdownTextView: NSViewRepresentable {
                    affectedRange: affectedRange,
                    replacement: replacement
                ),
-               !isInsideCode(at: affectedRange.location, textView: textView) {
+               !highlighter.isInsideCode(at: affectedRange.location, in: textView.string as NSString) {
                 textView.insertText(substitution.replacement, replacementRange: substitution.range)
                 return false
             }
@@ -354,95 +354,26 @@ struct MarkdownTextView: NSViewRepresentable {
             return true
         }
 
-        /// Arrows shouldn't be substituted inside code (```blocks``` or `inline`),
-        /// where `->` is usually meant literally.
-        private func isInsideCode(at location: Int, textView: NSTextView) -> Bool {
-            let text = textView.string as NSString
-            for range in highlighter.fencedBlockRanges(in: text) where NSLocationInRange(location, range) {
-                return true
-            }
-            let lineRange = text.lineRange(for: NSRange(location: min(location, text.length), length: 0))
-            var backticks = 0
-            var index = lineRange.location
-            while index < location, index < text.length {
-                if text.character(at: index) == 0x60 { backticks += 1 }
-                index += 1
-            }
-            return backticks % 2 == 1
-        }
-
         private func handleNewline(_ textView: NSTextView) -> Bool {
-            let selection = textView.selectedRange()
-            guard selection.length == 0 else { return false }
-            let text = textView.string as NSString
-            let lineRange = text.lineRange(for: NSRange(location: selection.location, length: 0))
-            var line = text.substring(with: lineRange)
-            if line.hasSuffix("\n") { line.removeLast() }
-
-            switch ListContinuation.newlineAction(
-                forLine: line,
-                caretOffset: selection.location - lineRange.location
-            ) {
-            case .none:
-                return false
-            case .endList(let prefixLength):
-                replaceText(
-                    in: NSRange(location: lineRange.location, length: prefixLength),
-                    with: "",
-                    selecting: NSRange(location: lineRange.location, length: 0)
-                )
-                return true
-            case .continueList(let insertion):
-                replaceText(
-                    in: selection,
-                    with: insertion,
-                    selecting: NSRange(
-                        location: selection.location + (insertion as NSString).length,
-                        length: 0
-                    )
-                )
-                return true
-            }
+            guard let edit = ListContinuation.newlineEdit(
+                in: textView.string as NSString, selection: textView.selectedRange()
+            ) else { return false }
+            apply(edit)
+            return true
         }
 
         private func handleIndent(_ textView: NSTextView, outdent: Bool) -> Bool {
-            let selection = textView.selectedRange()
-            let text = textView.string as NSString
-            let lineRange = text.lineRange(for: NSRange(location: selection.location, length: 0))
-            var line = text.substring(with: lineRange)
-            if line.hasSuffix("\n") { line.removeLast() }
-
-            guard let info = ListContinuation.lineInfo(forLine: line),
-                  selection.location - lineRange.location <= info.prefixLength
-            else { return false }
-
-            if outdent {
-                var removable = 0
-                while removable < info.indentUnit,
-                      lineRange.location + removable < text.length {
-                    let character = text.character(at: lineRange.location + removable)
-                    if character == 0x20 { removable += 1 }
-                    else if character == 0x09 { removable += 1; break }
-                    else { break }
-                }
-                guard removable > 0 else { return true }
-                replaceText(
-                    in: NSRange(location: lineRange.location, length: removable),
-                    with: "",
-                    selecting: NSRange(
-                        location: max(selection.location - removable, lineRange.location),
-                        length: 0
-                    )
-                )
-            } else {
-                let spaces = String(repeating: " ", count: info.indentUnit)
-                replaceText(
-                    in: NSRange(location: lineRange.location, length: 0),
-                    with: spaces,
-                    selecting: NSRange(location: selection.location + info.indentUnit, length: 0)
-                )
+            switch ListContinuation.indent(
+                in: textView.string as NSString, selection: textView.selectedRange(), outdent: outdent
+            ) {
+            case .notAList:
+                return false
+            case .nothingToRemove:
+                return true
+            case .edit(let edit):
+                apply(edit)
+                return true
             }
-            return true
         }
 
         // MARK: - Formatting actions (⌘B / ⌘I / ⌘U / ⇧⌘X / ⌘K)

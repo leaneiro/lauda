@@ -106,6 +106,24 @@ final class MarkdownHighlighter {
         textStorage.endEditing()
     }
 
+    /// Whether `location` falls in code: inside a fenced block, or after an
+    /// odd number of backticks on its line, which is inside an inline span.
+    /// Typing substitutions and marker pairing stay out of code, where `->`
+    /// and `*` are usually meant as they are written.
+    func isInsideCode(at location: Int, in text: NSString) -> Bool {
+        for range in fencedBlockRanges(in: text) where NSLocationInRange(location, range) {
+            return true
+        }
+        let lineRange = text.lineRange(for: NSRange(location: min(location, text.length), length: 0))
+        var backticks = 0
+        var index = lineRange.location
+        while index < location, index < text.length {
+            if text.character(at: index) == 0x60 { backticks += 1 }
+            index += 1
+        }
+        return backticks % 2 == 1
+    }
+
     /// Single linear pass pairing ```/~~~ fence lines; an unclosed fence runs
     /// to the end of the document (avoids the pathological backtracking a
     /// multiline regex has on documents with orphan fences). Also used by the

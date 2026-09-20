@@ -29,6 +29,79 @@ enum ListContinuation {
         return (match, nsLine)
     }
 
+    /// What Tab or Shift-Tab does on a list line.
+    enum IndentOutcome: Equatable {
+        /// Not a list line: the key does whatever it does elsewhere.
+        case notAList
+        /// A list line already at the left edge: the key is spoken for, and
+        /// nothing moves.
+        case nothingToRemove
+        case edit(TextEdit)
+    }
+
+    /// The line the caret is on, without its newline, and where it starts.
+    private static func line(in text: NSString, at location: Int) -> (range: NSRange, text: String) {
+        let range = text.lineRange(for: NSRange(location: location, length: 0))
+        var line = text.substring(with: range)
+        if line.hasSuffix("\n") { line.removeLast() }
+        return (range, line)
+    }
+
+    /// What Return does on a list line: nothing, so the newline is inserted
+    /// as usual, or the edit that ends or continues the list.
+    static func newlineEdit(in text: NSString, selection: NSRange) -> TextEdit? {
+        guard selection.length == 0 else { return nil }
+        let (lineRange, lineText) = line(in: text, at: selection.location)
+        switch newlineAction(forLine: lineText, caretOffset: selection.location - lineRange.location) {
+        case .none:
+            return nil
+        case .endList(let prefixLength):
+            return TextEdit(
+                range: NSRange(location: lineRange.location, length: prefixLength),
+                replacement: "",
+                selection: NSRange(location: lineRange.location, length: 0)
+            )
+        case .continueList(let insertion):
+            return TextEdit(
+                range: selection,
+                replacement: insertion,
+                selection: NSRange(location: selection.location + (insertion as NSString).length, length: 0)
+            )
+        }
+    }
+
+    /// One step of indent added or taken off a list line, the step being the
+    /// width of its own marker so nested items line up under it. Only from
+    /// inside the prefix: further along the line, Tab is a tab.
+    static func indent(in text: NSString, selection: NSRange, outdent: Bool) -> IndentOutcome {
+        let (lineRange, lineText) = line(in: text, at: selection.location)
+        guard let info = lineInfo(forLine: lineText),
+              selection.location - lineRange.location <= info.prefixLength
+        else { return .notAList }
+
+        guard outdent else {
+            let spaces = String(repeating: " ", count: info.indentUnit)
+            return .edit(TextEdit(
+                range: NSRange(location: lineRange.location, length: 0),
+                replacement: spaces,
+                selection: NSRange(location: selection.location + info.indentUnit, length: 0)
+            ))
+        }
+
+        // One step back, counting spaces; a tab is a step on its own.
+        var removable = 0
+        while removable < info.indentUnit, lineRange.location + removable < text.length {
+            let character = text.character(at: lineRange.location + removable)
+            if character == 0x20 { removable += 1 } else if character == 0x09 { removable += 1; break } else { break }
+        }
+        guard removable > 0 else { return .nothingToRemove }
+        return .edit(TextEdit(
+            range: NSRange(location: lineRange.location, length: removable),
+            replacement: "",
+            selection: NSRange(location: max(selection.location - removable, lineRange.location), length: 0)
+        ))
+    }
+
     static func lineInfo(forLine line: String) -> LineInfo? {
         guard let (match, _) = match(in: line) else { return nil }
         let taskLength = match.range(at: 6).location != NSNotFound ? match.range(at: 6).length : 0
