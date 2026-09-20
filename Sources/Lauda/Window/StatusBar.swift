@@ -15,7 +15,9 @@ struct StatusBar: View {
             if let wordCount = wordCounter.wordCount {
                 Text("\(wordCount) words")
             }
-            Text("\(text.count) characters")
+            if let characterCount = wordCounter.characterCount {
+                Text("\(characterCount) characters")
+            }
             if let readingTime = wordCounter.wordCount.flatMap(ReadingTime.label(forWordCount:)) {
                 Text(readingTime)
             }

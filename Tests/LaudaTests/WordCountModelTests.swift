@@ -40,6 +40,19 @@ struct WordCountModelTests {
         #expect(gate.requested.isEmpty)
     }
 
+    /// Characters are counted with the words, off the main thread: both walk
+    /// the whole text, and the status bar shows them side by side.
+    @Test func charactersAreCountedAsTheReaderSeesThem() async {
+        let gate = PauseGate()
+        let model = WordCountModel(sleep: { await gate.wait($0) })
+        await model.update(for: "café 👩‍👩‍👧 one")
+        // The emoji is no word, so it counts among the characters only.
+        #expect(model.wordCount == 2)
+        // Four letters, a space, one family, a space, three letters: an
+        // accented letter and a joined emoji count once each.
+        #expect(model.characterCount == 10)
+    }
+
     @Test func laterCountsWaitForAPauseInTyping() async {
         let gate = PauseGate()
         let model = WordCountModel(pause: .milliseconds(300), sleep: { await gate.wait($0) })

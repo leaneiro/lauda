@@ -38,7 +38,7 @@ struct WorkspaceView: View {
                     workspace: workspace,
                     viewMode: viewMode,
                     outlinePresented: $outlinePresented,
-                    text: workspace.selected?.text ?? "",
+                    outlineItems: { Outline.items(in: Workspace.shared.selected?.text ?? "") },
                     previewWidth: effectivePreviewWidth,
                     onSelectHeading: navigate(to:),
                     onCycleWidth: { previewWidthLevel = effectivePreviewWidth.next.rawValue },

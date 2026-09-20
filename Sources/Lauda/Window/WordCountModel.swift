@@ -1,16 +1,20 @@
 import Foundation
 import Observation
 
-/// Keeps a document's word count current. Counting walks the whole text,
-/// which is slow for long Japanese or Chinese documents, so it runs off the
-/// main thread and, while typing, waits for a pause first. The count when the
-/// window opens runs right away, and a count that a newer edit superseded is
-/// never shown.
+/// Keeps a document's counts current. Counting walks the whole text, which
+/// is slow for long Japanese or Chinese documents, and characters are
+/// counted by grapheme cluster, which walks it as well, so both run off the
+/// main thread and, while typing, wait for a pause first. The counts when
+/// the window opens run right away, and counts that a newer edit superseded
+/// are never shown.
 @MainActor
 @Observable
 final class WordCountModel {
     /// Words in the document; nil until the first count finishes.
     private(set) var wordCount: Int?
+    /// Characters in the document, as the reader sees them (one per grapheme
+    /// cluster, so an emoji or an accented letter counts once).
+    private(set) var characterCount: Int?
 
     private let pause: Duration
     private let sleep: @Sendable (Duration) async -> Void
@@ -34,9 +38,12 @@ final class WordCountModel {
             if Task.isCancelled { return }
         }
         let count = self.count
-        let result = await Task.detached(priority: .userInitiated) { count(text) }.value
+        let counts = await Task.detached(priority: .userInitiated) {
+            (words: count(text), characters: text.count)
+        }.value
         if !Task.isCancelled {
-            wordCount = result
+            wordCount = counts.words
+            characterCount = counts.characters
         }
     }
 }

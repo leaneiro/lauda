@@ -10,7 +10,11 @@ struct DocumentToolbar: ToolbarContent {
     @Binding var viewMode: ViewMode
     @Binding var outlinePresented: Bool
     /// The document's text; headings are only read when the outline opens.
-    let text: String
+    /// The outline's headings, read when the popover opens rather than held
+    /// here: the text changes on every keystroke, and a toolbar that reads it
+    /// is rebuilt on every keystroke with it (WindowExporter reads its
+    /// document the same way).
+    let outlineItems: () -> [OutlineItem]
     let previewWidth: PreviewWidth
     let onSelectHeading: (OutlineItem) -> Void
     let onCycleWidth: () -> Void
@@ -114,7 +118,7 @@ struct DocumentToolbar: ToolbarContent {
 
     /// What the outline button shows, from either toolbar.
     private var outlinePopover: some View {
-        OutlinePopover(items: Outline.items(in: text), onSelect: onSelectHeading)
+        OutlinePopover(items: outlineItems(), onSelect: onSelectHeading)
     }
 
     private var outlineButton: some View {
