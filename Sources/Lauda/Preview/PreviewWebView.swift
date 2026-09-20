@@ -3,7 +3,7 @@ import WebKit
 
 /// Rendered-markdown preview: a WKWebView loaded once with a styled template,
 /// then updated in place via JS (no flicker, scroll preserved). Markdown is
-/// parsed off the main thread with a short debounce while typing.
+/// parsed off the main thread, one render at a time (renderNextIfIdle).
 struct PreviewWebView: NSViewRepresentable {
     let markdown: String
     let baseURL: URL?
@@ -112,8 +112,6 @@ struct PreviewWebView: NSViewRepresentable {
                 }
             }
         }
-
-        typealias RenderedContent = (html: String, anchorLines: [Int], lineCount: Int)
 
         private func pushContent(_ content: RenderedContent, completion: @escaping () -> Void) {
             guard let webView, isReady else {

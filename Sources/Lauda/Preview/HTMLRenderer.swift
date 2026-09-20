@@ -2,6 +2,15 @@ import Foundation
 import Markdown
 
 /// Renders a swift-markdown AST to HTML for the preview pane.
+/// A document rendered for the preview: its HTML, the source line each
+/// anchor element came from (in the order the preview walks them) and how
+/// many lines the document has, which is what the two panes align by.
+struct RenderedContent {
+    let html: String
+    let anchorLines: [Int]
+    let lineCount: Int
+}
+
 struct HTMLRenderer: MarkupVisitor {
     typealias Result = String
 
@@ -27,7 +36,7 @@ struct HTMLRenderer: MarkupVisitor {
     static func renderWithLines(
         _ markdown: String,
         strictLineBreaks: Bool = false
-    ) -> (html: String, anchorLines: [Int], lineCount: Int) {
+    ) -> RenderedContent {
         let document = Document(parsing: markdown)
         var renderer = HTMLRenderer(strictLineBreaks: strictLineBreaks)
         var html = ""
@@ -44,7 +53,7 @@ struct HTMLRenderer: MarkupVisitor {
                 appendInnerAnchors(of: child, to: &anchorLines)
             }
         }
-        return (html, anchorLines, SourceLines.count(in: markdown))
+        return RenderedContent(html: html, anchorLines: anchorLines, lineCount: SourceLines.count(in: markdown))
     }
 
     /// 0-based source line a piece of markup starts on.

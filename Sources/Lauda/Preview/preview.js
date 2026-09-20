@@ -1,3 +1,9 @@
+// How long scroll events are taken as echoes of something the app did
+// rather than the reader scrolling: after a change of content or position,
+// and longer after a reflow, which settles in more than one frame.
+const ECHO_WINDOW_MS = 200;
+const REFLOW_ECHO_WINDOW_MS = 300;
+
 // Timestamp of the last programmatic change; scroll events shortly after
 // one are echoes (or reflows), not the user scrolling the preview.
 let suppressScrollEventsUntil = 0;
@@ -19,7 +25,7 @@ let anchorLines = [];
 let totalLines = 1;
 
 function setContent(html, lines, lineCount) {
-    suppressScrollEventsUntil = Date.now() + 200;
+    suppressScrollEventsUntil = Date.now() + ECHO_WINDOW_MS;
     anchorLines = lines || [];
     totalLines = Math.max(lineCount || 1, 1);
     const container = document.getElementById("content");
@@ -61,7 +67,7 @@ function reflowing(change) {
     if (!lastPosition) {
         rememberTopOfPage();
     }
-    suppressScrollEventsUntil = Date.now() + 300;
+    suppressScrollEventsUntil = Date.now() + REFLOW_ECHO_WINDOW_MS;
     const root = document.documentElement;
     root.classList.add("reflowing");
     change();
@@ -88,7 +94,7 @@ function rememberTopOfPage() {
 function realign() {
     if (!lastPosition) { return; }
     if (lastPosition.atEnd) {
-        suppressScrollEventsUntil = Date.now() + 200;
+        suppressScrollEventsUntil = Date.now() + ECHO_WINDOW_MS;
         window.scrollTo(0, maxScroll());
         return;
     }
@@ -162,7 +168,7 @@ function setScrollPosition(line, hasLine, endLine, hasEndLine, fraction, toEndDi
     }
     target = Math.min(Math.max(target, 0), max);
     if (Math.abs(target - window.scrollY) < 2) { return; }
-    suppressScrollEventsUntil = Date.now() + 200;
+    suppressScrollEventsUntil = Date.now() + ECHO_WINDOW_MS;
     window.scrollTo(0, target);
 }
 // In-page find: wraps matches in <mark> so we can count and step through.
@@ -208,17 +214,16 @@ function findRun(query, forward, restart) {
     }
     findState.marks.forEach((mark, i) => mark.classList.toggle("current", i === findState.index));
     if (findState.index >= 0) {
-        suppressScrollEventsUntil = Date.now() + 200;
+        suppressScrollEventsUntil = Date.now() + ECHO_WINDOW_MS;
         findState.marks[findState.index].scrollIntoView({ block: "center" });
     }
     return [findState.index + 1, findState.marks.length];
 }
-// Resizes re-flow content and can fire scroll events with drifted
 // A resize (a view mode switch, the divider, the window) reflows the text:
 // stay at lastPosition, and don't report the drifted offsets as the reader
 // scrolling.
 window.addEventListener("resize", () => {
-    suppressScrollEventsUntil = Date.now() + 300;
+    suppressScrollEventsUntil = Date.now() + REFLOW_ECHO_WINDOW_MS;
     realign();
 });
 window.addEventListener("scroll", () => {
