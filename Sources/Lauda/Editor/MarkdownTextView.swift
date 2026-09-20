@@ -463,13 +463,31 @@ struct MarkdownTextView: NSViewRepresentable {
             ))
         }
 
+        /// Where pasted text comes from. Injected so the rules that read it
+        /// are exercised without the real pasteboard.
+        var clipboardText: () -> String? = { NSPasteboard.general.string(forType: .string) }
+
         func insertLink() {
             guard let textView else { return }
             apply(InlineFormatting.link(
                 in: textView.string as NSString,
                 selection: textView.selectedRange(),
-                clipboard: NSPasteboard.general.string(forType: .string)
+                clipboard: clipboardText()
             ))
+        }
+
+        /// A URL pasted over a selection makes a link of it. False when this
+        /// paste is an ordinary one, which the text view then performs.
+        func pasteLinkOverSelection() -> Bool {
+            guard let textView,
+                  let edit = InlineFormatting.linkFromPaste(
+                      in: textView.string as NSString,
+                      selection: textView.selectedRange(),
+                      clipboard: clipboardText()
+                  )
+            else { return false }
+            apply(edit)
+            return true
         }
 
         private func apply(_ edit: TextEdit) {

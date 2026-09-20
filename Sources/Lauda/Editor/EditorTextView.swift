@@ -107,25 +107,9 @@ final class EditorTextView: NSTextView {
             }
         }
 
-        let selection = selectedRange()
-        if selection.length > 0,
-           let clipboard = NSPasteboard.general.string(forType: .string)?
-               .trimmingCharacters(in: .whitespacesAndNewlines),
-           Self.isLikelyURL(clipboard) {
-            let selected = (string as NSString).substring(with: selection)
-            if !selected.contains("\n"),
-               !Self.isLikelyURL(selected.trimmingCharacters(in: .whitespaces)) {
-                let replacement = "[\(selected)](\(clipboard))"
-                if shouldChangeText(in: selection, replacementString: replacement) {
-                    textStorage?.replaceCharacters(in: selection, with: replacement)
-                    didChangeText()
-                    setSelectedRange(NSRange(
-                        location: selection.location + (replacement as NSString).length,
-                        length: 0
-                    ))
-                    return
-                }
-            }
+        if let coordinator = delegate as? MarkdownTextView.Coordinator,
+           coordinator.pasteLinkOverSelection() {
+            return
         }
         super.paste(sender)
     }

@@ -89,6 +89,47 @@ struct InlineFormattingTests {
         #expect(edit.selection == NSRange(location: 7, length: 0))
     }
 
+    // MARK: - A URL pasted over a selection
+
+    @Test func pastingAURLOverWordsMakesALinkOfThem() throws {
+        let text = "see the docs here" as NSString
+        let selection = NSRange(location: 4, length: 8)
+        let edit = try #require(InlineFormatting.linkFromPaste(
+            in: text, selection: selection, clipboard: " https://example.com\n"))
+        #expect(apply(edit, to: text) == "see [the docs](https://example.com) here")
+        // The caret lands after the link, where typing goes on.
+        #expect(edit.selection == NSRange(location: 35, length: 0))
+    }
+
+    @Test(arguments: [
+        ("nothing selected", NSRange(location: 4, length: 0), "https://example.com"),
+        ("the clipboard is not a URL", NSRange(location: 4, length: 8), "just words"),
+        ("the clipboard is empty", NSRange(location: 4, length: 8), ""),
+    ])
+    func pastingAsUsualWhenTheRuleDoesNotApply(_ reason: String, selection: NSRange, clipboard: String) {
+        let text = "see the docs here" as NSString
+        #expect(
+            InlineFormatting.linkFromPaste(in: text, selection: selection, clipboard: clipboard) == nil,
+            "\(reason)"
+        )
+    }
+
+    /// Over a URL, replacing is what pasting a URL means.
+    @Test func pastingAURLOverAURLReplacesIt() {
+        let text = "see https://old.example here" as NSString
+        let selection = NSRange(location: 4, length: 19)
+        #expect(InlineFormatting.linkFromPaste(
+            in: text, selection: selection, clipboard: "https://new.example") == nil)
+    }
+
+    /// A selection across lines would put a line break inside the link text.
+    @Test func pastingAURLOverSeveralLinesReplacesThem() {
+        let text = "first line\nsecond line" as NSString
+        let selection = NSRange(location: 0, length: 16)
+        #expect(InlineFormatting.linkFromPaste(
+            in: text, selection: selection, clipboard: "https://example.com") == nil)
+    }
+
     @Test func linkTakesAURLFromTheClipboard() {
         let text = "see docs here" as NSString
         let edit = InlineFormatting.link(

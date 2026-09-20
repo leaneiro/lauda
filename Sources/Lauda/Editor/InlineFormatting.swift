@@ -73,6 +73,26 @@ enum InlineFormatting {
         )
     }
 
+    /// Pasting a URL over a selection makes a link of the selection instead
+    /// of replacing it. Nothing to do — and so the ordinary paste — when the
+    /// clipboard holds no URL, when nothing is selected, when the selection
+    /// spans lines, or when it is itself a URL (where replacing is what the
+    /// reader means).
+    static func linkFromPaste(in text: NSString, selection: NSRange, clipboard: String?) -> TextEdit? {
+        guard selection.length > 0 else { return nil }
+        let url = (clipboard ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard EditorTextView.isLikelyURL(url) else { return nil }
+        let selected = text.substring(with: selection)
+        guard !selected.contains("\n"),
+              !EditorTextView.isLikelyURL(selected.trimmingCharacters(in: .whitespaces)) else { return nil }
+        let replacement = "[\(selected)](\(url))"
+        return TextEdit(
+            range: selection,
+            replacement: replacement,
+            selection: NSRange(location: selection.location + (replacement as NSString).length, length: 0)
+        )
+    }
+
     /// ⌘K: `[selection](url)`, taking the URL from the clipboard when it
     /// holds one. The caret lands where the next thing to type goes.
     static func link(in text: NSString, selection range: NSRange, clipboard: String?) -> TextEdit {
