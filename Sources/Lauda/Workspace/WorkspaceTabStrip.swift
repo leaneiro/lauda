@@ -39,14 +39,14 @@ struct WorkspaceTabStrip: View {
     /// moves the controls into its overflow menu; four spare points were
     /// enough when measured, six leaves room for a width that isn't whole.
     static func width(in windowWidth: CGFloat, showsWidthButton: Bool) -> CGFloat {
-        let leading: CGFloat = 96
-        let gap: CGFloat = 8
+        let gap = ToolbarMetrics.gap
+        let button = ToolbarMetrics.buttonSide
         let spare: CGFloat = 6
-        var controls = gap + viewModesWidth + gap + 36 + gap
+        var controls = gap + viewModesWidth + gap + button + gap
         if showsWidthButton {
-            controls += 36 + gap
+            controls += button + gap
         }
-        return max(windowWidth - leading - controls - spare, 240)
+        return max(windowWidth - ToolbarMetrics.leading - controls - spare, 240)
     }
 
     var body: some View {

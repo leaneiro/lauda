@@ -14,7 +14,7 @@ struct GlassToolbarButton<Icon: View>: View {
     @ViewBuilder let icon: () -> Icon
 
     /// A toolbar button's size.
-    static var side: CGFloat { 36 }
+    static var side: CGFloat { ToolbarMetrics.buttonSide }
 
     var body: some View {
         Button(action: action) {

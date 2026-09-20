@@ -23,7 +23,7 @@ final class DocumentStackView: NSView {
     private var hosts: [ObjectIdentifier: NSHostingView<DocumentPanes>] = [:]
     private weak var shown: MarkdownDocument?
     private weak var workspace: Workspace?
-    private var keyboardAttempts = 0
+    private var keyboardRetry = LayoutRetry()
 
     /// A document's set of panes, while the document is open.
     func panes(of document: MarkdownDocument) -> NSView? {
@@ -56,7 +56,7 @@ final class DocumentStackView: NSView {
             host.isHidden = id != selectedID
         }
         shown = selected
-        keyboardAttempts = 0
+        keyboardRetry.startOver()
         giveKeyboardToShownPanes()
     }
 
@@ -68,9 +68,7 @@ final class DocumentStackView: NSView {
         guard let document = shown, let workspace else { return }
         if let window, window.firstResponder !== window { return }
         if document.takeKeyboard(in: workspace.viewMode) { return }
-        keyboardAttempts += 1
-        guard keyboardAttempts < 80 else { return }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.025) { [weak self, weak document] in
+        _ = keyboardRetry.again { [weak self, weak document] in
             guard let self, let document, self.shown === document else { return }
             self.giveKeyboardToShownPanes()
         }

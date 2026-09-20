@@ -32,7 +32,7 @@ struct EditorPanes: View {
         guard animatesModeChanges, !reduceMotion,
               ModeChange.isSmooth(from: shownMode, to: viewMode, textBytes: text.utf8.count)
         else { return nil }
-        return .easeInOut(duration: 0.2)
+        return .easeInOut(duration: ModeChange.duration)
     }
 
     var body: some View {
@@ -88,6 +88,12 @@ struct EditorPanes: View {
 
 /// Which changes of view mode can animate without stuttering.
 enum ModeChange {
+    /// How long a change of layout takes. The panes, the toolbar's controls
+    /// and the tabs animate side by side, so they share one duration: with
+    /// different ones the bar settles after the panes, which reads as two
+    /// separate changes.
+    static let duration: TimeInterval = 0.2
+
     /// Between editor only and both panes the editor changes width, and its
     /// text wraps anew on every frame of the way. Measured: smooth up to
     /// some 40 KB, a handful of frames from 60 KB on. The preview lays out

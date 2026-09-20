@@ -257,8 +257,7 @@ struct MarkdownTextView: NSViewRepresentable {
             // push the line being edited out of view.
             guard clamped > clipView.bounds.origin.y + 0.5 else { return }
 
-            clipView.scroll(to: NSPoint(x: clipView.bounds.origin.x, y: clamped))
-            scrollView.reflectScrolledClipView(clipView)
+            scrollView.scrollVertically(to: clamped)
         }
 
         // MARK: - Typing behaviors

@@ -19,7 +19,7 @@ final class EditorScrolling: NSObject {
     /// is reapplied, ignore the spurious layout-driven scroll events —
     /// publishing them would drag the other pane to the top too.
     var needsRestore = false
-    private var restoreAttempts = 0
+    private var restoreRetry = LayoutRetry()
     private var lastClipSize: NSSize?
 
     init(lines: SourceLineLayout) {
@@ -33,21 +33,15 @@ final class EditorScrolling: NSObject {
               textView.window != nil,
               scrollView.contentView.bounds.width > 0,
               scrollView.contentView.bounds.height > 0 else {
-            // Not laid out yet — keep retrying briefly so the pane doesn't
-            // sit at the top waiting for an event that may never come.
-            restoreAttempts += 1
-            if restoreAttempts < 80 {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.025) { [weak self] in
-                    self?.restoreIfNeeded()
-                }
-            } else {
-                needsRestore = false
-            }
+            // Not laid out yet — keep asking briefly so the pane doesn't sit
+            // at the top waiting for an event that may never come.
+            let asked = restoreRetry.again { [weak self] in self?.restoreIfNeeded() }
+            if !asked { needsRestore = false }
             return
         }
 
         needsRestore = false
-        restoreAttempts = 0
+        restoreRetry.startOver()
         anchorToSharedPosition()
     }
 
@@ -64,8 +58,7 @@ final class EditorScrolling: NSObject {
         lastClipSize = clipView.bounds.size
         guard let target = lines.targetOffset(for: sharedPosition()) else { return }
         isApplyingRemoteScroll = true
-        clipView.scroll(to: NSPoint(x: clipView.bounds.origin.x, y: target.rounded()))
-        scrollView.reflectScrolledClipView(clipView)
+        scrollView.scrollVertically(to: target.rounded())
         isApplyingRemoteScroll = false
     }
 
@@ -124,8 +117,18 @@ final class EditorScrolling: NSObject {
         guard abs(target - clipView.bounds.origin.y) > 0.5 else { return }
 
         isApplyingRemoteScroll = true
-        clipView.scroll(to: NSPoint(x: clipView.bounds.origin.x, y: target.rounded()))
-        scrollView.reflectScrolledClipView(clipView)
+        scrollView.scrollVertically(to: target.rounded())
         isApplyingRemoteScroll = false
+    }
+}
+
+extension NSScrollView {
+    /// Scrolls the content to `y` and tells the scroll view about it, which
+    /// is what keeps the scrollers and the rulers in step with a scroll the
+    /// app makes rather than the reader.
+    func scrollVertically(to y: CGFloat) {
+        let clipView = contentView
+        clipView.scroll(to: NSPoint(x: clipView.bounds.origin.x, y: y))
+        reflectScrolledClipView(clipView)
     }
 }

@@ -47,7 +47,7 @@ struct DocumentToolbar: ToolbarContent {
             ToolbarItem(placement: placement) {
                 FadingWidthButton(isShown: viewMode == .previewOnly, level: previewWidth, action: onCycleWidth)
             }
-            .sharedBackgroundVisibility(.hidden)
+            .withoutItemBackground()
         } else {
             ToolbarItem(placement: placement) { widthButton }
         }
@@ -56,18 +56,11 @@ struct DocumentToolbar: ToolbarContent {
     /// The strip spans the title bar but must not look like it: recent
     /// systems wrap every toolbar item in one glass capsule, and the tabs
     /// want a capsule each. Hiding the item's own background leaves theirs.
-    @ToolbarContentBuilder
     private var tabsItem: some ToolbarContent {
-        if #available(macOS 26.0, *) {
-            ToolbarItem(placement: .navigation) {
-                WorkspaceTabStrip(workspace: workspace, width: tabStripWidth)
-            }
-            .sharedBackgroundVisibility(.hidden)
-        } else {
-            ToolbarItem(placement: .navigation) {
-                WorkspaceTabStrip(workspace: workspace, width: tabStripWidth)
-            }
+        ToolbarItem(placement: .navigation) {
+            WorkspaceTabStrip(workspace: workspace, width: tabStripWidth)
         }
+        .withoutItemBackground()
     }
 
     /// The three view modes: a capsule of our own glass where the system has
@@ -79,7 +72,7 @@ struct DocumentToolbar: ToolbarContent {
             ToolbarItem(placement: placement) {
                 GlassViewModePicker(viewMode: $viewMode)
             }
-            .sharedBackgroundVisibility(.hidden)
+            .withoutItemBackground()
         } else {
             ToolbarItem(placement: placement) { viewModePicker }
         }
@@ -98,11 +91,9 @@ struct DocumentToolbar: ToolbarContent {
                 }
                 .help("Document outline")
                 .accessibilityLabel("Outline")
-                .popover(isPresented: $outlinePresented, arrowEdge: .bottom) {
-                    OutlinePopover(items: Outline.items(in: text), onSelect: onSelectHeading)
-                }
+                .popover(isPresented: $outlinePresented, arrowEdge: .bottom) { outlinePopover }
             }
-            .sharedBackgroundVisibility(.hidden)
+            .withoutItemBackground()
         } else {
             ToolbarItem(placement: placement) { outlineButton }
         }
@@ -121,6 +112,11 @@ struct DocumentToolbar: ToolbarContent {
         .labelStyle(.iconOnly)
     }
 
+    /// What the outline button shows, from either toolbar.
+    private var outlinePopover: some View {
+        OutlinePopover(items: Outline.items(in: text), onSelect: onSelectHeading)
+    }
+
     private var outlineButton: some View {
         Button {
             outlinePresented.toggle()
@@ -128,9 +124,7 @@ struct DocumentToolbar: ToolbarContent {
             Label("Outline", systemImage: "list.bullet")
         }
         .help("Document outline")
-        .popover(isPresented: $outlinePresented, arrowEdge: .bottom) {
-            OutlinePopover(items: Outline.items(in: text), onSelect: onSelectHeading)
-        }
+        .popover(isPresented: $outlinePresented, arrowEdge: .bottom) { outlinePopover }
     }
 
     @ViewBuilder
@@ -162,10 +156,24 @@ private struct FadingWidthButton: View {
         }
         .opacity(isShown ? 1 : 0)
         .scaleEffect(isShown ? 1 : 0.8)
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: isShown)
+        .animation(reduceMotion ? nil : .easeInOut(duration: ModeChange.duration), value: isShown)
         .allowsHitTesting(isShown)
         .accessibilityHidden(!isShown)
         .help("Text width: \(level.label). Next: \(level.next.label)")
         .accessibilityLabel("Text width: \(level.label)")
+    }
+}
+
+extension ToolbarContent {
+    /// Hides the glass the system draws around a toolbar item, where it
+    /// draws one, so what is inside keeps its own shapes: the tabs are a
+    /// capsule each, and our controls bring their own.
+    @ToolbarContentBuilder
+    func withoutItemBackground() -> some ToolbarContent {
+        if #available(macOS 26.0, *) {
+            sharedBackgroundVisibility(.hidden)
+        } else {
+            self
+        }
     }
 }
