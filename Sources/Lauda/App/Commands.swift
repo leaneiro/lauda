@@ -119,6 +119,10 @@ struct FormatCommands: Commands {
                 .keyboardShortcut("b")
             Button("Italic") { editor?.toggleItalic() }
                 .keyboardShortcut("i")
+            Button("Underline") { editor?.toggleUnderline() }
+                .keyboardShortcut("u")
+            Button("Strikethrough") { editor?.toggleStrikethrough() }
+                .keyboardShortcut("x", modifiers: [.command, .shift])
             Divider()
             Button("Add Link") { editor?.insertLink() }
                 .keyboardShortcut("k")

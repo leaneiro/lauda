@@ -30,7 +30,7 @@ and see the rendered Markdown on the right, updated as you type.
   Brazilian Portuguese are reviewed; German, Simplified Chinese, French,
   Japanese and Spanish are drafts awaiting review by native speakers (see
   [CONTRIBUTING.md](CONTRIBUTING.md)).
-- **Writing shortcuts**: ⌘B, ⌘I and ⌘K in the Format menu; Return continues
+- **Writing shortcuts**: ⌘B, ⌘I, ⌘U, ⇧⌘X and ⌘K in the Format menu; Return continues
   lists (including task and numbered lists); Tab and Shift-Tab indent items.
   Brackets, quotes and the `*`, `_` and `` ` `` markers close themselves, and
   typed over a selection they wrap it.

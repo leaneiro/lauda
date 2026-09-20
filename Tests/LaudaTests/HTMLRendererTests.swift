@@ -16,6 +16,12 @@ struct HTMLRendererTests {
         #expect(HTMLRenderer.render("~~struck~~") == "<p><del>struck</del></p>\n")
     }
 
+    /// What ⌘U writes: Markdown has no underline, and the tags reach the
+    /// preview as they are.
+    @Test func underlineTagsAreKept() {
+        #expect(HTMLRenderer.render("read <u>this</u> part") == "<p>read <u>this</u> part</p>\n")
+    }
+
     @Test func escapesHTMLInText() {
         #expect(HTMLRenderer.render("a < b & c > d").contains("a &lt; b &amp; c &gt; d"))
     }

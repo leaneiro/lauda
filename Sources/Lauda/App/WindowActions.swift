@@ -13,6 +13,10 @@ final class EditorActions: EditorFinding {
 
     func toggleBold() { coordinator?.toggleInlineMarker("**") }
     func toggleItalic() { coordinator?.toggleInlineMarker("*") }
+    func toggleStrikethrough() { coordinator?.toggleInlineMarker("~~") }
+    /// Markdown has no underline of its own, so it is written as the tags the
+    /// preview lets through, the way other Markdown editors write it.
+    func toggleUnderline() { coordinator?.toggleInlinePair("<u>", "</u>") }
     func insertLink() { coordinator?.insertLink() }
     func performFind(_ action: NSTextFinder.Action) { coordinator?.performFindAction(action) }
     func findUpdate(_ query: String) -> (current: Int, total: Int) {

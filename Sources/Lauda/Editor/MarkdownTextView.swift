@@ -446,9 +446,13 @@ struct MarkdownTextView: NSViewRepresentable {
             return true
         }
 
-        // MARK: - Formatting actions (⌘B / ⌘I / ⌘K)
+        // MARK: - Formatting actions (⌘B / ⌘I / ⌘U / ⇧⌘X / ⌘K)
 
         func toggleInlineMarker(_ marker: String) {
+            toggleInlinePair(marker, marker)
+        }
+
+        func toggleInlinePair(_ opening: String, _ closing: String) {
             guard let textView else { return }
             let selection = textView.selectedRange()
             // With nothing selected, formatting applies to the word under the caret.
@@ -456,7 +460,7 @@ struct MarkdownTextView: NSViewRepresentable {
                 ? textView.selectionRange(forProposedRange: selection, granularity: .selectByWord)
                 : selection
             apply(InlineFormatting.toggle(
-                marker, in: textView.string as NSString, selection: selection, wordRange: wordRange
+                opening, closing, in: textView.string as NSString, selection: selection, wordRange: wordRange
             ))
         }
 

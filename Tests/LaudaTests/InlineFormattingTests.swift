@@ -47,6 +47,48 @@ struct InlineFormattingTests {
         #expect(edit.selection == NSRange(location: 9, length: 6))
     }
 
+    @Test func strikethroughWrapsAndUnwrapsLikeTheOtherMarkers() {
+        let text = "keep it short" as NSString
+        let selection = NSRange(location: 8, length: 5)
+        let wrapped = InlineFormatting.toggle("~~", in: text, selection: selection, wordRange: selection)
+        #expect(apply(wrapped, to: text) == "keep it ~~short~~")
+        #expect(wrapped.selection == NSRange(location: 10, length: 5))
+
+        let struck = "keep it ~~short~~" as NSString
+        let undone = InlineFormatting.toggle(
+            "~~", in: struck, selection: NSRange(location: 10, length: 5), wordRange: NSRange(location: 10, length: 5))
+        #expect(apply(undone, to: struck) == "keep it short")
+    }
+
+    @Test func underlineWrapsTheSelectionInItsTags() {
+        let text = "read this part" as NSString
+        let selection = NSRange(location: 5, length: 4)
+        let edit = InlineFormatting.toggle("<u>", "</u>", in: text, selection: selection, wordRange: selection)
+        #expect(apply(edit, to: text) == "read <u>this</u> part")
+        #expect(edit.selection == NSRange(location: 8, length: 4))
+    }
+
+    @Test func underlineIsUndoneFromInsideOrOutsideItsTags() {
+        let text = "read <u>this</u> part" as NSString
+        let inside = NSRange(location: 8, length: 4)
+        let fromInside = InlineFormatting.toggle("<u>", "</u>", in: text, selection: inside, wordRange: inside)
+        #expect(apply(fromInside, to: text) == "read this part")
+        #expect(fromInside.selection == NSRange(location: 5, length: 4))
+
+        let whole = NSRange(location: 5, length: 11)
+        let fromOutside = InlineFormatting.toggle("<u>", "</u>", in: text, selection: whole, wordRange: whole)
+        #expect(apply(fromOutside, to: text) == "read this part")
+        #expect(fromOutside.selection == NSRange(location: 5, length: 4))
+    }
+
+    @Test func underlineWithTheCaretOutsideAWordLeavesItBetweenTheTags() {
+        let text = "one  two" as NSString
+        let caret = NSRange(location: 4, length: 0)
+        let edit = InlineFormatting.toggle("<u>", "</u>", in: text, selection: caret, wordRange: NSRange(location: 3, length: 2))
+        #expect(apply(edit, to: text) == "one <u></u> two")
+        #expect(edit.selection == NSRange(location: 7, length: 0))
+    }
+
     @Test func linkTakesAURLFromTheClipboard() {
         let text = "see docs here" as NSString
         let edit = InlineFormatting.link(

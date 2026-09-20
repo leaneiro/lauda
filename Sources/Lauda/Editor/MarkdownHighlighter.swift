@@ -34,6 +34,9 @@ final class MarkdownHighlighter {
     private static let blockquoteRegex = regex(#"^[ \t]*>.*$"#)
     private static let boldRegex = regex(#"(?:\*\*[^*\n]+\*\*|__[^_\n]+__)"#)
     private static let italicRegex = regex(#"(?<![\w*])\*(?!\*)[^*\n]+\*(?!\*)|(?<![\w_])_(?!_)[^_\n]+_(?!_)"#)
+    private static let strikethroughRegex = regex(#"~~[^~\n]+~~"#)
+    /// Underline is written as tags, so the editor shows it the same way.
+    private static let underlineRegex = regex(#"<u>[^<\n]*</u>"#, options: [.anchorsMatchLines, .caseInsensitive])
     private static let linkRegex = regex(#"\[([^\]\n]*)\]\(([^)\n]*)\)"#)
     private static let inlineCodeRegex = regex(#"`[^`\n]+`"#)
     private static let fenceLineRegex = regex(#"^[ \t]{0,3}(?:`{3,}|~{3,})"#)
@@ -75,6 +78,12 @@ final class MarkdownHighlighter {
         }
         apply(Self.italicRegex, in: text, range: range) { match in
             textStorage.addAttribute(.font, value: self.italicFont, range: match.range)
+        }
+        apply(Self.strikethroughRegex, in: text, range: range) { match in
+            textStorage.addAttribute(.strikethroughStyle, value: NSUnderlineStyle.single.rawValue, range: match.range)
+        }
+        apply(Self.underlineRegex, in: text, range: range) { match in
+            textStorage.addAttribute(.underlineStyle, value: NSUnderlineStyle.single.rawValue, range: match.range)
         }
         apply(Self.linkRegex, in: text, range: range) { match in
             textStorage.addAttribute(.foregroundColor, value: NSColor.linkColor, range: match.range(at: 1))

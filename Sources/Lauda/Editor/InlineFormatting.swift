@@ -8,22 +8,32 @@ struct TextEdit: Equatable {
     var selection: NSRange
 }
 
-/// ⌘B / ⌘I (markers) and ⌘K (links) as plain text rules.
+/// ⌘B / ⌘I / ⌘U / ⇧⌘X (markers) and ⌘K (links) as plain text rules.
 enum InlineFormatting {
-    /// Toggles `marker` (e.g. "**") around the selection. With nothing
-    /// selected it applies to `wordRange`, the word under the caret; outside
-    /// a word it inserts an empty pair with the caret inside.
+    /// Toggles `marker` (e.g. "**") around the selection.
     static func toggle(_ marker: String, in text: NSString, selection: NSRange, wordRange: NSRange) -> TextEdit {
+        toggle(marker, marker, in: text, selection: selection, wordRange: wordRange)
+    }
+
+    /// Toggles `opening` … `closing` around the selection. Markdown's markers
+    /// are the same on both sides; underline has no marker of its own and
+    /// takes the `<u>` tags the preview lets through. With nothing selected
+    /// the change applies to `wordRange`, the word under the caret; outside a
+    /// word it inserts an empty pair with the caret inside.
+    static func toggle(
+        _ opening: String, _ closing: String, in text: NSString, selection: NSRange, wordRange: NSRange
+    ) -> TextEdit {
         var range = selection
-        let markerLength = (marker as NSString).length
+        let openingLength = (opening as NSString).length
+        let closingLength = (closing as NSString).length
 
         if range.length == 0 {
             let word = wordRange.length > 0 ? text.substring(with: wordRange) : ""
             if word.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 return TextEdit(
                     range: range,
-                    replacement: marker + marker,
-                    selection: NSRange(location: range.location + markerLength, length: 0)
+                    replacement: opening + closing,
+                    selection: NSRange(location: range.location + openingLength, length: 0)
                 )
             }
             range = wordRange
@@ -33,10 +43,10 @@ enum InlineFormatting {
         let selectedLength = (selected as NSString).length
 
         // Unwrap when the markers are inside the selection…
-        if selected.hasPrefix(marker), selected.hasSuffix(marker),
-           selectedLength >= markerLength * 2 + 1 {
+        if selected.hasPrefix(opening), selected.hasSuffix(closing),
+           selectedLength >= openingLength + closingLength + 1 {
             let inner = (selected as NSString).substring(
-                with: NSRange(location: markerLength, length: selectedLength - markerLength * 2)
+                with: NSRange(location: openingLength, length: selectedLength - openingLength - closingLength)
             )
             return TextEdit(
                 range: range,
@@ -45,12 +55,12 @@ enum InlineFormatting {
             )
         }
         // …or just outside it.
-        let before = NSRange(location: range.location - markerLength, length: markerLength)
-        let after = NSRange(location: NSMaxRange(range), length: markerLength)
+        let before = NSRange(location: range.location - openingLength, length: openingLength)
+        let after = NSRange(location: NSMaxRange(range), length: closingLength)
         if before.location >= 0, NSMaxRange(after) <= text.length,
-           text.substring(with: before) == marker, text.substring(with: after) == marker {
+           text.substring(with: before) == opening, text.substring(with: after) == closing {
             return TextEdit(
-                range: NSRange(location: before.location, length: range.length + markerLength * 2),
+                range: NSRange(location: before.location, length: range.length + openingLength + closingLength),
                 replacement: selected,
                 selection: NSRange(location: before.location, length: range.length)
             )
@@ -58,8 +68,8 @@ enum InlineFormatting {
         // Otherwise wrap.
         return TextEdit(
             range: range,
-            replacement: marker + selected + marker,
-            selection: NSRange(location: range.location + markerLength, length: range.length)
+            replacement: opening + selected + closing,
+            selection: NSRange(location: range.location + openingLength, length: range.length)
         )
     }
 
