@@ -17,75 +17,42 @@ struct MarkdownTextView: NSViewRepresentable {
     }
 
     func makeNSView(context: Context) -> NSScrollView {
-        // TextKit 1 stack, assembled by hand: its layout is exact rather than
-        // viewport-estimated, which keeps the scroll position rock-steady when
-        // attributes change (TextKit 2 estimation caused jumps and blank runs).
-        let textStorage = NSTextStorage()
-        let layoutManager = NSLayoutManager()
-        textStorage.addLayoutManager(layoutManager)
-        let textContainer = NSTextContainer(size: NSSize(width: 0, height: CGFloat.greatestFiniteMagnitude))
-        textContainer.widthTracksTextView = true
-        layoutManager.addTextContainer(textContainer)
-
-        let textView = EditorTextView(frame: .zero, textContainer: textContainer)
-        textView.isVerticallyResizable = true
-        textView.isHorizontallyResizable = false
-        textView.autoresizingMask = [.width]
-        textView.minSize = .zero
-        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
-
-        let scrollView = NSScrollView()
-        scrollView.borderType = .noBorder
-        scrollView.hasVerticalScroller = true
-        scrollView.documentView = textView
-        actions.coordinator = context.coordinator
-
-        textView.delegate = context.coordinator
-        textView.isRichText = false
-        // This view holds Markdown as plain text. Left on the system
-        // default, Writing Tools may answer a rewrite with text attributes,
-        // reading "**bold**" as bold and dropping the asterisks it came
-        // from; asking for plain text keeps the document's own syntax.
-        if #available(macOS 15.0, *) {
-            textView.allowedWritingToolsResultOptions = .plainText
-        }
-        textView.allowsUndo = true
-        textView.usesFindBar = true
-        textView.isIncrementalSearchingEnabled = true
-        textView.isAutomaticQuoteSubstitutionEnabled = false
-        textView.isAutomaticDashSubstitutionEnabled = false
-        textView.isAutomaticTextReplacementEnabled = false
-        textView.isAutomaticSpellingCorrectionEnabled = false
-        textView.isContinuousSpellCheckingEnabled = false
-        textView.smartInsertDeleteEnabled = false
-        textView.textContainerInset = NSSize(width: 24, height: EditorTextView.insetHeight)
-        textView.drawsBackground = true
-        textView.backgroundColor = .textBackgroundColor
+        let (scrollView, textView) = EditorTextView.inScrollView()
+        let coordinator = context.coordinator
+        actions.coordinator = coordinator
+        textView.delegate = coordinator
 
         textView.string = text
-        context.coordinator.textView = textView
-        context.coordinator.applyStyle(fontName: fontName, fontSize: fontSize)
-        context.coordinator.scrolling.needsRestore = true
-        DispatchQueue.main.async { [weak coordinator = context.coordinator] in
+        coordinator.textView = textView
+        coordinator.applyStyle(fontName: fontName, fontSize: fontSize)
+        // The pane comes up before its scroll view has a size; the position
+        // is restored as soon as it has one (EditorScrolling).
+        coordinator.scrolling.needsRestore = true
+        DispatchQueue.main.async { [weak coordinator] in
             coordinator?.scrolling.restoreIfNeeded()
         }
 
+        observeScrolling(of: scrollView, with: coordinator.scrolling)
+        return scrollView
+    }
+
+    /// Scroll position and size changes both reach the sync: one moves the
+    /// other pane, the other re-flows this one.
+    private func observeScrolling(of scrollView: NSScrollView, with scrolling: EditorScrolling) {
         scrollView.contentView.postsBoundsChangedNotifications = true
         NotificationCenter.default.addObserver(
-            context.coordinator.scrolling,
+            scrolling,
             selector: #selector(EditorScrolling.boundsDidChange(_:)),
             name: NSView.boundsDidChangeNotification,
             object: scrollView.contentView
         )
         scrollView.contentView.postsFrameChangedNotifications = true
         NotificationCenter.default.addObserver(
-            context.coordinator.scrolling,
+            scrolling,
             selector: #selector(EditorScrolling.frameDidChange(_:)),
             name: NSView.frameDidChangeNotification,
             object: scrollView.contentView
         )
-
-        return scrollView
     }
 
     func updateNSView(_ scrollView: NSScrollView, context: Context) {

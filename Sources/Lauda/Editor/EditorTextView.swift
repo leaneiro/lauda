@@ -3,6 +3,60 @@ import AppKit
 /// NSTextView subclass adding smart link paste (pasting a URL over selected
 /// text turns the selection into `[texto](url)`) and asymmetric padding so
 /// the document ends with breathing room below the last line.
+extension EditorTextView {
+    /// The editor's views, assembled by hand: a TextKit 1 stack, because its
+    /// layout is exact rather than viewport-estimated, which keeps the scroll
+    /// position rock-steady when attributes change (TextKit 2 estimation
+    /// caused jumps and blank runs).
+    static func inScrollView() -> (scrollView: NSScrollView, textView: EditorTextView) {
+        let textStorage = NSTextStorage()
+        let layoutManager = NSLayoutManager()
+        textStorage.addLayoutManager(layoutManager)
+        let textContainer = NSTextContainer(size: NSSize(width: 0, height: CGFloat.greatestFiniteMagnitude))
+        textContainer.widthTracksTextView = true
+        layoutManager.addTextContainer(textContainer)
+
+        let textView = EditorTextView(frame: .zero, textContainer: textContainer)
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.autoresizingMask = [.width]
+        textView.minSize = .zero
+        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        textView.applyEditorDefaults()
+
+        let scrollView = NSScrollView()
+        scrollView.borderType = .noBorder
+        scrollView.hasVerticalScroller = true
+        scrollView.documentView = textView
+        return (scrollView, textView)
+    }
+
+    /// The text view writes Markdown as plain text, so everything that would
+    /// rewrite what is typed is off.
+    private func applyEditorDefaults() {
+        isRichText = false
+        // Left on the system default, Writing Tools may answer a rewrite with
+        // text attributes, reading "**bold**" as bold and dropping the
+        // asterisks it came from; asking for plain text keeps the document's
+        // own syntax.
+        if #available(macOS 15.0, *) {
+            allowedWritingToolsResultOptions = .plainText
+        }
+        allowsUndo = true
+        usesFindBar = true
+        isIncrementalSearchingEnabled = true
+        isAutomaticQuoteSubstitutionEnabled = false
+        isAutomaticDashSubstitutionEnabled = false
+        isAutomaticTextReplacementEnabled = false
+        isAutomaticSpellingCorrectionEnabled = false
+        isContinuousSpellCheckingEnabled = false
+        smartInsertDeleteEnabled = false
+        textContainerInset = NSSize(width: 24, height: EditorTextView.insetHeight)
+        drawsBackground = true
+        backgroundColor = .textBackgroundColor
+    }
+}
+
 final class EditorTextView: NSTextView {
     static let topPadding: CGFloat = 20
     static let bottomPadding: CGFloat = 64
