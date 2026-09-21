@@ -18,7 +18,7 @@ private final class PauseGate {
     func release() {
         let continuations = waiting
         waiting.removeAll()
-        continuations.forEach { $0.resume() }
+        for continuation in continuations { continuation.resume() }
     }
 
     /// Yields until the model is inside its pause.

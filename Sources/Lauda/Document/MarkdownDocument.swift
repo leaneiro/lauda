@@ -115,7 +115,6 @@ final class MarkdownDocument: NSDocument {
         }
     }
 
-
     /// AppKit calls these overrides on the main thread: this document is
     /// opened and closed by the app itself, never read concurrently nor
     /// saved on a background queue (NSDocument's two switches for that are

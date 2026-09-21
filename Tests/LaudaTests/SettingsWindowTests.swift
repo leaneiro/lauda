@@ -22,7 +22,8 @@ struct SettingsWindowTests {
     }
 
     @Test func stayWhileAnotherDocumentIsOpen() {
-        let first = NSDocument(), second = NSDocument()
+        let first = NSDocument()
+        let second = NSDocument()
         let closing = makeWindow(for: first)
         let other = makeWindow(for: second)
         #expect(!SettingsWindow.shouldClose(whenClosing: closing, among: [closing, other], isOpen: { _ in true }))

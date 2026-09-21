@@ -91,10 +91,17 @@ System Settings → General → Language & Region → Applications.
 ## Working on the code
 
 Lauda is a plain SwiftPM package, with no Xcode project. `make run`
-builds and opens the app, and `swift test` runs the unit tests. For every
-pull request, CI builds the package, runs the tests and assembles the
-universal app bundle on Apple silicon, then builds and tests again on an
-Intel Mac.
+builds and opens the app, `swift test` runs the unit tests, and
+`Scripts/lint.sh` runs the linters. For every pull request, CI builds the
+package, runs the tests, lints and assembles the universal app bundle on
+Apple silicon, then builds and tests again on an Intel Mac.
+
+The lint catches slips, not style: the Swift here is formatted by hand, so
+swift-format's opinions on indentation, blank lines, line length and the
+semicolons a scanner uses are off (`.swift-format` and `Scripts/lint.sh`
+list what is off and why). The preview's script goes through Biome, with
+the rules that don't fit a script called from Swift turned off in
+`biome.json`.
 
 Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/),
 for example `fix(preview): …` or `feat(editor): …`.
@@ -104,10 +111,12 @@ for example `fix(preview): …` or `feat(editor): …`.
 Tests use [Swift Testing](https://developer.apple.com/documentation/testing)
 (`@Test`, `#expect`, `#require`). It runs tests in parallel and in no
 particular order, so each one has to stand on its own. A test that writes
-settings makes its own `UserDefaults` suite, and a test that touches the
-disk makes its own temporary folder, both named with a fresh UUID and
-cleaned up when the test ends. Never write to `UserDefaults.standard`:
-those are the real settings of whoever is running the tests.
+settings uses `TestDefaults`, which keeps them in memory: a named suite is
+a file in ~/Library/Preferences, and removing the domain leaves the file
+behind. A test that touches the disk makes its own temporary folder, named
+with a fresh UUID and removed when the test ends. Never write to
+`UserDefaults.standard`: those are the real settings of whoever is running
+the tests.
 
 Suites that drive AppKit are marked `@MainActor`. Two of them are also
 `@Suite(.serialized)`, so their tests run one at a time: `UndoGranularityTests`,

@@ -52,13 +52,13 @@ function setStyle(family, size, lineHeight) {
     reflowing(() => {
         const style = document.documentElement.style;
         style.setProperty("--pfont", family);
-        style.setProperty("--psize", size + "px");
+        style.setProperty("--psize", `${size}px`);
         style.setProperty("--plh", lineHeight);
     });
 }
 function setContentWidth(rem) {
     reflowing(() => {
-        document.documentElement.style.setProperty("--article-max", rem + "rem");
+        document.documentElement.style.setProperty("--article-max", `${rem}rem`);
     });
 }
 // Applies a change that reflows the text (column width, font) and puts the
@@ -134,7 +134,7 @@ function anchorsMoved() {
 // observer's turn, which comes after the reader may have scrolled.
 function contentShape() {
     const content = document.getElementById("content");
-    return content.clientWidth + "x" + document.documentElement.scrollHeight;
+    return `${content.clientWidth}x${document.documentElement.scrollHeight}`;
 }
 
 // [sourceLine, y] anchors: the top padding (line -1 at y 0), each mapped
@@ -244,7 +244,7 @@ function findRun(query, forward, restart) {
         findState.index = (findState.index + (forward ? 1 : -1) + findState.marks.length)
             % findState.marks.length;
     }
-    findState.marks.forEach((mark, i) => mark.classList.toggle("current", i === findState.index));
+    findState.marks.forEach((mark, i) => { mark.classList.toggle("current", i === findState.index); });
     if (findState.index >= 0) {
         suppressScrollEventsUntil = Date.now() + ECHO_WINDOW_MS;
         findState.marks[findState.index].scrollIntoView({ block: "center" });

@@ -21,7 +21,7 @@ final class DocumentSchemeHandler: NSObject, WKURLSchemeHandler {
         let base = baseDirectory.canonical
         let target = base.appendingPathComponent(relativePath).canonical
         guard target.path == base.path || target.path.hasPrefix(base.path + "/") else {
-            return nil // path traversal (e.g. ../../…) or a symlink pointing out
+            return nil  // path traversal (e.g. ../../…) or a symlink pointing out
         }
         guard ImageFileTypes.isImage(target) else {
             return nil

@@ -34,6 +34,11 @@ jobs:
       - name: Test
         run: swift test
 
+      # Slips only: the style rules that disagree with the project are off
+      # (Scripts/lint.sh says which).
+      - name: Lint
+        run: Scripts/lint.sh
+
       # Also compiles the string catalogs, so a broken translation fails here.
       - name: Build the app bundle
         run: Scripts/build-app.sh release

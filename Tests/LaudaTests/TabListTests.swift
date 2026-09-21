@@ -11,7 +11,7 @@ import Testing
     private func list(_ names: String...) -> (TabList<Doc>, [Doc]) {
         var tabs = TabList<Doc>()
         let docs = names.map(Doc.init)
-        docs.forEach { tabs.add($0) }
+        for doc in docs { tabs.add(doc) }
         return (tabs, docs)
     }
 
