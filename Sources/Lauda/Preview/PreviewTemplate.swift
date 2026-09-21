@@ -71,6 +71,13 @@ enum PreviewTemplate {
     /// replace it.
     static let script = PreviewResources.text(named: "preview", extension: "js")
 
+    /// A number as CSS writes it: 18 where Swift would print 18.0, so the
+    /// exported page reads the same from the Electron edition, whose numbers
+    /// print that way.
+    static func cssNumber(_ value: Double) -> String {
+        value == value.rounded() && abs(value) < 1e15 ? String(Int(value)) : "\(value)"
+    }
+
     /// Self-contained document (no scripts) for HTML/PDF export, styled like
     /// the preview and honoring the user's preview font settings.
     static func standalone(
@@ -91,8 +98,8 @@ enum PreviewTemplate {
         \(styles)
         :root {
             --pfont: \(fontFamily);
-            --psize: \(fontSize)px;
-            --plh: \(lineHeight);
+            --psize: \(cssNumber(fontSize))px;
+            --plh: \(cssNumber(lineHeight));
         }
         </style>
         </head>

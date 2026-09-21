@@ -16,9 +16,17 @@ struct ExportTests {
         #expect(html.contains("<h1>Title</h1>"))
         #expect(html.contains("<strong>text</strong>"))
         #expect(html.contains("--pfont: Georgia, serif;"))
-        #expect(html.contains("--psize: 18.0px;"))
+        #expect(html.contains("--psize: 18px;"))
+        #expect(html.contains("--plh: 1.7;"))
         #expect(html.contains("@media print"), "should include the print CSS")
         #expect(!html.contains("<script"), "the exported document has no JS")
+    }
+
+    /// Whole numbers go without Swift's ".0", as JavaScript prints them, so
+    /// the two editions export the same page.
+    @Test(arguments: [(18.0, "18"), (16.5, "16.5"), (1.65, "1.65"), (0.0, "0"), (-0.0, "0")])
+    func numbersAreWrittenAsCSSWritesThem(value: Double, expected: String) {
+        #expect(PreviewTemplate.cssNumber(value) == expected)
     }
 
     @Test func standaloneEscapesTitle() {
@@ -78,6 +86,6 @@ struct ExportTests {
             style: PreviewStyle(fontName: FontOption.systemSerif, fontSize: 19, lineHeight: 1.5, strictLineBreaks: false)
         )
         #expect(html.contains("<li>item</li>"))
-        #expect(html.contains("--psize: 19.0px;"), "got: \(html.prefix(600))")
+        #expect(html.contains("--psize: 19px;"), "got: \(html.prefix(600))")
     }
 }
