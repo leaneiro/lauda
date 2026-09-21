@@ -80,7 +80,7 @@ private final class PreviewPage: NSObject, WKNavigationDelegate {
 
     /// What following the editor does: the synced line goes to the top.
     func scroll(toLine line: Double) async throws {
-        try await run("setScrollPosition(line, true, 0, false, 0, 0, 1)", ["line": line])
+        try await run("setScrollPosition(position(line, null, 0, 0, 1))", ["line": line])
     }
 
     /// Changes the column width the way nothing in the app does: without
@@ -176,7 +176,7 @@ struct PreviewReflowTests {
     /// Editing at the end of a document keeps both panes at their ends.
     @Test func aPageFollowingAnEditorAtItsEndStaysAtTheEnd() async throws {
         let page = try await openPage()
-        try await page.run("setScrollPosition(300, true, 300, true, 1, 0, 60)")
+        try await page.run("setScrollPosition(position(300, 300, 1, 0, 60))")
         try await page.run("setContentWidth(rem)", ["rem": 90])
         let offset = try await page.number("return window.scrollY")
         let max = try await page.number("return maxScroll()")
@@ -253,6 +253,32 @@ struct PreviewListAnchorTests {
         try await page.scroll(toLine: 10)
         let afterNewText = try await page.number("return window.__measures")
         #expect(afterNewText == 2, "measured \(afterNewText) times")
+    }
+
+    /// A line the leader can't name reaches the script as null, never as a
+    /// zero, which is the first line and means "align by line".
+    @Test func aPositionWithoutALineSendsNull() {
+        let withoutLine = ScrollSync(line: nil, fraction: 0.5, endLine: nil, toEndDistance: 0, source: .editor)
+        let arguments = PreviewWebView.Coordinator.scrollArguments(for: withoutLine)
+        #expect(arguments["line"] is NSNull)
+        #expect(arguments["endLine"] is NSNull)
+        #expect((arguments["fraction"] as? Double) == 0.5)
+
+        let withLine = ScrollSync(line: 12, fraction: 0.5, endLine: 40, toEndDistance: 3, source: .editor)
+        let named = PreviewWebView.Coordinator.scrollArguments(for: withLine)
+        #expect((named["line"] as? NSNumber)?.doubleValue == 12)
+        #expect((named["endLine"] as? NSNumber)?.doubleValue == 40)
+    }
+
+    /// The page reads it and puts itself where it says, without the pane
+    /// having to be measured first.
+    @Test func aPositionWithoutALineFallsBackToTheFraction() async throws {
+        let page = try await openPage(width: 900)
+        try await page.run("setScrollPosition(at)", ["at": [
+            "line": NSNull(), "endLine": NSNull(), "fraction": 0.5, "toEndDistance": 0, "convergence": 1,
+        ] as [String: Any]])
+        let scrolled = try await page.number("return window.scrollY / Math.max(maxScroll(), 1)")
+        #expect(abs(scrolled - 0.5) < 0.02, "landed at \(scrolled) of the page")
     }
 
     @Test func everyItemIsAnAnchor() async throws {

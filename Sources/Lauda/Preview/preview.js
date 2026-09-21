@@ -86,10 +86,7 @@ function rememberTopOfPage() {
     if (max > 0 && y >= max - 1) {
         lastPosition = { atEnd: true };
     } else if (points) {
-        lastPosition = {
-            line: interpolate(points, y, 1, 0), hasLine: true, endLine: 0, hasEndLine: false,
-            fraction: max > 0 ? y / max : 0, toEndDistance: 0, convergence: 1,
-        };
+        lastPosition = position(interpolate(points, y, 1, 0), null, max > 0 ? y / max : 0, 0, 1);
     }
 }
 // Puts the page back at lastPosition after its text reflowed.
@@ -100,8 +97,7 @@ function realign() {
         window.scrollTo(0, maxScroll());
         return;
     }
-    const p = lastPosition;
-    setScrollPosition(p.line, p.hasLine, p.endLine, p.hasEndLine, p.fraction, p.toEndDistance, p.convergence);
+    setScrollPosition(lastPosition);
 }
 function maxScroll() {
     return Math.max(document.documentElement.scrollHeight - window.innerHeight, 0);
@@ -178,22 +174,28 @@ function interpolate(points, value, from, to) {
     }
     return points[points.length - 1][to];
 }
-function setScrollPosition(line, hasLine, endLine, hasEndLine, fraction, toEndDistance, convergence) {
-    lastPosition = { line, hasLine, endLine, hasEndLine, fraction, toEndDistance, convergence };
+// Where the other pane is, in this one's terms: `line` and `endLine` are
+// source lines, null when the leader can't name one and the fraction is all
+// there is to go on.
+function position(line, endLine, fraction, toEndDistance, convergence) {
+    return { line, endLine, fraction, toEndDistance, convergence };
+}
+function setScrollPosition(at) {
+    lastPosition = at;
     const max = maxScroll();
     if (max <= 0) { return; }
-    const points = hasLine ? lineAnchors() : null;
-    let target = fraction * max;
+    const points = at.line === null ? null : lineAnchors();
+    let target = at.fraction * max;
     if (points) {
-        target = interpolate(points, line, 0, 1);
+        target = interpolate(points, at.line, 0, 1);
         // Over the leader's last `convergence` points, absorb the gap
         // between where its final line lands here and this pane's end, so
         // both panes reach the bottom together while staying line-aligned
         // everywhere before that.
-        if (hasEndLine) {
-            const gap = Math.max(max - interpolate(points, endLine, 0, 1), 0);
-            const stretch = Math.max(Math.min(convergence, window.innerHeight), 1);
-            target += gap * Math.max(0, 1 - toEndDistance / stretch);
+        if (at.endLine !== null) {
+            const gap = Math.max(max - interpolate(points, at.endLine, 0, 1), 0);
+            const stretch = Math.max(Math.min(at.convergence, window.innerHeight), 1);
+            target += gap * Math.max(0, 1 - at.toEndDistance / stretch);
         }
     }
     target = Math.min(Math.max(target, 0), max);
@@ -268,11 +270,8 @@ function reportScrolled() {
     const points = lineAnchors();
     const line = points ? interpolate(points, y, 1, 0) : null;
     const endLine = points ? interpolate(points, max, 1, 0) : null;
-    lastPosition = max > 0 && y >= max - 1
-        ? { atEnd: true }
-        : { line: line === null ? 0 : line, hasLine: line !== null, endLine: 0, hasEndLine: false,
-            fraction, toEndDistance: 0, convergence: 1 };
-    window.webkit.messageHandlers.previewScrolled.postMessage([line, endLine, fraction, toEndDistance]);
+    lastPosition = max > 0 && y >= max - 1 ? { atEnd: true } : position(line, null, fraction, 0, 1);
+    window.webkit.messageHandlers.previewScrolled.postMessage({ line, endLine, fraction, toEndDistance });
 }
 window.addEventListener("scroll", () => {
     if (Date.now() < suppressScrollEventsUntil) { return; }

@@ -251,19 +251,24 @@ struct PreviewWebView: NSViewRepresentable {
             applyScroll(lastScroll)
         }
 
+        /// The position as the script reads it. A line the leader can't name
+        /// is null there, not a zero: zero is the first line, and the script
+        /// tells the two apart to decide whether to align by line at all.
+        static func scrollArguments(for sync: ScrollSync) -> [String: Any] {
+            [
+                "line": sync.line.map(NSNumber.init(value:)) ?? NSNull(),
+                "endLine": sync.endLine.map(NSNumber.init(value:)) ?? NSNull(),
+                "fraction": Double(sync.fraction),
+                "toEndDistance": sync.toEndDistance,
+                "convergence": ScrollSync.endConvergence,
+            ]
+        }
+
         private func applyScroll(_ sync: ScrollSync) {
             guard let webView, isReady else { return }
             webView.callAsyncJavaScript(
-                "setScrollPosition(line, hasLine, endLine, hasEndLine, fraction, toEndDistance, convergence)",
-                arguments: [
-                    "line": sync.line ?? 0,
-                    "hasLine": sync.line != nil,
-                    "endLine": sync.endLine ?? 0,
-                    "hasEndLine": sync.endLine != nil,
-                    "fraction": Double(sync.fraction),
-                    "toEndDistance": sync.toEndDistance,
-                    "convergence": ScrollSync.endConvergence,
-                ],
+                "setScrollPosition(at)",
+                arguments: ["at": Self.scrollArguments(for: sync)],
                 in: nil,
                 in: PreviewWebView.contentWorld
             ) { Self.logScriptFailure($0) }
@@ -276,13 +281,13 @@ struct PreviewWebView: NSViewRepresentable {
             didReceive message: WKScriptMessage
         ) {
             guard message.name == "previewScrolled",
-                  let values = message.body as? [Any], values.count == 4,
-                  let fraction = (values[2] as? NSNumber)?.doubleValue,
-                  let toEndDistance = (values[3] as? NSNumber)?.doubleValue else { return }
+                  let values = message.body as? [String: Any],
+                  let fraction = (values["fraction"] as? NSNumber)?.doubleValue,
+                  let toEndDistance = (values["toEndDistance"] as? NSNumber)?.doubleValue else { return }
             let sync = ScrollSync(
-                line: (values[0] as? NSNumber)?.doubleValue,
+                line: (values["line"] as? NSNumber)?.doubleValue,
                 fraction: CGFloat(min(max(fraction, 0), 1)),
-                endLine: (values[1] as? NSNumber)?.doubleValue,
+                endLine: (values["endLine"] as? NSNumber)?.doubleValue,
                 toEndDistance: max(toEndDistance, 0),
                 source: .preview
             )
