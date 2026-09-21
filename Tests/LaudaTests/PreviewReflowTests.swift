@@ -288,3 +288,21 @@ struct PreviewListAnchorTests {
         #expect(try await page.number("return lineAnchors().length") == 203)
     }
 }
+
+/// An element the document names after a method of the page's takes that
+/// method's place on `document` (an <img name="createElement"> hides the
+/// method), in the script's own world too, since the name is the DOM's.
+@MainActor
+@Suite(.timeLimit(.minutes(1)))
+struct PreviewScriptTests {
+    @Test func elementsNamedLikeThePagesMethodsLeaveThePreviewWorking() async throws {
+        let page = PreviewPage(width: 900, height: 700)
+        try await page.load(markdown: "<img name=\"createElement\" alt=\"\"><form name=\"getElementById\"></form>\n\n# Title\n")
+        let next = HTMLRenderer.renderWithLines("# Title\n\nStill updating\n")
+        try await page.run("setContent(html, lines, lineCount)", [
+            "html": next.html, "lines": next.anchorLines, "lineCount": next.lineCount,
+        ])
+        let text = try await page.run("return document.querySelector('#content p')?.textContent ?? ''") as? String
+        #expect(text == "Still updating")
+    }
+}

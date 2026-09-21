@@ -5,6 +5,17 @@
 const ECHO_WINDOW_MS = 200;
 const REFLOW_ECHO_WINDOW_MS = 300;
 
+// The page's own elements and the document methods the script calls, taken
+// before any document's HTML enters the page: an element named after one of
+// them (an <img name="createElement">) would take its place on `document`,
+// in this world too, since the name is the DOM's.
+const root = document.documentElement;
+const body = document.body;
+const content = document.getElementById("content");
+const createElement = document.createElement.bind(document);
+const createTextNode = document.createTextNode.bind(document);
+const createTreeWalker = document.createTreeWalker.bind(document);
+
 // Timestamp of the last programmatic change; scroll events shortly after
 // one are echoes (or reflows), not the user scrolling the preview.
 let suppressScrollEventsUntil = 0;
@@ -30,36 +41,34 @@ function setContent(html, lines, lineCount) {
     anchorsMoved();
     anchorLines = lines || [];
     totalLines = Math.max(lineCount || 1, 1);
-    const container = document.getElementById("content");
-    const parsed = document.createElement("div");
+    const parsed = createElement("div");
     parsed.innerHTML = html;
 
-    const oldBlocks = Array.from(container.children);
+    const oldBlocks = Array.from(content.children);
     const newBlocks = Array.from(parsed.children);
     const common = Math.min(oldBlocks.length, newBlocks.length);
     for (let i = 0; i < common; i++) {
         if (!oldBlocks[i].isEqualNode(newBlocks[i])) {
-            container.replaceChild(newBlocks[i], oldBlocks[i]);
+            content.replaceChild(newBlocks[i], oldBlocks[i]);
         }
     }
     for (let i = oldBlocks.length - 1; i >= common; i--) {
-        container.removeChild(oldBlocks[i]);
+        content.removeChild(oldBlocks[i]);
     }
     for (let i = common; i < newBlocks.length; i++) {
-        container.appendChild(newBlocks[i]);
+        content.appendChild(newBlocks[i]);
     }
 }
 function setStyle(family, size, lineHeight) {
     reflowing(() => {
-        const style = document.documentElement.style;
-        style.setProperty("--pfont", family);
-        style.setProperty("--psize", `${size}px`);
-        style.setProperty("--plh", lineHeight);
+        root.style.setProperty("--pfont", family);
+        root.style.setProperty("--psize", `${size}px`);
+        root.style.setProperty("--plh", lineHeight);
     });
 }
 function setContentWidth(rem) {
     reflowing(() => {
-        document.documentElement.style.setProperty("--article-max", `${rem}rem`);
+        root.style.setProperty("--article-max", `${rem}rem`);
     });
 }
 // Applies a change that reflows the text (column width, font) and puts the
@@ -70,10 +79,9 @@ function reflowing(change) {
         rememberTopOfPage();
     }
     suppressScrollEventsUntil = Date.now() + REFLOW_ECHO_WINDOW_MS;
-    const root = document.documentElement;
     root.classList.add("reflowing");
     change();
-    document.body.getBoundingClientRect(); // lay out the new text now
+    body.getBoundingClientRect(); // lay out the new text now
     anchorsMoved();
     realign();
     root.classList.remove("reflowing");
@@ -101,7 +109,7 @@ function realign() {
     setScrollPosition(lastPosition);
 }
 function maxScroll() {
-    return Math.max(document.documentElement.scrollHeight - window.innerHeight, 0);
+    return Math.max(root.scrollHeight - window.innerHeight, 0);
 }
 // Elements the line map names, in its order: every top-level block, then
 // the list items and table rows inside it. Anchoring inside blocks keeps
@@ -110,7 +118,7 @@ function maxScroll() {
 // source line of ours, so nothing inside it is an anchor.
 function anchorElements() {
     const elements = [];
-    for (const block of document.getElementById("content").children) {
+    for (const block of content.children) {
         elements.push(block);
         if (block.classList.contains("raw")) { continue; }
         for (const inner of block.querySelectorAll("li, tr")) { elements.push(inner); }
@@ -134,8 +142,7 @@ function anchorsMoved() {
 // measured again before they are read, rather than waiting for the
 // observer's turn, which comes after the reader may have scrolled.
 function contentShape() {
-    const content = document.getElementById("content");
-    return `${content.clientWidth}x${document.documentElement.scrollHeight}`;
+    return `${content.clientWidth}x${root.scrollHeight}`;
 }
 
 // [sourceLine, y] anchors: the top padding (line -1 at y 0), each mapped
@@ -159,7 +166,7 @@ function measureLineAnchors() {
         if (anchorLines[i] > prev[0] && y >= prev[1]) { points.push([anchorLines[i], y]); }
     }
     const last = points[points.length - 1];
-    const endY = document.documentElement.scrollHeight;
+    const endY = root.scrollHeight;
     if (totalLines > last[0] && endY >= last[1]) { points.push([totalLines, endY]); }
     return points;
 }
@@ -210,7 +217,7 @@ function findClear() {
     for (const mark of findState.marks) {
         const parent = mark.parentNode;
         if (parent) {
-            parent.replaceChild(document.createTextNode(mark.textContent), mark);
+            parent.replaceChild(createTextNode(mark.textContent), mark);
             parent.normalize();
         }
     }
@@ -222,8 +229,7 @@ function findRun(query, forward, restart) {
         findState.query = query;
         if (!query) { return [0, 0]; }
         const lowered = query.toLowerCase();
-        const walker = document.createTreeWalker(
-            document.getElementById("content"), NodeFilter.SHOW_TEXT);
+        const walker = createTreeWalker(content, NodeFilter.SHOW_TEXT);
         const nodes = [];
         while (walker.nextNode()) { nodes.push(walker.currentNode); }
         for (const node of nodes) {
@@ -232,7 +238,7 @@ function findRun(query, forward, restart) {
             while ((position = current.textContent.toLowerCase().indexOf(lowered)) !== -1) {
                 const match = current.splitText(position);
                 const rest = match.splitText(query.length);
-                const mark = document.createElement("mark");
+                const mark = createElement("mark");
                 mark.className = "find-hit";
                 match.parentNode.replaceChild(mark, match);
                 mark.appendChild(match);
@@ -282,4 +288,4 @@ window.addEventListener("scroll", () => {
 // The content grows on its own when an image finishes loading, and the
 // anchors below it move with it. Watching its box catches that, and the
 // reflows a stylesheet can cause without any of the calls above.
-new ResizeObserver(() => { anchorsMoved(); }).observe(document.getElementById("content"));
+new ResizeObserver(() => { anchorsMoved(); }).observe(content);
