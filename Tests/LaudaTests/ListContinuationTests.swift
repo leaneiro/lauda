@@ -12,11 +12,11 @@ struct ListContinuationTests {
     }
 
     @Test func incrementsOrderedList() {
-        #expect(ListContinuation.newlineAction(forLine: "3. passo", caretOffset: 8) == .continueList(insertion: "\n4. "))
+        #expect(ListContinuation.newlineAction(forLine: "3. step", caretOffset: 8) == .continueList(insertion: "\n4. "))
     }
 
     @Test func keepsOrderedDelimiterStyle() {
-        #expect(ListContinuation.newlineAction(forLine: "1) passo", caretOffset: 8) == .continueList(insertion: "\n2) "))
+        #expect(ListContinuation.newlineAction(forLine: "1) step", caretOffset: 8) == .continueList(insertion: "\n2) "))
     }
 
     @Test func continuesTaskListUnchecked() {

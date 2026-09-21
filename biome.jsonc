@@ -1,0 +1,22 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.0.0/schema.json",
+  "files": { "includes": ["Sources/Lauda/Preview/preview.js"] },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "correctness": {
+        // The app calls these from Swift, so nothing in the file calls them.
+        "noUnusedVariables": "off"
+      },
+      "suspicious": {
+        // A scan that walks matches assigns in its own condition, on purpose.
+        "noAssignInExpressions": "off",
+        // The file is injected as a classic script, not a module, so the
+        // directive is what puts it in strict mode.
+        "noRedundantUseStrict": "off"
+      }
+    }
+  },
+  "formatter": { "enabled": false }
+}

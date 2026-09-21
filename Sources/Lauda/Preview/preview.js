@@ -1,3 +1,4 @@
+"use strict";
 // How long scroll events are taken as echoes of something the app did
 // rather than the reader scrolling: after a change of content or position,
 // and longer after a reflow, which settles in more than one frame.
@@ -249,7 +250,7 @@ function findRun(query, forward, restart) {
         suppressScrollEventsUntil = Date.now() + ECHO_WINDOW_MS;
         findState.marks[findState.index].scrollIntoView({ block: "center" });
     }
-    return [findState.index + 1, findState.marks.length];
+    return { current: findState.index + 1, total: findState.marks.length };
 }
 // A resize (a view mode switch, the divider, the window) reflows the text:
 // stay at lastPosition, and don't report the drifted offsets as the reader

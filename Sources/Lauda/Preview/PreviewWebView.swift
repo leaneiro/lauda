@@ -194,9 +194,9 @@ struct PreviewWebView: NSViewRepresentable {
                 in: PreviewWebView.contentWorld
             ) { result in
                 if case .success(let value) = result,
-                   let counts = value as? [Any], counts.count == 2,
-                   let current = (counts[0] as? NSNumber)?.intValue,
-                   let total = (counts[1] as? NSNumber)?.intValue {
+                   let counts = value as? [String: Any],
+                   let current = (counts["current"] as? NSNumber)?.intValue,
+                   let total = (counts["total"] as? NSNumber)?.intValue {
                     completion(current, total)
                 } else {
                     Self.logScriptFailure(result)

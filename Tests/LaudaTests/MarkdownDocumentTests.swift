@@ -21,9 +21,9 @@ import Testing
         let document = MarkdownDocument()
         try document.read(from: Data("a".utf8), ofType: markdownType)
 
-        document.edit("a mais")
+        document.edit("and more")
 
-        #expect(document.text == "a mais")
+        #expect(document.text == "and more")
         #expect(document.isDocumentEdited)
         #expect(document.isEdited, "the tab strip's copy of the flag follows")
         #expect(document.savedText == "a", "the file still holds what it held")
@@ -65,7 +65,7 @@ import Testing
         let second = MarkdownDocument()
 
         first.scrollSync.fraction = 0.5
-        first.findSession.query = "procurado"
+        first.findSession.query = "looked for"
 
         #expect(second.scrollSync.fraction == 0)
         #expect(second.findSession.query.isEmpty)
