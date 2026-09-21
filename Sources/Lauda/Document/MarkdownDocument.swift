@@ -6,6 +6,18 @@ extension UTType {
     static let markdown = UTType(importedAs: "net.daringfireball.markdown", conformingTo: .plainText)
 }
 
+/// What a document needs from the window it lives in: it has no window of
+/// its own, so opening, showing and closing it are things the workspace
+/// does with its tabs. Named here, where the document is, so the dependency
+/// points this way and a test can stand in for the window.
+@MainActor
+protocol DocumentHost: AnyObject {
+    func add(_ document: MarkdownDocument)
+    func select(_ document: MarkdownDocument)
+    func willClose(_ document: MarkdownDocument)
+    func documentDidSave()
+}
+
 /// A Markdown file as macOS's document machinery knows it: autosave in
 /// place, Versions, Finder, Rename and Move all come from NSDocument. What it
 /// doesn't have is a window of its own: every open document is a tab of the
@@ -103,12 +115,24 @@ final class MarkdownDocument: NSDocument {
         }
     }
 
+
+    /// AppKit calls these overrides on the main thread: this document is
+    /// opened and closed by the app itself, never read concurrently nor
+    /// saved on a background queue (NSDocument's two switches for that are
+    /// off by default and stay off), so the hop is an assertion, not a wish.
+    private func inWindow(_ work: @MainActor (any DocumentHost) -> Void) {
+        MainActor.assumeIsolated { work(Self.host ?? Workspace.shared) }
+    }
+
+    /// The window documents join. Settable so a test can put its own there.
+    @MainActor static var host: (any DocumentHost)?
+
     private func noteSaved(_ written: String, at url: URL) {
         savedText = written
         savedDate = Date()
         isEdited = isDocumentEdited
         RecentDocuments.note(url)
-        MainActor.assumeIsolated { Workspace.shared.documentDidSave() }
+        inWindow { $0.documentDidSave() }
     }
 
     // MARK: - What the tab strip shows
@@ -140,13 +164,13 @@ final class MarkdownDocument: NSDocument {
         if let fileURL {
             RecentDocuments.note(fileURL)
         }
-        MainActor.assumeIsolated { Workspace.shared.add(self) }
+        inWindow { $0.add(self) }
     }
 
     /// Opening a file that is already open asks its document to show
     /// itself, which here means its tab.
     override func showWindows() {
-        MainActor.assumeIsolated { Workspace.shared.select(self) }
+        inWindow { $0.select(self) }
     }
 
     /// Whether to keep unsaved text is asked in a sheet, and a sheet needs the
@@ -158,7 +182,7 @@ final class MarkdownDocument: NSDocument {
         contextInfo: UnsafeMutableRawPointer?
     ) {
         if isDocumentEdited, fileURL == nil {
-            MainActor.assumeIsolated { Workspace.shared.select(self) }
+            inWindow { $0.select(self) }
         }
         super.canClose(withDelegate: delegate, shouldClose: shouldCloseSelector, contextInfo: contextInfo)
     }
@@ -168,7 +192,7 @@ final class MarkdownDocument: NSDocument {
     /// a document closes the windows it holds, and the shared window must
     /// be with a document that stays.
     override func close() {
-        MainActor.assumeIsolated { Workspace.shared.willClose(self) }
+        inWindow { $0.willClose(self) }
         super.close()
     }
 }

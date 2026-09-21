@@ -11,7 +11,7 @@ import SwiftUI
 /// everything in it, toolbar and title included.
 @MainActor
 @Observable
-final class Workspace: NSObject {
+final class Workspace: NSObject, DocumentHost {
     static let shared = Workspace()
 
     private var tabs = TabList<MarkdownDocument>()
