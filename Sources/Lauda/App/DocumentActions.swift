@@ -1,12 +1,6 @@
 import SwiftUI
 import AppKit
 
-enum ViewMode: Int {
-    case editorOnly
-    case split
-    case previewOnly
-}
-
 /// Bridges menu commands and the find bar to a document's editor pane.
 final class EditorActions: EditorFinding {
     weak var coordinator: MarkdownTextView.Coordinator?
