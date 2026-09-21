@@ -26,6 +26,7 @@ let totalLines = 1;
 
 function setContent(html, lines, lineCount) {
     suppressScrollEventsUntil = Date.now() + ECHO_WINDOW_MS;
+    anchorsMoved();
     anchorLines = lines || [];
     totalLines = Math.max(lineCount || 1, 1);
     const container = document.getElementById("content");
@@ -72,6 +73,7 @@ function reflowing(change) {
     root.classList.add("reflowing");
     change();
     document.body.getBoundingClientRect(); // lay out the new text now
+    anchorsMoved();
     realign();
     root.classList.remove("reflowing");
 }
@@ -118,11 +120,39 @@ function anchorElements() {
     }
     return elements;
 }
+// The anchors as they were last measured. Measuring walks every block, and
+// every list item and table row inside it, reading each one's position, so
+// it is done once and kept until something moves the text: new content, a
+// reflow, a resize, or an image that finishes loading (the observer below
+// catches the last two). Scroll events then cost a lookup rather than a
+// pass over the page, which is what a long list made expensive.
+let measuredAnchors = { valid: false, points: null, shape: null };
+
+function anchorsMoved() {
+    measuredAnchors = { valid: false, points: null, shape: null };
+}
+
+// What the anchors were measured against. A reflow the app didn't ask for
+// (a late image, a stylesheet) changes one of these, and the anchors are
+// measured again before they are read, rather than waiting for the
+// observer's turn, which comes after the reader may have scrolled.
+function contentShape() {
+    const content = document.getElementById("content");
+    return content.clientWidth + "x" + document.documentElement.scrollHeight;
+}
+
 // [sourceLine, y] anchors: the top padding (line -1 at y 0), each mapped
 // element and the document end. null when the DOM and the line map
 // disagree (raw HTML can make the parser split a block); callers then
 // fall back to proportional sync.
 function lineAnchors() {
+    const shape = contentShape();
+    if (measuredAnchors.valid && measuredAnchors.shape === shape) { return measuredAnchors.points; }
+    const points = measureLineAnchors();
+    measuredAnchors = { valid: true, points, shape };
+    return points;
+}
+function measureLineAnchors() {
     const elements = anchorElements();
     if (anchorLines.length === 0 || elements.length !== anchorLines.length) { return null; }
     const points = [[-1, 0]];
@@ -224,10 +254,13 @@ function findRun(query, forward, restart) {
 // scrolling.
 window.addEventListener("resize", () => {
     suppressScrollEventsUntil = Date.now() + REFLOW_ECHO_WINDOW_MS;
+    anchorsMoved();
     realign();
 });
-window.addEventListener("scroll", () => {
-    if (Date.now() < suppressScrollEventsUntil) { return; }
+// Where the page is, for the editor to follow. WebKit already paces scroll
+// events by the frame, and the anchors are measured once (lineAnchors), so
+// an event costs a lookup and the message itself.
+function reportScrolled() {
     const max = maxScroll();
     const y = window.scrollY;
     const fraction = max > 0 ? Math.min(Math.max(y / max, 0), 1) : 0;
@@ -240,4 +273,13 @@ window.addEventListener("scroll", () => {
         : { line: line === null ? 0 : line, hasLine: line !== null, endLine: 0, hasEndLine: false,
             fraction, toEndDistance: 0, convergence: 1 };
     window.webkit.messageHandlers.previewScrolled.postMessage([line, endLine, fraction, toEndDistance]);
+}
+window.addEventListener("scroll", () => {
+    if (Date.now() < suppressScrollEventsUntil) { return; }
+    reportScrolled();
 }, { passive: true });
+
+// The content grows on its own when an image finishes loading, and the
+// anchors below it move with it. Watching its box catches that, and the
+// reflows a stylesheet can cause without any of the calls above.
+new ResizeObserver(() => { anchorsMoved(); }).observe(document.getElementById("content"));

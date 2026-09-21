@@ -225,6 +225,36 @@ struct PreviewListAnchorTests {
         #expect(abs(offset) < 8, "after narrowing, item 120 sits \(offset) px from the top")
     }
 
+    /// Measuring walks every item and reads its position, and a scroll event
+    /// asks for the anchors: reading them again costs nothing until the text
+    /// moves, or a long list makes every scroll event expensive.
+    @Test func theAnchorsAreMeasuredOnceUntilTheTextMoves() async throws {
+        let page = try await openPage(width: 900)
+        try await page.run("""
+            window.__measures = 0;
+            const measured = measureLineAnchors;
+            globalThis.measureLineAnchors = function () {
+                window.__measures += 1;
+                return measured.apply(null, arguments);
+            };
+            """)
+
+        for line in [10.0, 40.0, 80.0, 120.0] {
+            try await page.scroll(toLine: line)
+        }
+        let afterScrolls = try await page.number("return window.__measures")
+        #expect(afterScrolls == 1, "measured \(afterScrolls) times")
+
+        // New text moves them, and the next read measures again.
+        let content = HTMLRenderer.renderWithLines(Self.markdown + "\n\nAnd a last paragraph.")
+        try await page.run("setContent(html, lines, lineCount)", [
+            "html": content.html, "lines": content.anchorLines, "lineCount": content.lineCount,
+        ])
+        try await page.scroll(toLine: 10)
+        let afterNewText = try await page.number("return window.__measures")
+        #expect(afterNewText == 2, "measured \(afterNewText) times")
+    }
+
     @Test func everyItemIsAnAnchor() async throws {
         let page = try await openPage(width: 900)
         // The padding above the text, the heading, the list, its 200 items
