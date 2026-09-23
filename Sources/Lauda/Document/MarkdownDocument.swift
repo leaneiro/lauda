@@ -36,6 +36,9 @@ final class MarkdownDocument: NSDocument {
     /// strip reads these.
     private(set) var isEdited = false
     private(set) var title = ""
+    /// What Revert to Saved brings back: the text as the file was opened, or
+    /// as it was last saved with Save, as in the Electron edition.
+    @ObservationIgnored private var revertText: String?
 
     var scrollSync = ScrollSync()
     /// Bridges to this document's panes, and the find bar over them.
@@ -83,6 +86,11 @@ final class MarkdownDocument: NSDocument {
         let decoded = try Self.decode(data)
         text = decoded
         savedText = decoded
+        // The first read is the opening; later ones bring in another app's
+        // changes, which a revert takes back as well.
+        if revertText == nil {
+            revertText = decoded
+        }
     }
 
     override func data(ofType typeName: String) throws -> Data {
@@ -109,7 +117,7 @@ final class MarkdownDocument: NSDocument {
             // An untitled document autosaved elsewhere isn't saved as far as
             // the reader is concerned; every other write put it in its file.
             if error == nil, saveOperation != .autosaveElsewhereOperation {
-                self?.noteSaved(written, at: url)
+                self?.noteSaved(written, at: url, byTheReader: saveOperation == .saveOperation || saveOperation == .saveAsOperation)
             }
             completionHandler(error)
         }
@@ -126,11 +134,18 @@ final class MarkdownDocument: NSDocument {
     /// The window documents join. Settable so a test can put its own there.
     @MainActor static var host: (any DocumentHost)?
 
-    private func noteSaved(_ written: String, at url: URL) {
+    /// A save the reader asked for (Save, Save As) is also what Revert to
+    /// Saved goes back to, and puts the file in Open Recent. An autosave does
+    /// neither: it would bring every open file back into the menu moments
+    /// after Clear Menu emptied it.
+    private func noteSaved(_ written: String, at url: URL, byTheReader: Bool) {
         savedText = written
         savedDate = Date()
         isEdited = isDocumentEdited
-        RecentDocuments.note(url)
+        if byTheReader {
+            revertText = written
+            RecentDocuments.note(url)
+        }
         inWindow { $0.documentDidSave() }
     }
 
@@ -158,8 +173,11 @@ final class MarkdownDocument: NSDocument {
 
     // MARK: - Tabs instead of windows
 
-    /// No window of its own: the document joins the workspace as a tab.
+    /// No window of its own: the document joins the workspace as a tab. An
+    /// old version the system's Versions browser opens is no file of the
+    /// reader's: it gets no tab and no place in Open Recent.
     override func makeWindowControllers() {
+        guard !isInViewingMode else { return }
         if let fileURL {
             RecentDocuments.note(fileURL)
         }
@@ -193,5 +211,122 @@ final class MarkdownDocument: NSDocument {
     override func close() {
         inWindow { $0.willClose(self) }
         super.close()
+    }
+
+    /// The window's close button means every tab. AppKit asks only the
+    /// document the window is with, here (measured on macOS 27: the button
+    /// sends a private action of the window, never `performClose`), and
+    /// closing every document from inside that question waits forever on the
+    /// one being asked. So AppKit hears no, and every document is asked once
+    /// the question is over; the last one to close takes the window.
+    override func shouldCloseWindowController(
+        _ windowController: NSWindowController,
+        delegate: Any?,
+        shouldClose shouldCloseSelector: Selector?,
+        contextInfo: UnsafeMutableRawPointer?
+    ) {
+        reply(to: delegate, selector: shouldCloseSelector, shouldClose: false, contextInfo: contextInfo)
+        DispatchQueue.main.async {
+            MainActor.assumeIsolated {
+                NSDocumentController.shared.closeAllDocuments(
+                    withDelegate: nil, didCloseAllSelector: nil, contextInfo: nil)
+            }
+        }
+    }
+
+    /// Answers one of AppKit's questions about closing, which it asks with a
+    /// delegate and a selector shaped `document:shouldClose:contextInfo:`.
+    private func reply(
+        to delegate: Any?, selector: Selector?, shouldClose: Bool, contextInfo: UnsafeMutableRawPointer?
+    ) {
+        guard let delegate = delegate as? NSObject, let selector,
+            let method = class_getInstanceMethod(type(of: delegate), selector)
+        else { return }
+        typealias Reply = @convention(c) (NSObject, Selector, NSDocument, Bool, UnsafeMutableRawPointer?) -> Void
+        unsafeBitCast(method_getImplementation(method), to: Reply.self)(delegate, selector, self, shouldClose, contextInfo)
+    }
+
+    // MARK: - Revert, Rename and Move
+
+    /// File > Revert to Saved, asked in a sheet. AppKit's own revert goes
+    /// through the system's Versions browser, which a document without a
+    /// window of its own can't enter: it found no window to show, and the
+    /// old versions it opened came up as tabs.
+    override func revertToSaved(_ sender: Any?) {
+        guard fileURL != nil, let revertText, revertText != text, let window = windowForSheet else { return }
+        let alert = NSAlert()
+        alert.messageText = String(localized: "Revert to the last saved version of “\(title)”?")
+        alert.informativeText = String(localized: "Your current changes will be lost.")
+        alert.addButton(withTitle: String(localized: "Revert"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
+        alert.beginSheetModal(for: window) { [weak self] response in
+            guard response == .alertFirstButtonReturn else { return }
+            self?.edit(revertText)
+        }
+    }
+
+    /// File > Rename…: the name, in a sheet over the window. AppKit's own
+    /// rename edits the title in the title bar, which is hidden while the
+    /// tabs are there, so it did nothing.
+    override func rename(_ sender: Any?) {
+        guard let fileURL, let window = windowForSheet else { return }
+        let field = NSTextField(string: fileURL.lastPathComponent)
+        field.frame = NSRect(x: 0, y: 0, width: 280, height: 24)
+        let alert = NSAlert()
+        alert.messageText = String(localized: "Rename")
+        alert.accessoryView = field
+        alert.addButton(withTitle: String(localized: "Rename"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
+        alert.window.initialFirstResponder = field
+        alert.beginSheetModal(for: window) { [weak self] response in
+            guard response == .alertFirstButtonReturn, let self else { return }
+            var name = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !name.isEmpty, !name.contains("/") else { return }
+            // A name typed without an extension keeps the file's.
+            if (name as NSString).pathExtension.isEmpty, !fileURL.pathExtension.isEmpty {
+                name += "." + fileURL.pathExtension
+            }
+            self.relocate(to: fileURL.deletingLastPathComponent().appendingPathComponent(name), in: window)
+        }
+        // The field has the keyboard, with the name selected without its
+        // extension, as the Finder does.
+        let base = (fileURL.deletingPathExtension().lastPathComponent as NSString).length
+        DispatchQueue.main.async {
+            alert.window.makeFirstResponder(field)
+            field.currentEditor()?.selectedRange = NSRange(location: 0, length: base)
+        }
+    }
+
+    /// File > Move To…: a folder, chosen in a panel over the window. AppKit's
+    /// own Move To opens from the title bar as well, and failed to start
+    /// while the tabs hid the title.
+    override func move(_ sender: Any?) {
+        guard let fileURL, let window = windowForSheet else { return }
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.canCreateDirectories = true
+        panel.directoryURL = fileURL.deletingLastPathComponent()
+        panel.prompt = String(localized: "Move")
+        panel.beginSheetModal(for: window) { [weak self] response in
+            guard response == .OK, let folder = panel.url else { return }
+            self?.relocate(to: folder.appendingPathComponent(fileURL.lastPathComponent), in: window)
+        }
+    }
+
+    /// Moves the file AppKit's way, coordinated and with the document
+    /// following it, and says in a sheet what went wrong, such as a file of
+    /// that name already there.
+    private func relocate(to destination: URL, in window: NSWindow) {
+        guard let fileURL, destination.standardizedFileURL != fileURL.standardizedFileURL else { return }
+        move(to: destination) { [weak self] error in
+            guard let self else { return }
+            if let error {
+                self.presentError(error, modalFor: window, delegate: nil, didPresent: nil, contextInfo: nil)
+                return
+            }
+            RecentDocuments.note(destination)
+            self.inWindow { $0.documentDidSave() }
+        }
     }
 }

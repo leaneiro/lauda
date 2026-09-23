@@ -235,7 +235,7 @@ final class Workspace: NSObject, DocumentHost {
         // SwiftUI's toolbar and title reach a window it doesn't own; measured
         // to land where a document scene's window puts them.
         hosting.sceneBridgingOptions = [.toolbars, .title]
-        let window = WorkspaceWindow(
+        let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1200, height: 800),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
@@ -273,21 +273,5 @@ final class Workspace: NSObject, DocumentHost {
                 item.view?.invalidateIntrinsicContentSize()
             }
         }
-    }
-}
-
-private final class WorkspaceWindow: NSWindow {
-    /// The close button means every tab: the document controller asks each
-    /// document in turn and closes it, and the last one takes the window
-    /// with it.
-    ///
-    /// Left to AppKit, the button is about one document, the one the window
-    /// is with: it asks that document whether it can close and, from inside
-    /// that question, the window's delegate. Closing every document from
-    /// there waits forever on the one already being asked, so the button
-    /// never gets that far.
-    override func performClose(_ sender: Any?) {
-        NSDocumentController.shared.closeAllDocuments(
-            withDelegate: nil, didCloseAllSelector: nil, contextInfo: nil)
     }
 }

@@ -46,7 +46,6 @@ struct FileCommands: Commands {
             Button("Move To…") { workspace.selected?.move(nil) }
             Divider()
             Button("Revert to Saved") { workspace.selected?.revertToSaved(nil) }
-            Button("Browse All Versions…") { workspace.selected?.browseVersions(nil) }
         }
     }
 }
