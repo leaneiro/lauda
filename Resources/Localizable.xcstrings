@@ -3193,7 +3193,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O macOS salva automaticamente; ⌘S salva na hora."
+            "value" : "O macOS salva automaticamente e ⌘S salva na hora."
           }
         },
         "de" : {
