@@ -39,19 +39,29 @@ struct HTMLRenderer: MarkupVisitor {
     ) -> RenderedContent {
         let document = Document(parsing: markdown)
         var renderer = HTMLRenderer(strictLineBreaks: strictLineBreaks)
+        let children = Array(document.children)
+        let pieces = children.map { renderer.visit($0) }
         var html = ""
         var anchorLines: [Int] = []
-        for child in document.children {
-            let piece = renderer.visit(child)
+        var index = 0
+        while index < children.count {
+            let child = children[index]
+            anchorLines.append(startLine(of: child) ?? anchorLines.last ?? 0)
+            guard child is HTMLBlock else {
+                html += pieces[index]
+                appendInnerAnchors(of: child, to: &anchorLines)
+                index += 1
+                continue
+            }
             // Raw HTML can hold zero or several top-level elements; a wrapper
             // keeps the one-element-per-block correspondence. Its class tells
             // the preview not to look for anchors inside, where the elements
-            // are the document's own and map to no source line of ours.
-            html += child is HTMLBlock ? "<div class=\"raw\">\(piece)</div>\n" : piece
-            anchorLines.append(startLine(of: child) ?? anchorLines.last ?? 0)
-            if !(child is HTMLBlock) {
-                appendInnerAnchors(of: child, to: &anchorLines)
-            }
+            // are the document's own and map to no source line of ours. An
+            // element it leaves open for a later block to close takes the
+            // blocks between into the same wrapper, as the page whole would.
+            let end = RawHTML.closingIndex(in: pieces, from: index)
+            html += "<div class=\"raw\">\(pieces[index...end].joined())</div>\n"
+            index = end + 1
         }
         return RenderedContent(html: html, anchorLines: anchorLines, lineCount: SourceLines.count(in: markdown))
     }

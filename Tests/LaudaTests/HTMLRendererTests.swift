@@ -146,6 +146,37 @@ struct HTMLRendererTests {
         #expect(result.anchorLines == [0, 2, 2])
     }
 
+    /// GitHub's way of folding Markdown away: a blank line after the summary,
+    /// so what follows is Markdown. The blocks up to `</details>` share one
+    /// wrapper, or the browser would close the element at the summary.
+    @Test func renderWithLinesKeepsDetailsWholeAcrossBlankLines() {
+        let markdown = "<details>\n<summary>More</summary>\n\nHidden **text**.\n</details>\n\nAfter"
+        let result = HTMLRenderer.renderWithLines(markdown)
+        #expect(result.html.components(separatedBy: "class=\"raw\"").count == 2, "got: \(result.html)")
+        #expect(result.html.contains("<summary>More</summary>\n<p>Hidden <strong>text</strong>.</p>\n</details>\n</div>"))
+        // One anchor for the wrapper, one for the paragraph after it.
+        #expect(result.anchorLines == [0, 6])
+    }
+
+    @Test func renderWithLinesKeepsACentredImageInItsDiv() {
+        let result = HTMLRenderer.renderWithLines("<div align=\"center\">\n\n![Logo](logo.png)\n\n</div>\n\n- item")
+        #expect(result.html.hasPrefix("<div class=\"raw\"><div align=\"center\">\n<p><img"), "got: \(result.html)")
+        #expect(result.anchorLines == [0, 6, 6])
+    }
+
+    /// An element that never closes joins nothing: every block keeps its
+    /// wrapper and its anchor, as before.
+    @Test func renderWithLinesLeavesAnElementNoBlockClosesAlone() {
+        let result = HTMLRenderer.renderWithLines("<div>\n\ntext\n\n- item")
+        #expect(result.anchorLines == [0, 2, 4, 4])
+    }
+
+    @Test func rawHTMLOpenElementsIgnoreVoidAndSelfClosedTags() {
+        #expect(RawHTML.openElements(after: "<details open><summary>a</summary><br><img src=\"x\" />") == ["details"])
+        #expect(RawHTML.openElements(after: "<!-- <div> --><p>text") == [])
+        #expect(RawHTML.openElements(after: "</section>", startingWith: ["section", "div"]) == [])
+    }
+
     @Test func blankLineStillStartsNewParagraph() {
         #expect(HTMLRenderer.render("one\n\ntwo") == "<p>one</p>\n<p>two</p>\n")
     }
