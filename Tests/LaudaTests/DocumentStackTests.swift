@@ -102,6 +102,39 @@ final class DocumentStackTests {
         #expect(first.text == "first text")
     }
 
+    /// Typing hands the document a Swift string of its own, not the text
+    /// view's lazy bridge to its storage, whose every comparison walked the
+    /// whole text: in a 100 KB file typing hitched.
+    @Test func typingHandsTheDocumentANativeString() async throws {
+        let (stack, _) = makeStack()
+        let document = makeDocument("text")
+        stack.show([document], selected: document, in: workspace)
+        try await settle { editor(in: stack.panes(of: document)) != nil }
+        let textView = try #require(editor(in: stack.panes(of: document)))
+
+        textView.insertText("ação ", replacementRange: NSRange(location: 0, length: 0))
+
+        #expect(document.text == "ação text")
+        #expect(document.text.utf8.withContiguousStorageIfAvailable { _ in true } == true)
+    }
+
+    /// Text from elsewhere (a revert, a file changed on disk) still reaches
+    /// the editor after typing: only what the editor published itself is
+    /// taken as already there.
+    @Test func textFromElsewhereStillReachesTheEditorAfterTyping() async throws {
+        let (stack, _) = makeStack()
+        let document = makeDocument("text")
+        stack.show([document], selected: document, in: workspace)
+        try await settle { editor(in: stack.panes(of: document)) != nil }
+        let textView = try #require(editor(in: stack.panes(of: document)))
+        textView.insertText("typed ", replacementRange: NSRange(location: 0, length: 0))
+
+        document.text = "from elsewhere"
+        try await settle { textView.string == "from elsewhere" }
+
+        #expect(textView.string == "from elsewhere")
+    }
+
     @Test func closingADocumentTakesItsPanesAway() {
         let (stack, _) = makeStack()
         let first = makeDocument("# First")
