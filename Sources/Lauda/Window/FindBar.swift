@@ -21,7 +21,16 @@ struct FindBar: View {
                 .textFieldStyle(.plain)
                 .frame(width: 170)
                 .focused($isFocused)
-                .onSubmit(onNext)
+                // Return goes to the next match and Shift-Return to the
+                // previous one, as in the Electron edition. The field hands
+                // both over as a submit, so the Shift is read from the key.
+                .onSubmit {
+                    if NSEvent.modifierFlags.contains(.shift) {
+                        onPrevious()
+                    } else {
+                        onNext()
+                    }
+                }
                 .onExitCommand(perform: onClose)
                 .onChange(of: query) {
                     onQueryChanged()
