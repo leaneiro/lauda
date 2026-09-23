@@ -133,4 +133,62 @@ final class DocumentStackTests {
         #expect(window.firstResponder === editor(in: stack.panes(of: second)))
         #expect(window.firstResponder !== editor(in: stack.panes(of: first)))
     }
+
+    /// A stack in a window beside a view that holds the keyboard, as the tab
+    /// strip does when the tabs are walked with the arrows.
+    private func makeStackBesideTheTabs() -> (DocumentStackView, KeyboardHolder, NSWindow) {
+        _ = NSApplication.shared
+        let stack = DocumentStackView(frame: NSRect(x: 0, y: 40, width: 900, height: 560))
+        let tabs = KeyboardHolder(frame: NSRect(x: 0, y: 0, width: 900, height: 40))
+        let content = NSView(frame: NSRect(x: 0, y: 0, width: 900, height: 600))
+        content.addSubview(stack)
+        content.addSubview(tabs)
+        let window = NSWindow(
+            contentRect: NSRect(x: -20_000, y: -20_000, width: 900, height: 600),
+            styleMask: [.borderless], backing: .buffered, defer: false)
+        window.contentView = content
+        window.orderFrontRegardless()
+        return (stack, tabs, window)
+    }
+
+    /// A tab picked with the arrows leaves the keyboard on the tabs, so the
+    /// next arrow still reaches them.
+    @Test func theKeyboardStaysOnTheTabsWalkedWithTheArrows() async throws {
+        let (stack, tabs, window) = makeStackBesideTheTabs()
+        let first = makeDocument("first")
+        let second = makeDocument("second")
+        workspace.viewMode = .split
+        stack.show([first, second], selected: first, in: workspace)
+        try await settle { editor(in: stack.panes(of: first)) != nil && editor(in: stack.panes(of: second)) != nil }
+
+        window.makeFirstResponder(tabs)
+        stack.show([first, second], selected: second, in: workspace, keyboard: .stays)
+        // Long enough for the panes' own attempts at the keyboard to have run.
+        try await Task.sleep(for: .milliseconds(300))
+
+        #expect(window.firstResponder === tabs)
+    }
+
+    /// A tab picked otherwise (a click, the menu) takes the keyboard into its
+    /// document, wherever the keyboard was, so typing goes on there.
+    @Test func theKeyboardFollowsATabPickedOtherwise() async throws {
+        let (stack, tabs, window) = makeStackBesideTheTabs()
+        let first = makeDocument("first")
+        let second = makeDocument("second")
+        workspace.viewMode = .split
+        stack.show([first, second], selected: first, in: workspace)
+        try await settle { editor(in: stack.panes(of: first)) != nil && editor(in: stack.panes(of: second)) != nil }
+
+        window.makeFirstResponder(tabs)
+        stack.show([first, second], selected: second, in: workspace)
+        try await settle { window.firstResponder === editor(in: stack.panes(of: second)) }
+
+        #expect(window.firstResponder === editor(in: stack.panes(of: second)))
+    }
+}
+
+/// Stands in for the tab strip: a view outside the panes that takes the
+/// keyboard.
+private final class KeyboardHolder: NSView {
+    override var acceptsFirstResponder: Bool { true }
 }

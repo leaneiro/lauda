@@ -83,9 +83,13 @@ final class Workspace: NSObject, DocumentHost {
     }
 
     func select(_ document: MarkdownDocument) {
+        select(document, keyboard: .follows)
+    }
+
+    func select(_ document: MarkdownDocument, keyboard: KeyboardAfterChoice) {
         guard tabs.contains(document) else { return }
         tabs.select(document)
-        tabsChanged()
+        tabsChanged(keyboard: keyboard)
         show(document)
         tabsChangedInWindow()
     }
@@ -94,8 +98,8 @@ final class Workspace: NSObject, DocumentHost {
     /// their number, late on the way back to one document: the strip drops
     /// its tabs as soon as one is left, and the layout changes once they
     /// have faded out.
-    private func tabsChanged() {
-        stack.show(documents, selected: selected, in: self)
+    private func tabsChanged(keyboard: KeyboardAfterChoice = .follows) {
+        stack.show(documents, selected: selected, in: self, keyboard: keyboard)
         let wantsTabs = documents.count >= 2
         guard wantsTabs != showsTabs else { return }
         if NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
@@ -129,17 +133,21 @@ final class Workspace: NSObject, DocumentHost {
     }
 
     func selectNext() {
-        step(by: 1)
+        selectTab(.next)
     }
 
     func selectPrevious() {
-        step(by: -1)
+        selectTab(.previous)
     }
 
-    private func step(by offset: Int) {
-        guard let index = selectedIndex, documents.count > 1 else { return }
-        let count = documents.count
-        select(documents[(index + offset + count) % count])
+    /// The tab a key leads to from the one showing (KeyboardRow): the menu's
+    /// Show Next and Show Previous Tab, and the strip walked from the
+    /// keyboard.
+    func selectTab(_ key: KeyboardRow.Key, keyboard: KeyboardAfterChoice = .follows) {
+        guard documents.count > 1,
+            let index = KeyboardRow.target(key, current: selectedIndex, count: documents.count)
+        else { return }
+        select(documents[index], keyboard: keyboard)
     }
 
     func closeSelected() {

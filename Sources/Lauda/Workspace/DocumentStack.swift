@@ -30,7 +30,12 @@ final class DocumentStackView: NSView {
         hosts[ObjectIdentifier(document)]
     }
 
-    func show(_ documents: [MarkdownDocument], selected: MarkdownDocument?, in workspace: Workspace) {
+    func show(
+        _ documents: [MarkdownDocument],
+        selected: MarkdownDocument?,
+        in workspace: Workspace,
+        keyboard: KeyboardAfterChoice = .follows
+    ) {
         self.workspace = workspace
         let open = Set(documents.map(ObjectIdentifier.init))
         for (id, host) in hosts where !open.contains(id) {
@@ -49,8 +54,14 @@ final class DocumentStackView: NSView {
         }
 
         guard selected !== shown else { return }
-        // Whatever has the keyboard belongs to the panes going out of sight.
-        window?.makeFirstResponder(nil)
+        // The keyboard follows the tab picked: it lets go of whatever had
+        // it, and the panes that come forward take it. Walking the tabs with
+        // the arrows it stays on them, and the panes leave it there; only
+        // panes going out of sight never keep it.
+        let keyboardIsInThePanes = (window?.firstResponder as? NSView)?.isDescendant(of: self) == true
+        if keyboard == .follows || keyboardIsInThePanes {
+            window?.makeFirstResponder(nil)
+        }
         let selectedID = selected.map(ObjectIdentifier.init)
         for (id, host) in hosts {
             host.isHidden = id != selectedID

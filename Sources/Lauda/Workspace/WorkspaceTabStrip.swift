@@ -14,6 +14,7 @@ struct WorkspaceTabStrip: View {
     let width: CGFloat
 
     @State private var hovered: ObjectIdentifier?
+    @FocusState private var isFocused: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private static let height: CGFloat = 28
@@ -90,6 +91,39 @@ struct WorkspaceTabStrip: View {
             }
             Spacer(minLength: 0)
         }
+        // The tabs are one stop for the keyboard, with Keyboard Navigation
+        // on as for every control: the arrows move along them, selecting as
+        // they go, Home and End go to the ends, and Return or Space goes
+        // into the document. The Electron edition walks its tabs the same
+        // way. The ring is the selected tab's, not the strip's. With no
+        // tabs in view, the strip is no stop at all.
+        .focusable(hasTabs, interactions: .activate)
+        .focused($isFocused)
+        .focusEffectDisabled()
+        .onMoveCommand { direction in
+            switch direction {
+            case .left: workspace.selectTab(.previous, keyboard: .stays)
+            case .right: workspace.selectTab(.next, keyboard: .stays)
+            default: break
+            }
+        }
+        .onKeyPress(keys: [.home, .end, .return, .space]) { press in
+            switch press.key {
+            case .home: workspace.selectTab(.first, keyboard: .stays)
+            case .end: workspace.selectTab(.last, keyboard: .stays)
+            default: _ = workspace.selected?.takeKeyboard(in: workspace.viewMode)
+            }
+            return .handled
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Open Documents")
+        .accessibilityAddTraits(.isTabBar)
+        .accessibilityHidden(!hasTabs)
+    }
+
+    /// Tabs in view: there are two documents or more, and they have come in.
+    private var hasTabs: Bool {
+        !shownTabs.isEmpty && workspace.tabsAreIn
     }
 
     private func tab(_ document: MarkdownDocument) -> some View {
@@ -105,6 +139,11 @@ struct WorkspaceTabStrip: View {
                 .foregroundStyle(isSelected ? .primary : .secondary)
                 // Room for the close button, mirrored so the name stays centred.
                 .padding(.horizontal, 26)
+                // What VoiceOver reads as the tab: its name, whether it is
+                // the one showing, and choosing it; the close button beside
+                // it says whether its text is saved.
+                .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+                .accessibilityAction { workspace.select(document) }
             HStack {
                 Button {
                     workspace.close(document)
@@ -125,6 +164,13 @@ struct WorkspaceTabStrip: View {
         .frame(minWidth: Self.minTabWidth, maxWidth: Self.maxTabWidth)
         .frame(height: Self.height)
         .modifier(TabCapsule(isSelected: isSelected))
+        .overlay {
+            if isFocused && isSelected {
+                Capsule()
+                    .strokeBorder(Color(nsColor: .keyboardFocusIndicatorColor), lineWidth: 3)
+                    .padding(-3)
+            }
+        }
         .contentShape(Capsule())
         .onTapGesture { workspace.select(document) }
         // The wheel closes the tab it is clicked on, wherever on it.
