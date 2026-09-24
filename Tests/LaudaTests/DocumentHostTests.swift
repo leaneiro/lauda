@@ -16,11 +16,13 @@ final class DocumentHostTests {
         var selected: [MarkdownDocument] = []
         var closing: [MarkdownDocument] = []
         var saves = 0
+        var everyTabClosings = 0
 
         func add(_ document: MarkdownDocument) { added.append(document) }
         func select(_ document: MarkdownDocument) { selected.append(document) }
         func willClose(_ document: MarkdownDocument) { closing.append(document) }
         func documentDidSave() { saves += 1 }
+        func closeEveryTab() { everyTabClosings += 1 }
     }
 
     /// The stand-in is in place only while the test runs: a deinit would run
@@ -68,33 +70,70 @@ final class DocumentHostTests {
     /// The window's close button closes every tab, not only the one the
     /// window is with. The real button is clicked: on macOS 27 it sends a
     /// private action of the window, not `performClose`, so overriding that
-    /// did nothing.
-    @Test func theCloseButtonClosesEveryDocument() async throws {
+    /// did nothing. The document hands the close to the workspace rather
+    /// than closing alone.
+    @Test func theCloseButtonClosesEveryTab() async throws {
         let host = HostSpy()
         MarkdownDocument.host = host
         defer { MarkdownDocument.host = nil }
         _ = NSApplication.shared
-        let first = MarkdownDocument()
-        let second = MarkdownDocument()
-        NSDocumentController.shared.addDocument(first)
-        NSDocumentController.shared.addDocument(second)
+        let document = MarkdownDocument()
         let window = NSWindow(
             contentRect: NSRect(x: -20_000, y: -20_000, width: 400, height: 300),
             styleMask: [.titled, .closable], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         // Held here as the workspace holds it, not only by the document.
         let windowController = NSWindowController(window: window)
-        first.addWindowController(windowController)
+        document.addWindowController(windowController)
 
         window.standardWindowButton(.closeButton)?.performClick(nil)
-        for _ in 0..<50 where host.closing.count < 2 {
+        for _ in 0..<50 where host.everyTabClosings == 0 {
             try await Task.sleep(for: .milliseconds(20))
         }
 
-        #expect(host.closing.contains { $0 === first })
-        #expect(host.closing.contains { $0 === second })
-        #expect(NSDocumentController.shared.documents.isEmpty)
+        #expect(host.everyTabClosings == 1)
+        #expect(host.closing.isEmpty)
         withExtendedLifetime(windowController) {}
+    }
+
+    /// What the close button asks the workspace for: every tab closes, each
+    /// asked in turn, and the session is left as it was, so the tabs come
+    /// back from the Dock or at the next launch, as after Quit. It stays so
+    /// after the title bar changes its layout, a moment after the tabs went,
+    /// which once stored an empty session; a tab that opens later is the
+    /// session again.
+    @Test func closingEveryTabKeepsTheSession() async throws {
+        _ = NSApplication.shared
+        let defaults = TestDefaults()
+        let workspace = Workspace(defaults: defaults, showsWindow: false)
+        MarkdownDocument.host = workspace
+        defer { MarkdownDocument.host = nil }
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("lauda-kept-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        func open(_ name: String) throws -> MarkdownDocument {
+            let url = folder.appendingPathComponent(name)
+            try Data("# \(name)".utf8).write(to: url)
+            let document = try MarkdownDocument(contentsOf: url, ofType: "net.daringfireball.markdown")
+            NSDocumentController.shared.addDocument(document)
+            workspace.add(document)
+            return document
+        }
+        for name in ["a.md", "b.md", "c.md"] {
+            _ = try open(name)
+        }
+        #expect(OpenSession.stored(defaults: defaults).urls.count == 3)
+
+        workspace.closeEveryTab()
+        try await Task.sleep(for: .seconds(Workspace.tabAnimation + 0.3))
+
+        #expect(workspace.documents.isEmpty)
+        #expect(NSDocumentController.shared.documents.isEmpty)
+        #expect(OpenSession.stored(defaults: defaults).urls.map(\.lastPathComponent) == ["a.md", "b.md", "c.md"])
+
+        let later = try open("d.md")
+        #expect(OpenSession.stored(defaults: defaults).urls.map(\.lastPathComponent) == ["d.md"])
+        later.close()
     }
 
     // MARK: - Rename and Revert to Saved

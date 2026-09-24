@@ -23,10 +23,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let isDefaultLaunch = notification.userInfo?[NSApplication.launchIsDefaultUserInfoKey] as? Bool ?? true
         guard isDefaultLaunch else { return }
         if WelcomeGuide.showOnFirstLaunch() { return }
+        openLastSession()
+    }
+
+    /// Brings back the tabs that were open, the front one in front. With
+    /// nothing to come back to, offers to open something, as a document app
+    /// does when it starts empty.
+    private func openLastSession() {
         let lastSession = OpenSession.stored()
         if lastSession.urls.isEmpty {
-            // Nothing to come back to: offer to open something, as a
-            // document app does when it starts empty.
             DispatchQueue.main.async { DocumentOpenPanel.run() }
         } else {
             DocumentOpenPanel.open(lastSession.urls) {
@@ -43,10 +48,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         false
     }
 
-    /// Clicking the Dock icon with nothing open offers to open something.
+    /// Clicking the Dock icon with no window open brings the tabs back, as
+    /// opening the app does: the window's close button keeps them (see
+    /// Workspace.closeEveryTab).
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         if !flag {
-            DocumentOpenPanel.run()
+            openLastSession()
         }
         return false
     }

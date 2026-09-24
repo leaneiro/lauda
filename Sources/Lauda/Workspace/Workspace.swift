@@ -37,8 +37,12 @@ final class Workspace: NSObject, DocumentHost {
     /// closing tabs, and the next launch should bring them back.
     @ObservationIgnored var remembersSession = true
 
-    init(defaults: UserDefaults = .standard) {
+    /// Whether the tabs have a window on screen: a test drives them without.
+    @ObservationIgnored private let showsWindow: Bool
+
+    init(defaults: UserDefaults = .standard, showsWindow: Bool = true) {
         self.defaults = defaults
+        self.showsWindow = showsWindow
         super.init()
         viewMode = ViewMode(rawValue: defaults[AppSettings.lastViewMode]) ?? .split
         splitFraction = defaults[AppSettings.splitFraction]
@@ -76,6 +80,9 @@ final class Workspace: NSObject, DocumentHost {
     // MARK: - Tabs
 
     func add(_ document: MarkdownDocument) {
+        // A tab that opens is the session again, after the window's close
+        // button left the last one alone.
+        remembersSession = true
         tabs.add(document)
         tabsChanged()
         show(document)
@@ -173,6 +180,30 @@ final class Workspace: NSObject, DocumentHost {
         }
     }
 
+    /// The window's close button: every tab closes, each document asked in
+    /// turn, and the session stays as it was, so the tabs come back when
+    /// the Dock icon is clicked or the app opens again, as after Quit. It
+    /// stays so until a tab opens: the title bar changes its layout a moment
+    /// after the tabs are gone, and would store an empty session then.
+    /// Closing tabs one at a time does forget them.
+    func closeEveryTab() {
+        remembersSession = false
+        NSDocumentController.shared.closeAllDocuments(
+            withDelegate: self,
+            didCloseAllSelector: #selector(documentController(_:didCloseAll:contextInfo:)),
+            contextInfo: nil)
+    }
+
+    /// A tab kept open (the reader cancelled a question about unsaved text)
+    /// ends the close there, and the session holds what is still open.
+    @objc private func documentController(
+        _ controller: NSDocumentController, didCloseAll: Bool, contextInfo: UnsafeMutableRawPointer?
+    ) {
+        guard !didCloseAll else { return }
+        remembersSession = true
+        storeSession()
+    }
+
     /// A document is about to close, however that came about. The shared
     /// window controller has to be with a document that stays before this
     /// one goes: a document closes the windows it holds. The last document
@@ -222,6 +253,7 @@ final class Workspace: NSObject, DocumentHost {
     // MARK: - The window
 
     private func show(_ document: MarkdownDocument) {
+        guard showsWindow else { return }
         let controller = ensureWindow()
         // The controller goes to the selected document, which is what makes
         // the title, the proxy icon, Save and the sheets target it.

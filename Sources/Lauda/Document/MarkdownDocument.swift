@@ -16,6 +16,8 @@ protocol DocumentHost: AnyObject {
     func select(_ document: MarkdownDocument)
     func willClose(_ document: MarkdownDocument)
     func documentDidSave()
+    /// The window's close button was clicked: every tab closes.
+    func closeEveryTab()
 }
 
 /// A Markdown file as macOS's document machinery knows it: autosave in
@@ -217,8 +219,8 @@ final class MarkdownDocument: NSDocument {
     /// document the window is with, here (measured on macOS 27: the button
     /// sends a private action of the window, never `performClose`), and
     /// closing every document from inside that question waits forever on the
-    /// one being asked. So AppKit hears no, and every document is asked once
-    /// the question is over; the last one to close takes the window.
+    /// one being asked. So AppKit hears no, and the workspace closes every
+    /// tab once the question is over; the last one takes the window.
     override func shouldCloseWindowController(
         _ windowController: NSWindowController,
         delegate: Any?,
@@ -226,11 +228,8 @@ final class MarkdownDocument: NSDocument {
         contextInfo: UnsafeMutableRawPointer?
     ) {
         reply(to: delegate, selector: shouldCloseSelector, shouldClose: false, contextInfo: contextInfo)
-        DispatchQueue.main.async {
-            MainActor.assumeIsolated {
-                NSDocumentController.shared.closeAllDocuments(
-                    withDelegate: nil, didCloseAllSelector: nil, contextInfo: nil)
-            }
+        DispatchQueue.main.async { [weak self] in
+            self?.inWindow { $0.closeEveryTab() }
         }
     }
 
