@@ -47,6 +47,6 @@ struct StatusBar: View {
                 .foregroundStyle(status.color)
             Text(status.label)
         }
-        .help("macOS saves automatically; ⌘S saves right away.")
+        .help("macOS saves automatically, and ⌘S saves right away.")
     }
 }

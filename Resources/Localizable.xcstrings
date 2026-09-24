@@ -3393,7 +3393,7 @@
         }
       }
     },
-    "macOS saves automatically; ⌘S saves right away." : {
+    "macOS saves automatically, and ⌘S saves right away." : {
       "localizations" : {
         "pt-BR" : {
           "stringUnit" : {
@@ -3404,31 +3404,31 @@
         "de" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "macOS sichert automatisch; ⌘S sichert sofort."
+            "value" : "macOS sichert automatisch und ⌘S sichert sofort."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "macOS guarda automáticamente; ⌘S guarda al instante."
+            "value" : "macOS guarda automáticamente y ⌘S guarda al instante."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "macOS enregistre automatiquement ; ⌘S enregistre immédiatement."
+            "value" : "macOS enregistre automatiquement et ⌘S enregistre immédiatement."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "macOSは自動的に保存します。⌘Sですぐに保存できます。"
+            "value" : "macOSは自動的に保存し、⌘Sですぐに保存できます。"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "macOS 会自动保存；按 ⌘S 可立即保存。"
+            "value" : "macOS 会自动保存，按 ⌘S 可立即保存。"
           }
         }
       }
