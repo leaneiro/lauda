@@ -23,6 +23,21 @@ import Testing
         #expect(tabs.selectedIndex == 1)
     }
 
+    @Test func aMovedTabKeepsTheSelectionOnTheTabItWas() {
+        var (tabs, docs) = list("a", "b", "c")
+
+        tabs.move(docs[0], to: 2)
+        #expect(tabs.items.map(\.name) == ["b", "c", "a"])
+        #expect(tabs.selected === docs[2])
+
+        tabs.move(docs[2], to: 0)
+        #expect(tabs.items.map(\.name) == ["c", "b", "a"])
+
+        // A place past the end is the end.
+        tabs.move(docs[1], to: 9)
+        #expect(tabs.items.map(\.name) == ["c", "a", "b"])
+    }
+
     /// The crash: two tabs, the second showing, the first one closed. With
     /// the selection kept as a position, position 1 outlived a list of one.
     @Test func closingTheFirstTabWhileTheSecondShowsKeepsTheSecond() {

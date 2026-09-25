@@ -128,6 +128,14 @@ final class Workspace: NSObject, DocumentHost {
         }
     }
 
+    /// A tab dropped at `index` among the others: the order the strip shows,
+    /// the tab keys walk and the session keeps.
+    func moveTab(_ document: MarkdownDocument, to index: Int) {
+        guard tabs.contains(document) else { return }
+        tabs.move(document, to: index)
+        tabsChangedInWindow()
+    }
+
     /// The tab of an open file, when there is one; what the last session's
     /// front tab comes back as.
     func select(fileAt url: URL) {

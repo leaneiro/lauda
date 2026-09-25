@@ -31,6 +31,14 @@ struct TabList<Item: AnyObject> {
         selected = item
     }
 
+    /// Moves a tab to `index` among the tabs, the selection staying on
+    /// whichever tab it was.
+    mutating func move(_ item: Item, to index: Int) {
+        guard let from = items.firstIndex(where: { $0 === item }) else { return }
+        items.remove(at: from)
+        items.insert(item, at: Swift.max(0, Swift.min(index, items.count)))
+    }
+
     /// Removes a tab. If it was the one showing, the tab that slides into
     /// its place takes over, or the one before it when it was the last.
     mutating func remove(_ item: Item) {
