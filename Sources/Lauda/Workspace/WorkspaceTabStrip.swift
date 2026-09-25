@@ -18,9 +18,10 @@ struct WorkspaceTabStrip: View {
     @State private var drag: TabDrag?
     /// The tab just let go, on its way from where it was dropped into its
     /// place in the new order.
-    @State private var landing: Landing?
-    /// Where each tab is laid out, in the gestures' terms: what a drag
-    /// measures against, and where a click has to be let go.
+    @State private var landing: LiftedTab?
+    /// Where each tab is laid out in the row: what a drag measures against,
+    /// where a click has to be let go, and where a tab lands when the tabs
+    /// change under its drag.
     @State private var tabFrames: [ObjectIdentifier: CGRect] = [:]
     @FocusState private var isFocused: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -32,6 +33,8 @@ struct WorkspaceTabStrip: View {
     /// How far the pointer goes before a press on a tab becomes a drag;
     /// less is still a click.
     private static let dragThreshold: CGFloat = 4
+    /// The row's own terms, which the tabs and the gestures on them share.
+    private static let rowSpace = "tabRow"
 
     /// How wide the view modes are in the toolbar: our own glass capsule
     /// where the system has Liquid Glass, a segmented control (measured)
@@ -107,6 +110,8 @@ struct WorkspaceTabStrip: View {
             }
             Spacer(minLength: 0)
         }
+        .coordinateSpace(name: Self.rowSpace)
+        .overlay(alignment: .leading) { liftedTabsView }
         // The tabs are one stop for the keyboard, with Keyboard Navigation
         // on as for every control: the arrows move along them, selecting as
         // they go, Home and End go to the ends, and Return or Space goes
@@ -148,26 +153,62 @@ struct WorkspaceTabStrip: View {
             guard !drag.isCancelled else { return }
             withAnimation(motion) {
                 self.drag?.isCancelled = true
-                landing = Landing(id: drag.id, offset: drag.shift)
+                landing = LiftedTab(id: drag.id, x: drag.position, width: drag.width, place: nil)
             }
         }
-        // The tab let go slides into its place, still over the others, and
-        // goes back among them once it is there. The glass of tabs is drawn
-        // together, in their drawing order: a tab changing places in it
-        // during an animation made its glass appear anew, from a speck.
+        // The tab let go slides into its place over the others, then takes
+        // it back among them with nothing animated: glass that changes places
+        // in the drawing order during an animation appears anew, from a speck.
         .onChange(of: landing) { _, landing in
             guard let landing, !landing.isSliding else { return }
-            guard let motion, landing.offset != 0 else {
+            // A drop knows the place; a drag the tabs ended reads it from the
+            // row, where they may have moved the tab or narrowed it.
+            let laidOut = landing.place == nil ? tabFrames[landing.id] : nil
+            let arrived = LiftedTab(
+                id: landing.id, x: landing.place ?? laidOut?.minX ?? landing.x,
+                width: laidOut?.width ?? landing.width, place: landing.place, isSliding: true)
+            guard let motion, arrived.x != landing.x || arrived.width != landing.width else {
                 withTransaction(Self.still) { self.landing = nil }
                 return
             }
             withAnimation(motion) {
-                self.landing = Landing(id: landing.id, offset: 0, isSliding: true)
+                self.landing = arrived
             } completion: {
-                guard self.landing?.id == landing.id else { return }
+                guard self.landing == arrived else { return }
                 withTransaction(Self.still) { self.landing = nil }
             }
         }
+    }
+
+    /// The tabs being dragged or landing, drawn over the row rather than in
+    /// it: glass is drawn in the row's order whatever the zIndex, and a first
+    /// tab dragged in its own place went under the others. Their places keep
+    /// the tabs themselves, clear, with their gestures.
+    private var liftedTabsView: some View {
+        ZStack(alignment: .leading) {
+            ForEach(liftedTabs, id: \.id) { lifted in
+                if let document = shownTabs.first(where: { $0.tabID == lifted.id }) {
+                    tabFace(document)
+                        .frame(width: lifted.width)
+                        .offset(x: lifted.x)
+                }
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
+    /// A tab still landing, under the one being dragged: each on its own
+    /// way, a tab dragged while another lands.
+    private var liftedTabs: [LiftedTab] {
+        var tabs: [LiftedTab] = []
+        if let landing, landing.id != activeDrag?.id {
+            tabs.append(landing)
+        }
+        if let activeDrag {
+            tabs.append(LiftedTab(id: activeDrag.id, x: activeDrag.position, width: activeDrag.width, place: activeDrag.place))
+        }
+        return tabs
     }
 
     /// A change with nothing to animate, whatever the views ask for.
@@ -187,20 +228,45 @@ struct WorkspaceTabStrip: View {
         !shownTabs.isEmpty && workspace.tabsAreIn
     }
 
+    /// A tab in the row, with what it answers to. Lifted over the row while
+    /// it is dragged or lands, it keeps its place and its gesture but shows
+    /// nothing.
     private func tab(_ document: MarkdownDocument) -> some View {
+        let id = document.tabID
+        let isLifted = liftedTabs.contains { $0.id == id }
+        let roomOffset = shownTabs.firstIndex { $0 === document }.flatMap { activeDrag?.roomOffset(of: $0) } ?? 0
+        return tabFace(document, isLifted: isLifted)
+            .contentShape(Capsule())
+            // The wheel closes the tab it is clicked on, wherever on it.
+            .onMiddleClick(in: Capsule(), isEnabled: workspace.tabsAreIn) { workspace.close(document) }
+            .onHover { hovering in
+                hovered = hovering ? id : (hovered == id ? nil : hovered)
+            }
+            .help(document.fileURL?.path ?? document.title)
+            // The tabs a dragged one passes move aside for it.
+            .offset(x: roomOffset)
+            .animation(motion, value: roomOffset)
+            // Measured outside the shift, which leaves the tab's frame where
+            // it is laid out.
+            .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.rowSpace)) } action: { tabFrames[id] = $0 }
+    }
+
+    /// A tab as drawn: its name, which takes its clicks and drags, the close
+    /// button, and its capsule. Lifted over the row, it leaves nothing drawn
+    /// in its place: no glass, and its name in clear ink, which keeps taking
+    /// the pointer (a faded view doesn't). Content in glass is drawn with the
+    /// glass, and an opacity outside it doesn't reach it.
+    private func tabFace(_ document: MarkdownDocument, isLifted: Bool = false) -> some View {
         let id = document.tabID
         let isSelected = document === workspace.selected
         let isHovered = hovered == id
-        let isDragged = activeDrag?.id == id
-        let isLanding = landing?.id == id
-        let roomOffset = shownTabs.firstIndex { $0 === document }.flatMap { activeDrag?.roomOffset(of: $0) } ?? 0
         let showsDot = document.isEdited && !isHovered
         return ZStack {
             Text(document.title)
                 .font(.callout)
                 .lineLimit(1)
                 .truncationMode(.middle)
-                .foregroundStyle(isSelected ? .primary : .secondary)
+                .foregroundStyle(isLifted ? AnyShapeStyle(.clear) : isSelected ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
                 // Room for the close button, mirrored so the name stays centred.
                 .padding(.horizontal, 26)
                 // What VoiceOver reads as the tab: its name, whether it is
@@ -225,7 +291,7 @@ struct WorkspaceTabStrip: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .opacity(isHovered || isSelected || showsDot ? 1 : 0)
+                .opacity(!isLifted && (isHovered || isSelected || showsDot) ? 1 : 0)
                 .accessibilityLabel(document.isEdited ? "Close \(document.title), unsaved" : "Close \(document.title)")
                 Spacer(minLength: 0)
             }
@@ -233,30 +299,14 @@ struct WorkspaceTabStrip: View {
         }
         .frame(minWidth: Self.minTabWidth, maxWidth: Self.maxTabWidth)
         .frame(height: Self.height)
-        .modifier(TabCapsule(isSelected: isSelected))
+        .modifier(TabCapsule(isSelected: isSelected, isLifted: isLifted))
         .overlay {
-            if isFocused && isSelected {
+            if isFocused && isSelected && !isLifted {
                 Capsule()
                     .strokeBorder(Color(nsColor: .keyboardFocusIndicatorColor), lineWidth: 3)
                     .padding(-3)
             }
         }
-        .contentShape(Capsule())
-        // The wheel closes the tab it is clicked on, wherever on it.
-        .onMiddleClick(in: Capsule(), isEnabled: workspace.tabsAreIn) { workspace.close(document) }
-        .onHover { hovering in
-            hovered = hovering ? id : (hovered == id ? nil : hovered)
-        }
-        .help(document.fileURL?.path ?? document.title)
-        // The tabs a dragged one passes move aside for it, and it follows
-        // the pointer, over them.
-        .offset(x: roomOffset)
-        .animation(motion, value: roomOffset)
-        .offset(x: isDragged ? activeDrag?.shift ?? 0 : isLanding ? landing?.offset ?? 0 : 0)
-        .zIndex(isDragged || isLanding ? 1 : 0)
-        // Measured outside the shifts, which leave the tab's frame where
-        // it is laid out.
-        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { tabFrames[id] = $0 }
     }
 
     /// A click shows the tab. Moved sideways past a few points, the press
@@ -264,9 +314,9 @@ struct WorkspaceTabStrip: View {
     /// strip, and where it is let go becomes its place among the others, in
     /// the strip, the tab keys and the session.
     private func pressOrDrag(_ document: MarkdownDocument) -> some Gesture {
-        // In the window's terms: the tab moves under the pointer as it is
-        // dragged, and its own terms would move with it.
-        DragGesture(minimumDistance: 0, coordinateSpace: .global)
+        // In the row's terms, which stay put: the tab moves under the pointer
+        // as it is dragged, and its own terms would move with it.
+        DragGesture(minimumDistance: 0, coordinateSpace: .named(Self.rowSpace))
             .onChanged { value in
                 if drag?.id != document.tabID {
                     guard abs(value.translation.width) >= Self.dragThreshold,
@@ -307,16 +357,19 @@ struct WorkspaceTabStrip: View {
                         workspace.moveTab(document, to: drag.target)
                     }
                     self.drag = nil
-                    landing = Landing(id: drag.id, offset: drag.landing)
+                    landing = LiftedTab(id: drag.id, x: drag.position, width: drag.width, place: drag.place)
                 }
             }
     }
 
-    private struct Landing: Equatable {
+    /// A tab drawn over the row: where its left edge stands in the row, how
+    /// wide it is, and its place in the order it takes, when that is known.
+    private struct LiftedTab: Equatable {
         let id: ObjectIdentifier
-        /// How far it stands from its place.
-        var offset: CGFloat
-        /// On its way: the slide into its place has begun.
+        var x: CGFloat
+        var width: CGFloat
+        let place: CGFloat?
+        /// On its way into its place: the slide has begun.
         var isSliding = false
     }
 }
@@ -327,17 +380,26 @@ extension MarkdownDocument {
 }
 
 /// A tab's own capsule: glass where the system has it, a quiet fill where it
-/// doesn't. The one showing is the more solid of the two.
+/// doesn't. The one showing is the more solid of the two, and a tab lifted
+/// over the row leaves no glass in its place.
 private struct TabCapsule: ViewModifier {
     let isSelected: Bool
+    var isLifted = false
 
     func body(content: Content) -> some View {
         if #available(macOS 26.0, *) {
-            content.glassEffect(isSelected ? .regular.interactive() : .clear.interactive(), in: .capsule)
+            content.glassEffect(glass, in: .capsule)
         } else {
             content.background(
                 Capsule().fill(isSelected ? AnyShapeStyle(.quaternary) : AnyShapeStyle(.quaternary.opacity(0.35)))
+                    .opacity(isLifted ? 0 : 1)
             )
         }
+    }
+
+    @available(macOS 26.0, *)
+    private var glass: Glass {
+        if isLifted { return .identity }
+        return isSelected ? .regular.interactive() : .clear.interactive()
     }
 }

@@ -5,8 +5,9 @@ import CoreGraphics
 /// the tabs it passes move aside to make room for it. Everything is measured
 /// against where the tabs stood when the drag began, not where they are
 /// moved to on the way. The Electron edition's tab-drag.ts has the same
-/// rules, with the same cases in its tests, all but `landing`: that edition
-/// measures where the dropped tab slides from on the page.
+/// rules, with the same cases in its tests, all but where the dragged tab is
+/// drawn (`width`, `position`, `place`): that edition measures it on the
+/// page.
 struct TabDrag {
     /// The tab dragged, and where it was.
     let id: ObjectIdentifier
@@ -49,13 +50,11 @@ struct TabDrag {
         return Self.dropIndex(middles: middles, from: from, left: lefts[from] + shift, right: rights[from] + shift)
     }
 
-    /// Where the dragged tab stands, measured from its place in the order it
-    /// takes if let go now.
-    var landing: CGFloat {
-        let width = rights[from] - lefts[from]
-        let place = target >= from ? rights[target] - width : lefts[target]
-        return lefts[from] + shift - place
-    }
+    /// The dragged tab's width, and where its left edge stands, measured from
+    /// the first tab's: now, and in the order it takes if let go now.
+    var width: CGFloat { rights[from] - lefts[from] }
+    var position: CGFloat { lefts[from] + shift }
+    var place: CGFloat { target >= from ? rights[target] - width : lefts[target] }
 
     /// How far the tab at `index` stands aside for the dragged one.
     func roomOffset(of index: Int) -> CGFloat {

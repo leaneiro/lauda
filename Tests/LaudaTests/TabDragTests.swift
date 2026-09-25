@@ -3,8 +3,9 @@ import Testing
 @testable import Lauda
 
 /// Dragging a tab to a new place. The Electron edition's tabDrag.test.ts
-/// has the same cases, all but the landing's, which only this strip uses,
-/// and the workspace's, which its end-to-end drag test covers.
+/// has the same cases, all but where the dragged tab is drawn, which that
+/// edition measures on the page, and the workspace's, which its end-to-end
+/// drag test covers.
 @MainActor @Suite struct TabDragTests {
     private final class Tab {}
 
@@ -60,28 +61,33 @@ import Testing
         #expect(drag.target == 0)
     }
 
-    /// Let go, the tab slides into its place from where it stands: measured
-    /// from its place in the new order, going right or left, or from its
-    /// own place when it goes back there.
-    @Test func aTabLetGoSlidesFromWhereItStandsIntoItsPlace() {
+    /// Where the dragged tab is drawn, measured from the first tab's left
+    /// edge: where it stands, and the place it lands in, going right or
+    /// left, or back in its own.
+    @Test func aDraggedTabKnowsWhereItStandsAndWhereItLands() {
         let widths: [CGFloat] = [100, 100, 100, 100]
         var right = TabDrag(id: ObjectIdentifier(Tab()), from: 0, widths: widths, spacing: 6)
+        #expect(right.width == 100)
         right.translation = 60
         // At 60, its place in the new order is the second, at 106.
-        #expect(right.landing == -46)
+        #expect(right.position == 60)
+        #expect(right.place == 106)
         right.translation = 1000
-        #expect(right.landing == 0)
+        #expect(right.position == 318)
+        #expect(right.place == 318)
 
         var left = TabDrag(id: ObjectIdentifier(Tab()), from: 3, widths: widths, spacing: 6)
         left.translation = -250
         // From 318 to 68: past the third and second tabs' middles.
         #expect(left.target == 1)
-        #expect(left.landing == -38)
+        #expect(left.position == 68)
+        #expect(left.place == 106)
 
         var back = TabDrag(id: ObjectIdentifier(Tab()), from: 1, widths: widths, spacing: 6)
         back.translation = 30
         #expect(back.target == 1)
-        #expect(back.landing == 30)
+        #expect(back.position == 136)
+        #expect(back.place == 106)
     }
 
     /// A tab dropped in a new place: the order the strip shows, the tab keys
