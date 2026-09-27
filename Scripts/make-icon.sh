@@ -1,7 +1,9 @@
 #!/bin/bash
-# Builds Resources/AppIcon.icns from the PNGs
-# in Resources/Icons. Every size is its own hand-tuned drawing, so the small
-# ones stay crisp instead of being scaled down from 1024.
+# Builds Resources/AppIcon.icns from the PNGs in Resources/Icons. Each is
+# drawn on its own from Resources/Icons/AppIcon.svg, with the white body's
+# sides on whole pixels, so the small ones stay crisp instead of being
+# scaled down from 1024. The Electron edition draws them, with its
+#   npm run icons -- --mac ../markeditor/Resources/Icons
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
