@@ -22,6 +22,14 @@ private final class PreviewPage: NSObject, WKNavigationDelegate {
             in: PreviewWebView.contentWorld
         ))
         webView = WKWebView(frame: NSRect(x: 0, y: 0, width: width, height: height), configuration: configuration)
+        // Off screen, WebKit takes the page for hidden and holds its CSS
+        // transitions and animation frames; the column's width animates, so
+        // the page has to run as if in view (WebKit's own switch, tests only).
+        let occlusion = NSSelectorFromString("_setWindowOcclusionDetectionEnabled:")
+        if webView.responds(to: occlusion), let setter = webView.method(for: occlusion) {
+            typealias Setter = @convention(c) (AnyObject, Selector, Bool) -> Void
+            unsafeBitCast(setter, to: Setter.self)(webView, occlusion, false)
+        }
         window = NSWindow(
             contentRect: NSRect(x: -20_000, y: -20_000, width: width, height: height),
             styleMask: [.borderless], backing: .buffered, defer: false)
@@ -119,6 +127,8 @@ struct PreviewReflowTests {
     private func openPage(width: CGFloat = 1600) async throws -> PreviewPage {
         let page = PreviewPage(width: width, height: 700)
         try await page.load(markdown: Self.markdown)
+        // The width the app gives a page as it arrives, set at once.
+        try await page.run("setContentWidth(rem)", ["rem": 46])
         try await page.scroll(toLine: 158)
         return page
     }
@@ -136,12 +146,62 @@ struct PreviewReflowTests {
     @Test func wideningTheColumnKeepsTheSyncedLine() async throws {
         let page = try await openPage()
         try await page.run("setContentWidth(rem)", ["rem": 90])
-        #expect(abs(try await page.topLine() - 158) < 0.5)
+        try await Task.sleep(for: .milliseconds(500))
         #expect(try await page.number("return document.querySelector('#content').getBoundingClientRect().width") > 1000,
                 "the column really got wider")
-        try await Task.sleep(for: .milliseconds(500))
         let later = try await page.topLine()
         #expect(abs(later - 158) < 0.5, "half a second later the top line is \(later)")
+    }
+
+    /// The column eases to its new width, and the synced line stays at the
+    /// top all the way.
+    @Test func theColumnEasesAndTheSyncedLineStaysOnTheWay() async throws {
+        let page = try await openPage()
+        let width = "return document.querySelector('#content').getBoundingClientRect().width"
+        let before = try await page.number(width)
+        try await page.run("setContentWidth(rem)", ["rem": 90])
+        var widths: [Double] = []
+        var lines: [Double] = []
+        for _ in 0..<8 {
+            try await Task.sleep(for: .milliseconds(40))
+            widths.append(try await page.number(width))
+            lines.append(try await page.topLine())
+        }
+        let after = try await page.number(width)
+        #expect(widths.contains { $0 > before + 1 && $0 < after - 1 }, "no width on the way: \(before) \(widths) \(after)")
+        #expect(lines.allSatisfy { abs($0 - 158) < 0.5 }, "the top line moved on the way: \(lines)")
+    }
+
+    /// Every tab's preview gets a new width, and one out of view holds its
+    /// transition and its frames until it is back in view: then the column
+    /// eases, and the page follows it to the end.
+    @Test func aPageOutOfViewKeepsTheSyncedLineWhenBackInView() async throws {
+        let page = try await openPage()
+        page.webView.isHidden = true
+        try await page.run("setContentWidth(rem)", ["rem": 90])
+        try await Task.sleep(for: .milliseconds(500))
+        page.webView.isHidden = false
+        var lines: [Double] = []
+        for _ in 0..<12 {
+            try await Task.sleep(for: .milliseconds(50))
+            lines.append(try await page.topLine())
+        }
+        #expect(try await page.number("return document.querySelector('#content').getBoundingClientRect().width") > 1000)
+        #expect(lines.allSatisfy { abs($0 - 158) < 0.5 }, "back in view, the top line went \(lines)")
+    }
+
+    /// With no transition to follow (the stylesheet drops it when less
+    /// motion is asked for), the width changes at once, the line kept.
+    @Test func withoutATransitionTheWidthChangesAtOnce() async throws {
+        let page = try await openPage()
+        try await page.run("""
+            const still = document.createElement('style');
+            still.textContent = 'article { transition: none; }';
+            document.head.appendChild(still);
+            """)
+        try await page.run("setContentWidth(rem)", ["rem": 90])
+        #expect(try await page.number("return document.querySelector('#content').getBoundingClientRect().width") > 1000)
+        #expect(abs(try await page.topLine() - 158) < 0.5)
     }
 
     @Test func changingTheFontSizeKeepsTheSyncedLine() async throws {
@@ -168,8 +228,8 @@ struct PreviewReflowTests {
         try await page.driftWithBareWidthChange(rem: 90)
         let drifted = try await page.topLine()
         #expect(abs(drifted - 158) > 20, "setup: the text drifted (\(drifted))")
-        try await page.run("setContentWidth(rem)", ["rem": 46])
-        let after = try await page.topLine()
+        try await page.run("setContentWidth(rem)", ["rem": 66])
+        let after = try await page.topLine(settlingWithin: 0.5, of: 158)
         #expect(abs(after - 158) < 0.5, "expected the synced line 158, got \(after)")
     }
 
@@ -178,6 +238,7 @@ struct PreviewReflowTests {
         let page = try await openPage()
         try await page.run("setScrollPosition(position(300, 300, 1, 0, 60))")
         try await page.run("setContentWidth(rem)", ["rem": 90])
+        try await Task.sleep(for: .milliseconds(500))
         let offset = try await page.number("return window.scrollY")
         let max = try await page.number("return maxScroll()")
         #expect(max > 0)
