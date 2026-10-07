@@ -10,21 +10,21 @@ struct ChainIcon: View {
     /// How far each link sits from the centre, along the diagonal: close
     /// enough to overlap, or clear of the other with a gap between, and
     /// still inside the button's disc.
-    private var spread: CGFloat { linked ? 3 : 5.4 }
+    private var spread: CGFloat { linked ? 3.2 : 5.6 }
 
     var body: some View {
         ZStack {
             link.offset(x: -spread, y: spread)
             link.offset(x: spread, y: -spread)
         }
-        .frame(width: 28, height: 28)
+        .frame(width: 30, height: 30)
         .animation(ToolbarIcon.stateChange, value: linked)
     }
 
     private var link: some View {
         Capsule()
-            .strokeBorder(ToolbarIcon.ink, lineWidth: 1.8)
-            .frame(width: 13, height: 7)
+            .strokeBorder(ToolbarIcon.ink, lineWidth: 1.9)
+            .frame(width: 14, height: 7.5)
             .rotationEffect(.degrees(-45))
     }
 }

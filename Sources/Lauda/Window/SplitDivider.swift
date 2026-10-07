@@ -100,7 +100,7 @@ private struct ResizeCursor: ViewModifier {
 private struct ScrollLinkButton: View {
     @Binding var linked: Bool
 
-    private static let side: CGFloat = 30
+    private static let side: CGFloat = 32
 
     var body: some View {
         Button {

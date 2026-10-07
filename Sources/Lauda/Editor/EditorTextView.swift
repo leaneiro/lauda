@@ -27,6 +27,10 @@ extension EditorTextView {
         let scrollView = NSScrollView()
         scrollView.borderType = .noBorder
         scrollView.hasVerticalScroller = true
+        // Else a text that fits keeps an empty scroller, whose track shows
+        // when the pointer comes near it, as it does along the divider (or
+        // all the time, with scroll bars set to always show).
+        scrollView.autohidesScrollers = true
         scrollView.documentView = textView
         return (scrollView, textView)
     }
