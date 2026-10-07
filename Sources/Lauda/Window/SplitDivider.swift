@@ -39,12 +39,9 @@ struct SplitDivider: View {
                     .contentShape(Rectangle())
                     .onHover { hovering in
                         isHovered = hovering
-                        if hovering {
-                            NSCursor.resizeLeftRight.push()
-                        } else {
-                            NSCursor.pop()
-                        }
+                        if #unavailable(macOS 15) { Self.setCursor(hovering) }
                     }
+                    .modifier(ResizeCursor())
                     .gesture(
                         DragGesture(minimumDistance: 0, coordinateSpace: .named("split"))
                             .onChanged { value in
@@ -64,8 +61,17 @@ struct SplitDivider: View {
             // A divider that goes with its mode while the pointer is on it
             // would leave the resize cursor behind.
             .onDisappear {
-                if isHovered { NSCursor.pop() }
+                if #unavailable(macOS 15), isHovered { Self.setCursor(false) }
             }
+    }
+
+    /// The resize cursor before macOS 15, pushed and popped by hand.
+    private static func setCursor(_ resizing: Bool) {
+        if resizing {
+            NSCursor.resizeLeftRight.push()
+        } else {
+            NSCursor.pop()
+        }
     }
 
     /// The chain shows while the pointer is on the divider or on the chain
@@ -74,12 +80,27 @@ struct SplitDivider: View {
     private var showsChain: Bool { isHovered || isChainHovered }
 }
 
+/// The resize cursor over the divider, kept there by SwiftUI itself from
+/// macOS 15. Before that, the divider pushes the cursor on hover, and AppKit
+/// sets the arrow back whenever the tracking areas change, which the chain's
+/// reveal makes them do: the cursor may go back to the arrow there while
+/// the chain shows.
+private struct ResizeCursor: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(macOS 15.0, *) {
+            content.pointerStyle(.columnResize(directions: .all))
+        } else {
+            content
+        }
+    }
+}
+
 /// The chain in the middle of the divider: closed while the panes scroll
 /// together, open while each scrolls on its own.
 private struct ScrollLinkButton: View {
     @Binding var linked: Bool
 
-    private static let side: CGFloat = 28
+    private static let side: CGFloat = 30
 
     var body: some View {
         Button {

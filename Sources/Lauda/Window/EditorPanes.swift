@@ -59,6 +59,9 @@ struct EditorPanes: View {
                         minPaneWidth: Self.minPaneWidth
                     )
                     .transition(.opacity)
+                    // Over both panes, so the chain in its middle shows whole:
+                    // in the stack's order the preview would cover half of it.
+                    .zIndex(1)
                 }
                 if viewMode != .editorOnly {
                     PreviewWebView(
