@@ -43,6 +43,20 @@ final class MarkdownDocument: NSDocument {
     @ObservationIgnored private var revertText: String?
 
     var scrollSync = ScrollSync()
+    /// Whether this document's panes scroll together. The chain on the
+    /// divider parts them, to read one place while writing in another, and
+    /// joins them again; a document opens with them joined.
+    var scrollsLinked = true {
+        didSet {
+            // Joined again, the editor comes to the preview: the two may have
+            // drifted far apart, and the reader was reading there. Shared in
+            // the same turn as the joining, so that the position the editor
+            // shared while apart never reaches the preview.
+            if scrollsLinked, !oldValue, let here = previewActions.position() {
+                scrollSync = here
+            }
+        }
+    }
     /// Bridges to this document's panes, and the find bar over them.
     @ObservationIgnored let editorActions: EditorActions
     @ObservationIgnored let previewActions: PreviewActions

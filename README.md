@@ -8,7 +8,9 @@ and see the rendered Markdown on the right, updated as you type.
 - **Dual pane**: editor on the left, formatted preview on the right, with
   two-way scroll sync and an adjustable divider whose position is remembered.
   Scrolling is aligned by block (heading, paragraph, image, table), so large
-  images and tables don't throw the two sides out of step.
+  images and tables don't throw the two sides out of step. A chain on the
+  divider lets the panes scroll apart, to read one place while writing in
+  another, and brings the editor back to the preview when they rejoin.
 - **Instant preview**: renders on every keystroke, with no debounce. A
   block-level DOM diff repaints only what changed.
 - **View modes**: editor only (⌘1), split (⌘2) or preview only (⌘3), also

@@ -1,8 +1,7 @@
 import SwiftUI
 
 /// Toolbar glyph for the preview width level: a page outline whose inner
-/// "text column" grows with the level, animating between states so the
-/// cycle is visible at a glance.
+/// "text column" grows with the level, animating between states.
 struct WidthLevelIcon: View {
     let level: PreviewWidth
 
@@ -28,7 +27,7 @@ struct WidthLevelIcon: View {
                 .frame(width: columnWidth, height: 8)
         }
         .frame(width: 22, height: 16)
-        .animation(.spring(response: 0.28, dampingFraction: 0.75), value: level)
+        .animation(ToolbarIcon.stateChange, value: level)
         .contentShape(Rectangle())
     }
 }

@@ -17,6 +17,7 @@ struct DocumentPanes: View {
             viewMode: workspace.viewMode,
             splitFraction: Binding(get: { workspace.splitFraction }, set: { workspace.splitFraction = $0 }),
             scrollSync: $document.scrollSync,
+            scrollsLinked: $document.scrollsLinked,
             editorActions: document.editorActions,
             previewActions: document.previewActions,
             previewWidth: PreviewWidth.showing(level: previewWidthLevel, in: workspace.viewMode),

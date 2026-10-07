@@ -8,6 +8,8 @@ struct PreviewWebView: NSViewRepresentable {
     let markdown: String
     let baseURL: URL?
     @Binding var scrollSync: ScrollSync
+    /// Whether this pane follows the editor's scrolling.
+    let scrollsLinked: Bool
     let contentWidthRem: Double
     let actions: PreviewActions
 
@@ -58,6 +60,7 @@ struct PreviewWebView: NSViewRepresentable {
         coordinator.setStyle(fontFamily: FontOption.cssFamily(for: fontName), size: fontSize, lineHeight: lineHeight)
         coordinator.setContentWidth(contentWidthRem)
         coordinator.setMarkdown(markdown, strictLineBreaks: strictLineBreaks)
+        coordinator.isLinked = scrollsLinked
         coordinator.syncScroll(scrollSync)
     }
 
@@ -220,6 +223,18 @@ struct PreviewWebView: NSViewRepresentable {
         // MARK: - Scroll sync (bidirectional)
 
         private var pendingScroll: ScrollSync?
+        /// Whether this pane scrolls together with the editor.
+        var isLinked = true
+
+        /// Where the page is, as the shared position would say it: where
+        /// the reader scrolled it, or the last position it was given. Nil
+        /// before the page is up.
+        var position: ScrollSync? {
+            guard isReady else { return nil }
+            var here = lastScroll
+            here.source = .preview
+            return here
+        }
 
         func syncScroll(_ sync: ScrollSync) {
             // Template (or content) not loaded yet, e.g. this pane was just
@@ -230,12 +245,13 @@ struct PreviewWebView: NSViewRepresentable {
                 return
             }
             // Track preview-sourced positions so a later editor push compares
-            // against where the preview actually is, then only follow the editor.
+            // against where the preview actually is, then follow the editor
+            // while the panes scroll together, and a jump always.
             if sync.source == .preview {
                 lastScroll = sync
                 return
             }
-            guard sync.differs(from: lastScroll) else { return }
+            guard sync.movesPreview(linked: isLinked), sync.differs(from: lastScroll) else { return }
             lastScroll = sync
             applyScroll(sync)
         }

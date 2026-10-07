@@ -14,6 +14,7 @@ struct UndoGranularityTests {
         let view = MarkdownTextView(
             text: .constant(""),
             scrollSync: .constant(ScrollSync()),
+            scrollsLinked: true,
             actions: EditorActions(),
             fileURL: nil
         )

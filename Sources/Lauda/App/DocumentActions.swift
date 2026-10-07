@@ -43,6 +43,8 @@ final class PreviewActions: PreviewFinding {
     func clearFind() { coordinator?.clearFind() }
     /// False while there is no preview pane to take the keyboard.
     func focus() -> Bool { coordinator?.focus() ?? false }
+    /// Where the preview is; nil while there is no preview pane up.
+    func position() -> ScrollSync? { coordinator?.position }
 }
 
 /// What exporting a document offers.

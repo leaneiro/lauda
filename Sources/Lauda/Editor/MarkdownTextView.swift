@@ -6,6 +6,9 @@ import AppKit
 struct MarkdownTextView: NSViewRepresentable {
     @Binding var text: String
     @Binding var scrollSync: ScrollSync
+    /// Whether this pane follows the preview's scrolling, and keeps its own
+    /// line when its text reflows, or the shared one.
+    let scrollsLinked: Bool
     let actions: EditorActions
     let fileURL: URL?
 
@@ -59,6 +62,7 @@ struct MarkdownTextView: NSViewRepresentable {
         let coordinator = context.coordinator
         coordinator.parent = self
         actions.coordinator = coordinator
+        coordinator.scrolling.isLinked = scrollsLinked
         coordinator.scrolling.restoreIfNeeded()
         guard let textView = coordinator.textView else { return }
 
@@ -83,7 +87,7 @@ struct MarkdownTextView: NSViewRepresentable {
         if coordinator.appliedFontName != fontName || coordinator.appliedFontSize != fontSize {
             coordinator.applyStyle(fontName: fontName, fontSize: fontSize)
         }
-        if scrollSync.source != .editor {
+        if scrollSync.movesEditor(linked: scrollsLinked) {
             coordinator.scrolling.applyRemote(scrollSync)
         }
     }

@@ -208,6 +208,7 @@ final class ImageImporterTests {
         let view = MarkdownTextView(
             text: .constant(""),
             scrollSync: .constant(ScrollSync()),
+            scrollsLinked: true,
             actions: EditorActions(),
             fileURL: documentURL
         )

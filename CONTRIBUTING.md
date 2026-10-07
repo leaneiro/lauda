@@ -118,10 +118,11 @@ with a fresh UUID and removed when the test ends. Never write to
 `UserDefaults.standard`: those are the real settings of whoever is running
 the tests.
 
-Suites that drive AppKit are marked `@MainActor`. Two of them are also
-`@Suite(.serialized)`, so their tests run one at a time: `UndoGranularityTests`,
-which pumps the runloop while NSTextView coalesces undo by timing, and
-`PDFExportTests`, which drives WebKit printing.
+Suites that drive AppKit are marked `@MainActor`. Some are also
+`@Suite(.serialized)`, so their tests run one at a time: among them
+`UndoGranularityTests`, which pumps the runloop while NSTextView coalesces
+undo by timing, and the ones that drive a WebKit page: `PDFExportTests`,
+`ScrollLinkPanesTests` and the suites in `PreviewReflowTests.swift`.
 
 ### Settings and logs
 

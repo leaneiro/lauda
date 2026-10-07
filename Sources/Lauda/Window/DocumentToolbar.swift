@@ -152,16 +152,11 @@ private struct FadingWidthButton: View {
     let level: PreviewWidth
     let action: () -> Void
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
     var body: some View {
         GlassToolbarButton(action: action) {
             WidthLevelIcon(level: level)
         }
-        .opacity(isShown ? 1 : 0)
-        .scaleEffect(isShown ? 1 : 0.8)
-        .animation(reduceMotion ? nil : .easeInOut(duration: ModeChange.duration), value: isShown)
-        .allowsHitTesting(isShown)
+        .modifier(Reveal(isShown: isShown, duration: ModeChange.duration))
         .accessibilityHidden(!isShown)
         .help("Text width: \(level.label). Next: \(level.next.label)")
         .accessibilityLabel("Text width: \(level.label)")

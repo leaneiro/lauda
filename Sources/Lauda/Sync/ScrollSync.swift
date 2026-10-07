@@ -35,4 +35,25 @@ struct ScrollSync: Equatable {
             || abs(toEndDistance - other.toEndDistance) > 1
             || abs((line ?? -2) - (other.line ?? -2)) > 0.005
     }
+
+    /// Whether the editor goes to this position: never to one it published
+    /// itself, to the preview's only while the two panes scroll together
+    /// (`linked`, which the chain on the divider sets), and to a jump, like
+    /// the outline's, always.
+    func movesEditor(linked: Bool) -> Bool {
+        switch source {
+        case .editor: false
+        case .preview: linked
+        case .navigation: true
+        }
+    }
+
+    /// The same, for the preview.
+    func movesPreview(linked: Bool) -> Bool {
+        switch source {
+        case .preview: false
+        case .editor: linked
+        case .navigation: true
+        }
+    }
 }

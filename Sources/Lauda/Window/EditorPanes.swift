@@ -10,6 +10,7 @@ struct EditorPanes: View {
     let viewMode: ViewMode
     @Binding var splitFraction: Double
     @Binding var scrollSync: ScrollSync
+    @Binding var scrollsLinked: Bool
     let editorActions: EditorActions
     let previewActions: PreviewActions
     let previewWidth: PreviewWidth
@@ -43,6 +44,7 @@ struct EditorPanes: View {
                     MarkdownTextView(
                         text: $text,
                         scrollSync: $scrollSync,
+                        scrollsLinked: scrollsLinked,
                         actions: editorActions,
                         fileURL: fileURL
                     )
@@ -52,6 +54,7 @@ struct EditorPanes: View {
                 if viewMode == .split {
                     SplitDivider(
                         fraction: $splitFraction,
+                        scrollsLinked: $scrollsLinked,
                         totalWidth: totalWidth,
                         minPaneWidth: Self.minPaneWidth
                     )
@@ -62,6 +65,7 @@ struct EditorPanes: View {
                         markdown: text,
                         baseURL: fileURL?.deletingLastPathComponent(),
                         scrollSync: $scrollSync,
+                        scrollsLinked: scrollsLinked,
                         contentWidthRem: previewWidth.rem,
                         actions: previewActions
                     )

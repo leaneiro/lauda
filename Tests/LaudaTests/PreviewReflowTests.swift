@@ -22,14 +22,8 @@ private final class PreviewPage: NSObject, WKNavigationDelegate {
             in: PreviewWebView.contentWorld
         ))
         webView = WKWebView(frame: NSRect(x: 0, y: 0, width: width, height: height), configuration: configuration)
-        // Off screen, WebKit takes the page for hidden and holds its CSS
-        // transitions and animation frames; the column's width animates, so
-        // the page has to run as if in view (WebKit's own switch, tests only).
-        let occlusion = NSSelectorFromString("_setWindowOcclusionDetectionEnabled:")
-        if webView.responds(to: occlusion), let setter = webView.method(for: occlusion) {
-            typealias Setter = @convention(c) (AnyObject, Selector, Bool) -> Void
-            unsafeBitCast(setter, to: Setter.self)(webView, occlusion, false)
-        }
+        // The column's width animates, so the page has to run as if in view.
+        webView.keepRunningOffscreen()
         window = NSWindow(
             contentRect: NSRect(x: -20_000, y: -20_000, width: width, height: height),
             styleMask: [.borderless], backing: .buffered, defer: false)

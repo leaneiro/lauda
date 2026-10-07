@@ -12,6 +12,14 @@ final class EditorScrolling: NSObject {
     var sharedPosition: () -> ScrollSync = { ScrollSync() }
     var publish: (ScrollSync) -> Void = { _ in }
 
+    /// Whether this pane scrolls together with the preview. Apart, it still
+    /// publishes where it is, but keeps its own line when its text reflows,
+    /// since the shared one may then be the preview's.
+    var isLinked = true
+    /// Where this pane is by its own account: what it last reported (shared
+    /// or not), took from the preview or a jump, or was anchored to.
+    private var ownPosition: ScrollSync?
+
     private var isApplyingRemoteScroll = false
 
     /// A freshly created pane starts at the top (view-mode switches
@@ -42,13 +50,15 @@ final class EditorScrolling: NSObject {
 
         needsRestore = false
         restoreRetry.startOver()
-        anchorToSharedPosition()
+        anchor()
     }
 
-    /// Positions the pane at the shared scroll position (used both when a
-    /// recreated pane comes up and when a resize re-flows the text, so the
-    /// same source line stays at the top).
-    private func anchorToSharedPosition() {
+    /// Positions the pane at the line it keeps (used both when a recreated
+    /// pane comes up and when a resize re-flows the text, so the same
+    /// source line stays at the top): the shared position, or this pane's
+    /// own while the panes scroll apart. A pane just created has no
+    /// position of its own yet, and starts from the shared one.
+    private func anchor() {
         guard let textView,
               let scrollView = textView.enclosingScrollView else { return }
         if let layoutManager = textView.layoutManager, let container = textView.textContainer {
@@ -56,7 +66,9 @@ final class EditorScrolling: NSObject {
         }
         let clipView = scrollView.contentView
         lastClipSize = clipView.bounds.size
-        guard let target = lines.targetOffset(for: sharedPosition()) else { return }
+        let position = isLinked ? sharedPosition() : (ownPosition ?? sharedPosition())
+        guard let target = lines.targetOffset(for: position) else { return }
+        ownPosition = position
         isApplyingRemoteScroll = true
         scrollView.scrollVertically(to: target.rounded())
         isApplyingRemoteScroll = false
@@ -70,7 +82,7 @@ final class EditorScrolling: NSObject {
         guard !needsRestore, !isApplyingRemoteScroll,
               let clipView = notification.object as? NSClipView,
               let lastSize = lastClipSize, lastSize != clipView.bounds.size else { return }
-        anchorToSharedPosition()
+        anchor()
     }
 
     @objc func boundsDidChange(_ notification: Notification) {
@@ -86,7 +98,7 @@ final class EditorScrolling: NSObject {
         // the same offset now shows a different line. Re-anchor to the
         // shared position instead of publishing the drifted value.
         if let lastSize = lastClipSize, lastSize != clipView.bounds.size {
-            anchorToSharedPosition()
+            anchor()
             return
         }
         lastClipSize = clipView.bounds.size
@@ -100,6 +112,7 @@ final class EditorScrolling: NSObject {
             toEndDistance: Double(max(maxOffset - offset, 0)),
             source: .editor
         )
+        ownPosition = sync
         guard sync.differs(from: sharedPosition()) else { return }
         DispatchQueue.main.async { [weak self] in
             self?.publish(sync)
@@ -113,6 +126,7 @@ final class EditorScrolling: NSObject {
         guard let textView,
               let scrollView = textView.enclosingScrollView,
               let target = lines.targetOffset(for: sync) else { return }
+        ownPosition = sync
         let clipView = scrollView.contentView
         guard abs(target - clipView.bounds.origin.y) > 0.5 else { return }
 
