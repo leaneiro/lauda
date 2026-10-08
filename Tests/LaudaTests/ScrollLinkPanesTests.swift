@@ -22,27 +22,48 @@ private final class PanesWindow {
         window = NSWindow(
             contentRect: NSRect(x: -20_000, y: -20_000, width: 1200, height: 700),
             styleMask: [.borderless], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
         window.contentView = NSHostingView(rootView: DocumentPanes(document: document, workspace: workspace))
         window.orderFrontRegardless()
     }
 
-    /// Waits for both panes to come up with the text laid out: the editor
-    /// taller than its view, and the page scrollable.
-    func waitUntilReady() async throws {
+    /// Takes the panes down. Left up, their page and editor keep drawing
+    /// off screen, and the WebKit tests that time frames lose some.
+    func close() {
+        window.contentView = nil
+        window.close()
+    }
+
+    /// Waits for both panes to come up, with the page answering.
+    func waitUntilUp() async throws {
         for _ in 0..<100 {
             if textView == nil { textView = Self.find(NSTextView.self, in: window.contentView) }
             if webView == nil, let found = Self.find(WKWebView.self, in: window.contentView) {
                 found.keepRunningOffscreen()
                 webView = found
             }
-            if let textView, let scrollView = textView.enclosingScrollView, webView != nil,
-               textView.frame.height > scrollView.contentView.bounds.height * 2,
-               let maxScroll = try? await number("return maxScroll()"), maxScroll > 0 {
+            if textView != nil, webView != nil, (try? await number("return maxScroll()")) != nil {
                 return
             }
             try await Task.sleep(for: .milliseconds(50))
         }
         Issue.record("The panes never came up")
+    }
+
+    /// Polls for up to two seconds until `condition` holds.
+    func waitUntil(_ condition: () async throws -> Bool) async throws -> Bool {
+        for _ in 0..<40 where try await !condition() {
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        return try await condition()
+    }
+
+    /// Whether each pane has measured itself once: the editor has a reading
+    /// of its own, and the page has told the app.
+    func bothPanesMeasured() async throws -> Bool {
+        let editor = document.editorActions.coordinator?.scrolling.scrollable != nil
+        let page = try await number("return toldScrollable === null ? 0 : 1") == 1
+        return editor && page
     }
 
     private static func find<View: NSView>(_ type: View.Type, in view: NSView?) -> View? {
@@ -116,7 +137,10 @@ struct ScrollLinkPanesTests {
 
     @Test func apartThePanesScrollOnTheirOwnAndRejoinAtThePreview() async throws {
         let panes = PanesWindow(paragraphs: 300)
-        try await panes.waitUntilReady()
+        defer { panes.close() }
+        try await panes.waitUntilUp()
+        // Both panes have told the document they have more than fits.
+        #expect(try await panes.waitUntil { panes.document.panesScroll })
 
         // Together, the preview follows the editor.
         try panes.scrollEditor(toLine: 200)
@@ -141,5 +165,16 @@ struct ScrollLinkPanesTests {
         try await panes.scrollPage(toLine: 50)
         let following = try await panes.settled(panes.editorTopLine, within: Self.tolerance, of: 50)
         #expect(abs(following - 50) < Self.tolerance)
+    }
+
+    @Test func aTextThatFitsLeavesNothingToScroll() async throws {
+        let panes = PanesWindow(paragraphs: 2)
+        defer { panes.close() }
+        try await panes.waitUntilUp()
+        #expect(try await panes.waitUntil(panes.bothPanesMeasured))
+        try await panes.pause()
+        #expect(!panes.document.editorScrollable)
+        #expect(!panes.document.previewScrollable)
+        #expect(!panes.document.panesScroll)
     }
 }

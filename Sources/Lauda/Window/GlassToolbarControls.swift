@@ -84,8 +84,7 @@ enum ToolbarIcon {
     /// On glass the `.primary` style is drawn vibrant, a full black where
     /// the system's symbols are the label colour's softer one, and the label
     /// colour itself comes out paler than it is; this lands on the system's.
-    static let inkOpacity = 0.85
-    static let ink = Color.primary.opacity(inkOpacity)
+    static let ink = Color.primary.opacity(0.85)
     /// How a drawn symbol goes from one state to another, so the change is
     /// visible at a glance: the width button's column, the divider's chain.
     static let stateChange = Animation.spring(response: 0.28, dampingFraction: 0.75)

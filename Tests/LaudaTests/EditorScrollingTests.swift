@@ -59,6 +59,17 @@ struct EditorScrollingTests {
         #expect(abs(try lineShown(by: scrollView, in: lines) - 10) < 0.01)
     }
 
+    @Test func tellsWhetherTheTextIsTallerThanThePane() throws {
+        let (scrolling, lines, scrollView) = makePane(sharedLine: 0)
+        try scroll(scrollView, toLine: 0, in: lines, heardBy: scrolling)
+        #expect(scrolling.scrollable == true)
+        let textView = try #require(scrollView.documentView as? NSTextView)
+        textView.string = "one line"
+        textView.sizeToFit()
+        scrolling.contentDidChange(Notification(name: NSView.frameDidChangeNotification, object: textView))
+        #expect(scrolling.scrollable == false)
+    }
+
     @Test func apartAJumpTakenIsTheLineKept() throws {
         let (scrolling, lines, scrollView) = makePane(sharedLine: 30)
         scrolling.isLinked = false

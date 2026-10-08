@@ -3,7 +3,8 @@ import SwiftUI
 /// How a control comes and goes: fading, and growing from a little smaller,
 /// over a moment. Out of view it takes no clicks; it stays in the view, so
 /// its place is kept and nothing around it moves. The toolbar's text width
-/// button comes with its mode, and the divider's chain with the pointer.
+/// button comes with its mode, and the divider's chain with the pointer,
+/// while there is something to scroll.
 struct Reveal: ViewModifier {
     let isShown: Bool
     let duration: TimeInterval

@@ -3,11 +3,15 @@ import AppKit
 
 /// Draggable pane divider. The stored fraction survives view-mode switches
 /// (⌘1/⌘2/⌘3), so split view always comes back where the user left it.
-/// Under the pointer it shows the chain that parts the panes' scrolling.
+/// Under the pointer it shows the chain that parts the panes' scrolling,
+/// while both have something to scroll.
 struct SplitDivider: View {
     @Binding var fraction: Double
     /// Whether the panes scroll together; the chain flips it.
     @Binding var scrollsLinked: Bool
+    /// Whether both panes have something to scroll, without which the chain
+    /// has nothing to do and stays out of view, as a scroll bar does.
+    let panesScroll: Bool
     let totalWidth: CGFloat
     let minPaneWidth: CGFloat
 
@@ -75,9 +79,10 @@ struct SplitDivider: View {
     }
 
     /// The chain shows while the pointer is on the divider or on the chain
-    /// itself; the pointer reaches the chain through the divider, since out
-    /// of view it takes no clicks. VoiceOver reaches it either way.
-    private var showsChain: Bool { isHovered || isChainHovered }
+    /// itself, and both panes have something to scroll; the pointer reaches
+    /// the chain through the divider, since out of view it takes no clicks.
+    /// VoiceOver reaches it either way.
+    private var showsChain: Bool { panesScroll && (isHovered || isChainHovered) }
 }
 
 /// The resize cursor over the divider, kept there by SwiftUI itself from

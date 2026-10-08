@@ -10,6 +10,8 @@ struct PreviewWebView: NSViewRepresentable {
     @Binding var scrollSync: ScrollSync
     /// Whether this pane follows the editor's scrolling.
     let scrollsLinked: Bool
+    /// Whether the page is taller than the pane, for the divider's chain.
+    @Binding var scrollable: Bool
     let contentWidthRem: Double
     let actions: PreviewActions
 
@@ -26,6 +28,9 @@ struct PreviewWebView: NSViewRepresentable {
     /// the document's raw HTML, which shares the page but can't run script
     /// under the template's Content-Security-Policy.
     static let contentWorld = WKContentWorld.world(name: "LaudaPreview")
+    /// What the page tells the app: where it is, and whether it has more
+    /// than fits in it.
+    static let messageNames = ["previewScrolled", "previewScrollable"]
 
     func makeNSView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
@@ -37,7 +42,9 @@ struct PreviewWebView: NSViewRepresentable {
             forMainFrameOnly: true,
             in: Self.contentWorld
         ))
-        controller.add(context.coordinator, contentWorld: Self.contentWorld, name: "previewScrolled")
+        for name in Self.messageNames {
+            controller.add(context.coordinator, contentWorld: Self.contentWorld, name: name)
+        }
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = context.coordinator
@@ -65,8 +72,10 @@ struct PreviewWebView: NSViewRepresentable {
     }
 
     static func dismantleNSView(_ webView: WKWebView, coordinator: Coordinator) {
-        webView.configuration.userContentController.removeScriptMessageHandler(
-            forName: "previewScrolled", contentWorld: Self.contentWorld)
+        for name in Self.messageNames {
+            webView.configuration.userContentController.removeScriptMessageHandler(
+                forName: name, contentWorld: Self.contentWorld)
+        }
     }
 
     final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
@@ -296,6 +305,12 @@ struct PreviewWebView: NSViewRepresentable {
             _ userContentController: WKUserContentController,
             didReceive message: WKScriptMessage
         ) {
+            if message.name == "previewScrollable" {
+                if let scrollable = message.body as? Bool {
+                    parent?.scrollable = scrollable
+                }
+                return
+            }
             guard message.name == "previewScrolled",
                   let values = message.body as? [String: Any],
                   let fraction = (values["fraction"] as? NSNumber)?.doubleValue,

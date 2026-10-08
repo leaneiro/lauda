@@ -4,9 +4,10 @@ import WebKit
 @testable import Lauda
 
 /// The real preview page (template, stylesheet and script in its content
-/// world), loaded in an offscreen web view the way the app loads it.
+/// world), loaded in an offscreen web view the way the app loads it, with
+/// the app's message handlers in place and nobody listening behind them.
 @MainActor
-private final class PreviewPage: NSObject, WKNavigationDelegate {
+private final class PreviewPage: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
     let webView: WKWebView
     private let window: NSWindow
     private let schemeHandler = DocumentSchemeHandler()
@@ -28,6 +29,9 @@ private final class PreviewPage: NSObject, WKNavigationDelegate {
             contentRect: NSRect(x: -20_000, y: -20_000, width: width, height: height),
             styleMask: [.borderless], backing: .buffered, defer: false)
         super.init()
+        for name in PreviewWebView.messageNames {
+            configuration.userContentController.add(self, contentWorld: PreviewWebView.contentWorld, name: name)
+        }
         window.contentView = webView
         window.orderFrontRegardless()
         webView.navigationDelegate = self
@@ -48,6 +52,8 @@ private final class PreviewPage: NSObject, WKNavigationDelegate {
         finished?.resume()
         finished = nil
     }
+
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {}
 
     /// What switching view modes does to the preview pane.
     func resize(width: CGFloat) {

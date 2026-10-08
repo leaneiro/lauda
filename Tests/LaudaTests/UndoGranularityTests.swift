@@ -15,6 +15,7 @@ struct UndoGranularityTests {
             text: .constant(""),
             scrollSync: .constant(ScrollSync()),
             scrollsLinked: true,
+            scrollable: .constant(false),
             actions: EditorActions(),
             fileURL: nil
         )

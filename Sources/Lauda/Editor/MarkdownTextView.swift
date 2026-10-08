@@ -9,6 +9,8 @@ struct MarkdownTextView: NSViewRepresentable {
     /// Whether this pane follows the preview's scrolling, and keeps its own
     /// line when its text reflows, or the shared one.
     let scrollsLinked: Bool
+    /// Whether the text is taller than the pane, for the divider's chain.
+    @Binding var scrollable: Bool
     let actions: EditorActions
     let fileURL: URL?
 
@@ -55,6 +57,15 @@ struct MarkdownTextView: NSViewRepresentable {
             selector: #selector(EditorScrolling.frameDidChange(_:)),
             name: NSView.frameDidChangeNotification,
             object: scrollView.contentView
+        )
+        // The text view grows and shrinks with its text: whether there is
+        // more than fits changes with it.
+        scrollView.documentView?.postsFrameChangedNotifications = true
+        NotificationCenter.default.addObserver(
+            scrolling,
+            selector: #selector(EditorScrolling.contentDidChange(_:)),
+            name: NSView.frameDidChangeNotification,
+            object: scrollView.documentView
         )
     }
 
@@ -129,6 +140,7 @@ struct MarkdownTextView: NSViewRepresentable {
             super.init()
             scrolling.sharedPosition = { [weak self] in self?.parent.scrollSync ?? ScrollSync() }
             scrolling.publish = { [weak self] sync in self?.parent.scrollSync = sync }
+            scrolling.scrollableChanged = { [weak self] scrollable in self?.parent.scrollable = scrollable }
         }
 
         func undoManager(for view: NSTextView) -> UndoManager? {

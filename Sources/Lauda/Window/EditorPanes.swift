@@ -11,6 +11,11 @@ struct EditorPanes: View {
     @Binding var splitFraction: Double
     @Binding var scrollSync: ScrollSync
     @Binding var scrollsLinked: Bool
+    /// Whether each pane has more than fits in it, and whether both have,
+    /// which is when the divider shows its chain.
+    @Binding var editorScrollable: Bool
+    @Binding var previewScrollable: Bool
+    let panesScroll: Bool
     let editorActions: EditorActions
     let previewActions: PreviewActions
     let previewWidth: PreviewWidth
@@ -45,6 +50,7 @@ struct EditorPanes: View {
                         text: $text,
                         scrollSync: $scrollSync,
                         scrollsLinked: scrollsLinked,
+                        scrollable: $editorScrollable,
                         actions: editorActions,
                         fileURL: fileURL
                     )
@@ -55,6 +61,7 @@ struct EditorPanes: View {
                     SplitDivider(
                         fraction: $splitFraction,
                         scrollsLinked: $scrollsLinked,
+                        panesScroll: panesScroll,
                         totalWidth: totalWidth,
                         minPaneWidth: Self.minPaneWidth
                     )
@@ -69,6 +76,7 @@ struct EditorPanes: View {
                         baseURL: fileURL?.deletingLastPathComponent(),
                         scrollSync: $scrollSync,
                         scrollsLinked: scrollsLinked,
+                        scrollable: $previewScrollable,
                         contentWidthRem: previewWidth.rem,
                         actions: previewActions
                     )

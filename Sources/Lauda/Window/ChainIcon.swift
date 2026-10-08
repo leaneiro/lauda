@@ -12,9 +12,6 @@ struct ChainIcon: View {
         Color.clear
             .frame(width: ChainDrawing.side, height: ChainDrawing.side)
             .modifier(ChainDrawing(openness: linked ? 0 : 1))
-            // The ink's softness goes on the whole drawing: drawn with it,
-            // the links would darken where they cross.
-            .opacity(ToolbarIcon.inkOpacity)
             .animation(ToolbarIcon.stateChange, value: linked)
     }
 }
@@ -58,7 +55,7 @@ private struct ChainDrawing: ViewModifier, Animatable {
                 let distance = Self.hooked + (Self.length + Self.gap - Self.hooked) * openness
                 let lower = Self.link(at: -distance / 2, from: centre, along: axis)
                 let upper = Self.link(at: distance / 2, from: centre, along: axis)
-                let ink = GraphicsContext.Shading.color(.primary)
+                let ink = GraphicsContext.Shading.color(ToolbarIcon.ink)
                 // Erasing takes the source's alpha, and the label colour is
                 // not quite opaque: an opaque colour erases whole.
                 let eraser = GraphicsContext.Shading.color(.black)
@@ -79,21 +76,22 @@ private struct ChainDrawing: ViewModifier, Animatable {
                 // The cut closes as the links come apart.
                 let halo = Self.stroke + 2 * Self.cut * (1 - openness)
 
-                // The lower link, then the upper one over it on one side of
-                // the diagonal (the lower is cut around it there), then the
-                // lower one over the upper on the other side.
-                context.stroke(lower, with: ink, lineWidth: Self.stroke)
-                var oneSide = context
-                oneSide.clip(to: side(-1))
-                oneSide.blendMode = .destinationOut
-                oneSide.stroke(upper, with: eraser, lineWidth: halo)
-                context.stroke(upper, with: ink, lineWidth: Self.stroke)
-                var otherSide = context
-                otherSide.clip(to: side(1))
-                otherSide.blendMode = .destinationOut
-                otherSide.stroke(lower, with: eraser, lineWidth: halo)
-                otherSide.blendMode = .normal
-                otherSide.stroke(lower, with: ink, lineWidth: Self.stroke)
+                // Each link in a layer of its own, cut around the other where
+                // the other passes over it: the upper link on one side of the
+                // diagonal, the lower on the other. Whole in its layer, a link
+                // has no seam, and its soft ink never lands on the other's.
+                context.drawLayer { layer in
+                    layer.stroke(lower, with: ink, lineWidth: Self.stroke)
+                    layer.clip(to: side(-1))
+                    layer.blendMode = .destinationOut
+                    layer.stroke(upper, with: eraser, lineWidth: halo)
+                }
+                context.drawLayer { layer in
+                    layer.stroke(upper, with: ink, lineWidth: Self.stroke)
+                    layer.clip(to: side(1))
+                    layer.blendMode = .destinationOut
+                    layer.stroke(lower, with: eraser, lineWidth: halo)
+                }
             }
         }
     }

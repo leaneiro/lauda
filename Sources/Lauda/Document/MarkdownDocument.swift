@@ -57,6 +57,12 @@ final class MarkdownDocument: NSDocument {
             }
         }
     }
+    /// Whether each pane has more than fits in it. The chain shows only
+    /// while both have: joined or apart makes no difference to a pane with
+    /// nowhere to scroll, as a scroll bar makes none.
+    var editorScrollable = false
+    var previewScrollable = false
+    var panesScroll: Bool { editorScrollable && previewScrollable }
     /// Bridges to this document's panes, and the find bar over them.
     @ObservationIgnored let editorActions: EditorActions
     @ObservationIgnored let previewActions: PreviewActions

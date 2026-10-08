@@ -11,6 +11,10 @@ final class EditorScrolling: NSObject {
     /// the editor's coordinator.
     var sharedPosition: () -> ScrollSync = { ScrollSync() }
     var publish: (ScrollSync) -> Void = { _ in }
+    /// Whether the text is taller than the pane, as last told, and whom to
+    /// tell when that changes; nil before the pane is laid out.
+    private(set) var scrollable: Bool?
+    var scrollableChanged: (Bool) -> Void = { _ in }
 
     /// Whether this pane scrolls together with the preview. Apart, it still
     /// publishes where it is, but keeps its own line when its text reflows,
@@ -66,6 +70,7 @@ final class EditorScrolling: NSObject {
         }
         let clipView = scrollView.contentView
         lastClipSize = clipView.bounds.size
+        reportScrollable()
         let position = isLinked ? sharedPosition() : (ownPosition ?? sharedPosition())
         guard let target = lines.targetOffset(for: position) else { return }
         ownPosition = position
@@ -102,6 +107,7 @@ final class EditorScrolling: NSObject {
             return
         }
         lastClipSize = clipView.bounds.size
+        reportScrollable()
 
         let maxOffset = documentView.frame.height - clipView.bounds.height
         let offset = clipView.bounds.origin.y
@@ -116,6 +122,24 @@ final class EditorScrolling: NSObject {
         guard sync.differs(from: sharedPosition()) else { return }
         DispatchQueue.main.async { [weak self] in
             self?.publish(sync)
+        }
+    }
+
+    /// The text view's frame changed, with its text or with the pane's
+    /// width: whether there is more than fits may have changed with it.
+    @objc func contentDidChange(_ notification: Notification) {
+        reportScrollable()
+    }
+
+    /// Tells, when it changes, whether the text is taller than the pane by
+    /// more than a hair.
+    private func reportScrollable() {
+        guard let textView, let scrollView = textView.enclosingScrollView else { return }
+        let scrollable = textView.frame.height > scrollView.contentView.bounds.height + 1
+        guard scrollable != self.scrollable else { return }
+        self.scrollable = scrollable
+        DispatchQueue.main.async { [weak self] in
+            self?.scrollableChanged(scrollable)
         }
     }
 

@@ -209,6 +209,7 @@ final class ImageImporterTests {
             text: .constant(""),
             scrollSync: .constant(ScrollSync()),
             scrollsLinked: true,
+            scrollable: .constant(false),
             actions: EditorActions(),
             fileURL: documentURL
         )

@@ -58,6 +58,18 @@ function setContent(html, lines, lineCount) {
     for (let i = common; i < newBlocks.length; i++) {
         content.appendChild(newBlocks[i]);
     }
+    reportScrollable();
+}
+// Whether the page has more than fits in it, as last told to the app.
+let toldScrollable = null;
+// Tells the app, when it changes, whether the page has more than fits in
+// it: the text, the pane's size, the column's width and the font all change
+// that. The chain on the divider shows only while both panes have.
+function reportScrollable() {
+    const scrollable = maxScroll() > 0;
+    if (scrollable === toldScrollable) { return; }
+    toldScrollable = scrollable;
+    window.webkit.messageHandlers.previewScrollable.postMessage(scrollable);
 }
 function setStyle(family, size, lineHeight) {
     reflowing(() => {
@@ -110,6 +122,7 @@ function followWidth() {
             requestAnimationFrame(follow);
         } else {
             followingWidth = false;
+            reportScrollable();
         }
     };
     requestAnimationFrame(follow);
@@ -131,6 +144,7 @@ function reflowing(change) {
     anchorsMoved();
     realign();
     root.classList.remove("reflowing");
+    reportScrollable();
 }
 // Takes the current position as lastPosition: the end of the page, or the
 // line at the top.
@@ -311,6 +325,7 @@ window.addEventListener("resize", () => {
     suppressScrollEventsUntil = Date.now() + REFLOW_ECHO_WINDOW_MS;
     anchorsMoved();
     realign();
+    reportScrollable();
 });
 // Where the page is, for the editor to follow. WebKit already paces scroll
 // events by the frame, and the anchors are measured once (lineAnchors), so
@@ -332,6 +347,10 @@ window.addEventListener("scroll", () => {
 }, { passive: true });
 
 // The content grows on its own when an image finishes loading, and the
-// anchors below it move with it. Watching its box catches that, and the
-// reflows a stylesheet can cause without any of the calls above.
-new ResizeObserver(() => { anchorsMoved(); }).observe(content);
+// anchors below it move with it, as may whether there is more than fits.
+// Watching its box catches that, and the reflows a stylesheet can cause
+// without any of the calls above.
+new ResizeObserver(() => {
+    anchorsMoved();
+    reportScrollable();
+}).observe(content);
