@@ -28,13 +28,6 @@ func draw(scale: CGFloat) -> NSBitmapImageRep {
     NSColor.white.setFill()
     CGRect(origin: .zero, size: size).fill()
 
-    // A soft shape in the bottom left corner, mostly out of the window.
-    let corner = NSBezierPath(ovalIn: CGRect(x: -150, y: -140, width: 330, height: 220))
-    let tilt = AffineTransform(rotationByDegrees: -22)
-    corner.transform(using: tilt)
-    grey.withAlphaComponent(0.3).setFill()
-    corner.fill()
-
     // The chevrons, on the icons' centre line, in the Finder's top-down
     // coordinates turned into this bitmap's bottom-up ones.
     let y = size.height - iconCentres.lauda.y
