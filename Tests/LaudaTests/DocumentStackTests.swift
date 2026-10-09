@@ -3,8 +3,9 @@ import Testing
 @testable import Lauda
 
 /// Each open document keeps panes of its own; a tab only decides whose show.
+/// The panes come to life in a window here, chain and all, which draws.
 @MainActor
-@Suite(.serialized)
+@Suite(.serialized, .enabled(if: TestMachine.drawsWithMetal, "the panes draw through Metal"))
 final class DocumentStackTests {
     /// Its own preferences, so the tests never write to the reader's: the
     /// view mode and the open session are stored the moment they change.
