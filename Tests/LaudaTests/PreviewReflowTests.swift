@@ -102,6 +102,32 @@ private final class PreviewPage: NSObject, WKNavigationDelegate, WKScriptMessage
             """, ["rem": rem])
     }
 
+    /// What the page shows on each frame it draws while the column's width
+    /// eases, as the page itself sees it: the column's width and the top
+    /// line. Read from the page rather than polled from here, since on a
+    /// slow machine the polls could all land after the easing.
+    func framesOnTheWay() async throws -> (easing: Bool, widths: [Double], lines: [Double]) {
+        let frames = try await run("""
+            const easing = widthIsEasing();
+            return await new Promise((resolve) => {
+                const widths = [];
+                const lines = [];
+                const sample = () => {
+                    widths.push(document.querySelector('#content').getBoundingClientRect().width);
+                    lines.push(interpolate(lineAnchors(), window.scrollY, 1, 0));
+                    if (widthIsEasing()) requestAnimationFrame(sample);
+                    else resolve({ easing, widths, lines });
+                };
+                requestAnimationFrame(sample);
+            });
+            """) as? [String: Any]
+        return (
+            frames?["easing"] as? Bool ?? false,
+            (frames?["widths"] as? [NSNumber])?.map(\.doubleValue) ?? [],
+            (frames?["lines"] as? [NSNumber])?.map(\.doubleValue) ?? []
+        )
+    }
+
     /// Polls until `condition` holds or two seconds pass; returns the last top line.
     func topLine(settlingWithin tolerance: Double, of target: Double) async throws -> Double {
         var line = try await topLine()
@@ -160,16 +186,15 @@ struct PreviewReflowTests {
         let width = "return document.querySelector('#content').getBoundingClientRect().width"
         let before = try await page.number(width)
         try await page.run("setContentWidth(rem)", ["rem": 90])
-        var widths: [Double] = []
-        var lines: [Double] = []
-        for _ in 0..<8 {
-            try await Task.sleep(for: .milliseconds(40))
-            widths.append(try await page.number(width))
-            lines.append(try await page.topLine())
-        }
+        let frames = try await page.framesOnTheWay()
         let after = try await page.number(width)
-        #expect(widths.contains { $0 > before + 1 && $0 < after - 1 }, "no width on the way: \(before) \(widths) \(after)")
-        #expect(lines.allSatisfy { abs($0 - 158) < 0.5 }, "the top line moved on the way: \(lines)")
+        #expect(frames.easing, "the width changed without easing")
+        // A machine that draws frames on the way shows the column between
+        // its widths on one of them.
+        if frames.widths.count > 1 {
+            #expect(frames.widths.contains { $0 > before + 1 && $0 < after - 1 }, "no width on the way: \(before) \(frames.widths) \(after)")
+        }
+        #expect(frames.lines.allSatisfy { abs($0 - 158) < 0.5 }, "the top line moved on the way: \(frames.lines)")
     }
 
     /// Every tab's preview gets a new width, and one out of view holds its

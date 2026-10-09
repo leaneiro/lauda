@@ -131,7 +131,7 @@ private final class PanesWindow {
 /// The chain on the divider: apart, each pane scrolls on its own; joined
 /// again, the editor comes to the preview, and both follow each other.
 @MainActor
-@Suite(.serialized, .timeLimit(.minutes(1)))
+@Suite(.serialized, .timeLimit(.minutes(1)), .enabled(if: TestMachine.drawsWithMetal, "the panes draw through Metal"))
 struct ScrollLinkPanesTests {
     private static let tolerance = 1.5
 
@@ -162,6 +162,7 @@ struct ScrollLinkPanesTests {
         panes.document.scrollsLinked = true
         let rejoined = try await panes.settled(panes.editorTopLine, within: Self.tolerance, of: 250)
         #expect(abs(rejoined - 250) < Self.tolerance)
+        try await panes.pause()
         try await panes.scrollPage(toLine: 50)
         let following = try await panes.settled(panes.editorTopLine, within: Self.tolerance, of: 50)
         #expect(abs(following - 50) < Self.tolerance)
