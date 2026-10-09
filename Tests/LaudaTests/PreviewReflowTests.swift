@@ -181,9 +181,18 @@ struct PreviewReflowTests {
 
     /// The column eases to its new width, and the synced line stays at the
     /// top all the way.
-    @Test func theColumnEasesAndTheSyncedLineStaysOnTheWay() async throws {
+    @Test(.enabled(if: TestMachine.drawsWithMetal, "the page draws its frames through Metal"))
+    func theColumnEasesAndTheSyncedLineStaysOnTheWay() async throws {
         let page = try await openPage()
         let width = "return document.querySelector('#content').getBoundingClientRect().width"
+        // Reduce Motion takes the column's transition away (preview.css):
+        // the width then changes at once, which the test below covers, and
+        // there is no way to watch here.
+        let duration = try await page.number("return parseFloat(getComputedStyle(document.querySelector('#content')).transitionDuration)")
+        guard duration > 0 else {
+            print("theColumnEases: the page has no transition here (Reduce Motion?), nothing to watch")
+            return
+        }
         let before = try await page.number(width)
         try await page.run("setContentWidth(rem)", ["rem": 90])
         let frames = try await page.framesOnTheWay()
@@ -200,7 +209,8 @@ struct PreviewReflowTests {
     /// Every tab's preview gets a new width, and one out of view holds its
     /// transition and its frames until it is back in view: then the column
     /// eases, and the page follows it to the end.
-    @Test func aPageOutOfViewKeepsTheSyncedLineWhenBackInView() async throws {
+    @Test(.enabled(if: TestMachine.drawsWithMetal, "the page draws its frames through Metal"))
+    func aPageOutOfViewKeepsTheSyncedLineWhenBackInView() async throws {
         let page = try await openPage()
         page.webView.isHidden = true
         try await page.run("setContentWidth(rem)", ["rem": 90])

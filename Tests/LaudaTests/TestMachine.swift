@@ -2,16 +2,19 @@ import Metal
 
 /// What the machine running the tests can do.
 enum TestMachine {
-    /// Whether SwiftUI can draw here: it draws through Metal, and on a
-    /// virtual machine without a real GPU (GitHub's Intel runners) loading
-    /// a Metal library stops the whole test process with an assertion,
-    /// "Target device architecture is nil". Tests that host SwiftUI views
-    /// in a window are skipped there.
+    /// Whether this machine draws through Metal. SwiftUI's Canvas does, and
+    /// so does WebKit once a page counts as in view; on a virtual machine
+    /// whose GPU has no architecture (GitHub's Intel runners) loading a
+    /// Metal library stops the whole test process with an assertion,
+    /// "Target device architecture is nil". Tests that need drawing are
+    /// skipped there, and the page's visibility switch stays off.
     static let drawsWithMetal: Bool = {
-        guard let device = MTLCreateSystemDefaultDevice() else { return false }
-        if #available(macOS 14.0, *) {
-            return !device.architecture.name.isEmpty && !device.name.contains("Paravirtual")
+        guard let device = MTLCreateSystemDefaultDevice() else {
+            print("TestMachine: no Metal device")
+            return false
         }
-        return !device.name.contains("Paravirtual")
+        let architecture = device.architecture.name
+        print("TestMachine: Metal device \"\(device.name)\", architecture \"\(architecture)\"")
+        return !architecture.isEmpty
     }()
 }
