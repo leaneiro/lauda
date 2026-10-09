@@ -1,6 +1,6 @@
 // Draws the disk image's background, Resources/DMG/background.tiff: three
-// chevrons from Lauda to the Applications folder, in the app's indigo and
-// fading in towards the folder, on a faintly tinted white, where the icons
+// chevrons from Lauda to the Applications folder, in the icon's greys and
+// darkening towards the folder up to the L's black, on white, where the icons
 // sit in the window that make-dmg.sh lays out (660 by 400 points, the
 // icons centred 170 points down, at 180 and 480 across). Drawn at 1x and
 // 2x into one TIFF, so the Finder picks the sharp one on a Retina screen.
@@ -9,8 +9,9 @@ import AppKit
 
 let size = CGSize(width: 660, height: 400)
 let iconCentres = (lauda: CGPoint(x: 180, y: 170), applications: CGPoint(x: 480, y: 170))
-// The indigo the editor draws its headings in (the landing page's accent).
-let indigo = NSColor(srgbRed: 0.380, green: 0.333, blue: 0.961, alpha: 1)
+// The icon's own colours: the grey of its lines and the black of its L.
+let grey = NSColor(srgbRed: 0.780, green: 0.776, blue: 0.753, alpha: 1)
+let black = NSColor(srgbRed: 0.102, green: 0.098, blue: 0.086, alpha: 1)
 
 func draw(scale: CGFloat) -> NSBitmapImageRep {
     let rep = NSBitmapImageRep(
@@ -22,15 +23,16 @@ func draw(scale: CGFloat) -> NSBitmapImageRep {
     NSGraphicsContext.saveGraphicsState()
     let context = NSGraphicsContext(bitmapImageRep: rep)!
     NSGraphicsContext.current = context
-    // White with a hint of the indigo, so the icons' white edges still read.
-    indigo.blended(withFraction: 0.95, of: .white)!.setFill()
+    // White, like the icon's and the Finder's own window: a strip the
+    // picture leaves uncovered at the window's edge does not show.
+    NSColor.white.setFill()
     CGRect(origin: .zero, size: size).fill()
 
     // A soft shape in the bottom left corner, mostly out of the window.
     let corner = NSBezierPath(ovalIn: CGRect(x: -150, y: -140, width: 330, height: 220))
     let tilt = AffineTransform(rotationByDegrees: -22)
     corner.transform(using: tilt)
-    indigo.withAlphaComponent(0.11).setFill()
+    grey.withAlphaComponent(0.3).setFill()
     corner.fill()
 
     // The chevrons, on the icons' centre line, in the Finder's top-down
@@ -40,7 +42,8 @@ func draw(scale: CGFloat) -> NSBitmapImageRep {
     let step: CGFloat = 42
     let height: CGFloat = 44
     let depth: CGFloat = 20
-    for (index, alpha) in [0.3, 0.6, 1.0].enumerated() {
+    let inks = [grey, grey.blended(withFraction: 0.5, of: black)!, black]
+    for (index, ink) in inks.enumerated() {
         let x = middle + (CGFloat(index) - 1) * step
         let chevron = NSBezierPath()
         chevron.lineWidth = 7
@@ -49,7 +52,7 @@ func draw(scale: CGFloat) -> NSBitmapImageRep {
         chevron.move(to: CGPoint(x: x - depth / 2, y: y + height / 2))
         chevron.line(to: CGPoint(x: x + depth / 2, y: y))
         chevron.line(to: CGPoint(x: x - depth / 2, y: y - height / 2))
-        indigo.withAlphaComponent(alpha).setStroke()
+        ink.setStroke()
         chevron.stroke()
     }
     NSGraphicsContext.restoreGraphicsState()
