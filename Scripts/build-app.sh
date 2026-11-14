@@ -9,21 +9,29 @@ CONFIGURATION="${1:-release}"
 # Macs. ARCHS="$(uname -m)" builds for this Mac only, which is quicker while
 # iterating.
 ARCHS="${ARCHS:-arm64 x86_64}"
-ARCH_FLAGS=()
+# Each architecture is built on its own with SwiftPM's native build system,
+# then the two are joined. Swift Build, the default since Swift 6.4 and the
+# only one SwiftPM uses for several architectures at once, links the app
+# with its deployment target (14.0) recorded as the SDK it was built with,
+# and macOS then runs it as an app of that time: measured on macOS 27, the
+# toolbar's controls left the trailing edge. Built natively, the binary
+# records the SDK it was really built with. Each architecture keeps a build
+# folder of its own: sharing one, the second build failed on the first's
+# records ("not registered").
+BINARIES=()
 for arch in $ARCHS; do
-    ARCH_FLAGS+=(--arch "$arch")
+    BUILD_FLAGS=(-c "$CONFIGURATION" --arch "$arch" --build-system native --scratch-path ".build/native-$arch")
+    swift build "${BUILD_FLAGS[@]}"
+    BINARIES+=("$(swift build "${BUILD_FLAGS[@]}" --show-bin-path)/Lauda")
 done
 
-swift build -c "$CONFIGURATION" "${ARCH_FLAGS[@]}"
-
-BIN_PATH="$(swift build -c "$CONFIGURATION" "${ARCH_FLAGS[@]}" --show-bin-path)/Lauda"
 APP_PATH="build/Lauda.app"
 
 rm -rf "$APP_PATH"
 mkdir -p "$APP_PATH/Contents/MacOS" "$APP_PATH/Contents/Resources"
 
 cp Support/Info.plist "$APP_PATH/Contents/Info.plist"
-cp "$BIN_PATH" "$APP_PATH/Contents/MacOS/Lauda"
+lipo -create "${BINARIES[@]}" -output "$APP_PATH/Contents/MacOS/Lauda"
 for arch in $ARCHS; do
     if ! lipo "$APP_PATH/Contents/MacOS/Lauda" -verify_arch "$arch"; then
         echo "error: the app binary has no $arch code" >&2
