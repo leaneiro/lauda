@@ -14,6 +14,8 @@ struct PreviewWebView: NSViewRepresentable {
     @Binding var scrollable: Bool
     let contentWidthRem: Double
     let actions: PreviewActions
+    /// False while the file is in the Trash: the page takes no pointer.
+    var isInteractive = true
 
     @AppStorage(AppSettings.previewFontName) private var fontName: String
     @AppStorage(AppSettings.previewFontSize) private var fontSize: Double
@@ -66,6 +68,7 @@ struct PreviewWebView: NSViewRepresentable {
         coordinator.schemeHandler.baseDirectory = baseURL
         coordinator.setStyle(fontFamily: FontOption.cssFamily(for: fontName), size: fontSize, lineHeight: lineHeight)
         coordinator.setContentWidth(contentWidthRem)
+        coordinator.setInert(!isInteractive)
         coordinator.setMarkdown(markdown, strictLineBreaks: strictLineBreaks)
         coordinator.isLinked = scrollsLinked
         coordinator.syncScroll(scrollSync)
@@ -182,6 +185,27 @@ struct PreviewWebView: NSViewRepresentable {
             webView.callAsyncJavaScript(
                 "setContentWidth(rem)",
                 arguments: ["rem": rem],
+                in: nil,
+                in: PreviewWebView.contentWorld
+            ) { Self.logScriptFailure($0) }
+        }
+
+        private var isInert = false
+
+        /// An inert page answers nothing: no clicks, no selection, and the
+        /// arrow over its text, where WebKit would show the text cursor
+        /// through the notice laid over a file in the Trash.
+        func setInert(_ inert: Bool) {
+            guard inert != isInert else { return }
+            isInert = inert
+            applyInert()
+        }
+
+        private func applyInert() {
+            guard let webView, isReady else { return }
+            webView.callAsyncJavaScript(
+                "document.body.inert = inert",
+                arguments: ["inert": isInert],
                 in: nil,
                 in: PreviewWebView.contentWorld
             ) { Self.logScriptFailure($0) }
@@ -337,6 +361,9 @@ struct PreviewWebView: NSViewRepresentable {
             if let widthRem = lastContentWidthRem {
                 lastContentWidthRem = nil
                 setContentWidth(widthRem)
+            }
+            if isInert {
+                applyInert()
             }
             if let content = pendingContent {
                 pendingContent = nil

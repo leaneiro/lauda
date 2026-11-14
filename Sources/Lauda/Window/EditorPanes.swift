@@ -19,6 +19,9 @@ struct EditorPanes: View {
     let editorActions: EditorActions
     let previewActions: PreviewActions
     let previewWidth: PreviewWidth
+    /// False while the file is in the Trash: neither pane takes the
+    /// pointer or the keyboard, and the editor takes no edits.
+    var isEditable = true
     /// False for a document behind another tab: nobody sees its panes
     /// change, so they change at once.
     var animatesModeChanges = true
@@ -52,7 +55,8 @@ struct EditorPanes: View {
                         scrollsLinked: scrollsLinked,
                         scrollable: $editorScrollable,
                         actions: editorActions,
-                        fileURL: fileURL
+                        fileURL: fileURL,
+                        isEditable: isEditable
                     )
                         .frame(width: viewMode == .split ? editorWidth(in: totalWidth) : totalWidth)
                         .transition(.move(edge: .leading))
@@ -78,7 +82,8 @@ struct EditorPanes: View {
                         scrollsLinked: scrollsLinked,
                         scrollable: $previewScrollable,
                         contentWidthRem: previewWidth.rem,
-                        actions: previewActions
+                        actions: previewActions,
+                        isInteractive: isEditable
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .transition(.move(edge: .trailing))

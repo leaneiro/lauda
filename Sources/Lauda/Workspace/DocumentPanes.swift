@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// One document's part of the window: its editor and preview, the find bar
@@ -9,6 +10,7 @@ struct DocumentPanes: View {
     let workspace: Workspace
 
     @AppStorage(AppSettings.previewWidthLevel) private var previewWidthLevel: Int
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         EditorPanes(
@@ -24,11 +26,20 @@ struct DocumentPanes: View {
             editorActions: document.editorActions,
             previewActions: document.previewActions,
             previewWidth: PreviewWidth.showing(level: previewWidthLevel, in: workspace.viewMode),
+            isEditable: !document.isInTrash,
             animatesModeChanges: workspace.selected === document
         )
         .overlay(alignment: .topTrailing) {
             DocumentFindBar(session: document.findSession, mode: workspace.viewMode)
         }
+        // Over the find bar too: in the Trash, nothing in the panes answers.
+        .overlay {
+            if document.isInTrash {
+                TrashNotice(fileURL: document.fileURL)
+                    .transition(.opacity)
+            }
+        }
+        .animation(reduceMotion ? nil : .easeOut(duration: ModeChange.duration), value: document.isInTrash)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             StatusBar(
                 text: document.text,
@@ -41,6 +52,23 @@ struct DocumentPanes: View {
         }
         .onChange(of: workspace.viewMode) {
             document.findSession.modeChanged(to: workspace.viewMode)
+        }
+        .onChange(of: document.isInTrash) { _, isInTrash in
+            keyboardFollowsTrash(isInTrash)
+        }
+    }
+
+    /// In the Trash the panes let go of the keyboard, the preview's as well
+    /// as the editor's. Put back, the document in front takes it again,
+    /// unless something else has taken it in the meantime.
+    private func keyboardFollowsTrash(_ isInTrash: Bool) {
+        guard let window = workspace.window, let panes = workspace.stack.panes(of: document) else { return }
+        if isInTrash {
+            if let responder = window.firstResponder as? NSView, responder.isDescendant(of: panes) {
+                window.makeFirstResponder(nil)
+            }
+        } else if workspace.selected === document, window.firstResponder === window {
+            _ = document.takeKeyboard(in: workspace.viewMode)
         }
     }
 }

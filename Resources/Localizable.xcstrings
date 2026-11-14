@@ -2222,6 +2222,47 @@
         }
       }
     },
+    "Put it back to keep editing." : {
+      "comment" : "Under “This file is in the Trash”. “Put back” is the Finder's command that takes a file out of the Trash; use the Finder's own name for it.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Devolva o arquivo para continuar editando."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Lege sie zurück, um sie weiter zu bearbeiten."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Recupéralo para seguir editando."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Remettez-le en place pour continuer à le modifier."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "編集を続けるには、元の場所に戻してください。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "将其放回原处即可继续编辑。"
+          }
+        }
+      }
+    },
     "Rename" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2790,6 +2831,47 @@
         }
       }
     },
+    "Show in Trash" : {
+      "comment" : "Button under “This file is in the Trash”: opens the Trash in the Finder with the file selected.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar na Lixeira"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Im Papierkorb zeigen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mostrar en la Papelera"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Afficher dans la Corbeille"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "ゴミ箱で表示"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "在废纸篓中显示"
+          }
+        }
+      }
+    },
     "Size" : {
       "localizations" : {
         "pt-BR" : {
@@ -3106,6 +3188,47 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "文本宽度：%@。下一个：%@"
+          }
+        }
+      }
+    },
+    "This file is in the Trash" : {
+      "comment" : "Over a document whose file was moved to the Trash: why its text takes no edits.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este arquivo está na Lixeira"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Diese Datei ist im Papierkorb"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Este archivo está en la Papelera"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Ce fichier est dans la Corbeille"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "このファイルはゴミ箱にあります"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "此文件在废纸篓中"
           }
         }
       }

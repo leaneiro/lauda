@@ -122,6 +122,8 @@ final class EditorTextView: NSTextView {
     }
 
     private func imageFileURLs(from pasteboard: NSPasteboard) -> [URL] {
+        // Images are copied next to the file: none while it takes no edits.
+        guard isEditable else { return [] }
         let urls = pasteboard.readObjects(
             forClasses: [NSURL.self],
             options: [.urlReadingFileURLsOnly: true]
@@ -144,7 +146,7 @@ final class EditorTextView: NSTextView {
     var pasteboardProvider: () -> NSPasteboard = { .general }
 
     override func validateUserInterfaceItem(_ item: NSValidatedUserInterfaceItem) -> Bool {
-        if item.action == #selector(paste(_:)),
+        if item.action == #selector(paste(_:)), isEditable,
            ImageImporter.pasteIntent(for: pasteboardProvider()) != .notAnImage {
             return true
         }
@@ -152,7 +154,7 @@ final class EditorTextView: NSTextView {
     }
 
     override func paste(_ sender: Any?) {
-        if let coordinator = delegate as? MarkdownTextView.Coordinator {
+        if isEditable, let coordinator = delegate as? MarkdownTextView.Coordinator {
             switch ImageImporter.pasteIntent(for: pasteboardProvider()) {
             case .imageFiles(let urls):
                 coordinator.insertImageFiles(urls, at: nil)

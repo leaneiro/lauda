@@ -13,6 +13,9 @@ struct MarkdownTextView: NSViewRepresentable {
     @Binding var scrollable: Bool
     let actions: EditorActions
     let fileURL: URL?
+    /// False while the file is in the Trash: the text stays, but takes no
+    /// typing, pasting or formatting, nor a selection.
+    var isEditable = true
 
     @AppStorage(AppSettings.editorFontName) private var fontName: String
     @AppStorage(AppSettings.editorFontSize) private var fontSize: Double
@@ -28,6 +31,7 @@ struct MarkdownTextView: NSViewRepresentable {
         textView.delegate = coordinator
 
         textView.string = text
+        setEditable(isEditable, textView)
         coordinator.textView = textView
         coordinator.applyStyle(fontName: fontName, fontSize: fontSize)
         // The pane comes up before its scroll view has a size; the position
@@ -76,6 +80,9 @@ struct MarkdownTextView: NSViewRepresentable {
         coordinator.scrolling.isLinked = scrollsLinked
         coordinator.scrolling.restoreIfNeeded()
         guard let textView = coordinator.textView else { return }
+        if textView.isEditable != isEditable {
+            setEditable(isEditable, textView)
+        }
 
         // Text this editor published itself is already in it; only text from
         // elsewhere (a revert, a file changed on disk) is compared with the
@@ -101,6 +108,14 @@ struct MarkdownTextView: NSViewRepresentable {
         if scrollSync.movesEditor(linked: scrollsLinked) {
             coordinator.scrolling.applyRemote(scrollSync)
         }
+    }
+
+    /// A text that takes no edits can't be selected either: unselectable,
+    /// the editor shows the arrow rather than the text cursor, which it would
+    /// otherwise show through the notice laid over it.
+    private func setEditable(_ editable: Bool, _ textView: NSTextView) {
+        textView.isSelectable = editable
+        textView.isEditable = editable
     }
 
     static func dismantleNSView(_ nsView: NSScrollView, coordinator: Coordinator) {

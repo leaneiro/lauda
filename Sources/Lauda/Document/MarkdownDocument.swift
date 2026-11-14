@@ -38,6 +38,10 @@ final class MarkdownDocument: NSDocument {
     /// strip reads these.
     private(set) var isEdited = false
     private(set) var title = ""
+    /// Whether the file is in the Trash. The document follows its file
+    /// there as anywhere else, and typing would go on saving into the
+    /// Trash; so the text takes no edits until the file is put back.
+    private(set) var isInTrash = false
     /// What Revert to Saved brings back: the text as the file was opened, or
     /// as it was last saved with Save, as in the Electron edition.
     @ObservationIgnored private var revertText: String?
@@ -86,7 +90,10 @@ final class MarkdownDocument: NSDocument {
     /// Gives the keyboard to the pane that types or scrolls in `mode`;
     /// false while that pane doesn't exist yet.
     func takeKeyboard(in mode: ViewMode) -> Bool {
-        mode == .previewOnly ? previewActions.focus() : editorActions.focus()
+        // In the Trash the panes take nothing, the keyboard included: done,
+        // with nothing to wait for.
+        guard !isInTrash else { return true }
+        return mode == .previewOnly ? previewActions.focus() : editorActions.focus()
     }
 
     // MARK: - Reading and writing
@@ -122,7 +129,7 @@ final class MarkdownDocument: NSDocument {
     /// What typing does: the text changes and the document knows it did,
     /// which marks it edited and schedules the autosave.
     func edit(_ newText: String) {
-        guard newText != text else { return }
+        guard newText != text, !isInTrash else { return }
         text = newText
         updateChangeCount(.changeDone)
     }
@@ -182,7 +189,31 @@ final class MarkdownDocument: NSDocument {
     // follows from it is observed.
     @ObservationIgnored
     override var fileURL: URL? {
-        didSet { title = displayName }
+        didSet {
+            title = displayName
+            let wasInTrash = isInTrash
+            isInTrash = fileURL.map { Trash.contains($0) } ?? false
+            if wasInTrash, !isInTrash {
+                readAgainAfterPutBack()
+            }
+        }
+    }
+
+    /// Out of the Trash, put back by the Finder or moved anywhere else: the
+    /// file may have changed while it was there, so the text is read from it
+    /// again. Once AppKit is done moving the document, and never over edits
+    /// still unsaved.
+    private func readAgainAfterPutBack() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self, !self.isInTrash, !self.isDocumentEdited,
+                let fileURL = self.fileURL, let fileType = self.fileType
+            else { return }
+            do {
+                try self.revert(toContentsOf: fileURL, ofType: fileType)
+            } catch {
+                Log.documents.failure("Reading a document put back from the Trash", error)
+            }
+        }
     }
 
     override var displayName: String! {
@@ -272,7 +303,7 @@ final class MarkdownDocument: NSDocument {
     /// window of its own can't enter: it found no window to show, and the
     /// old versions it opened came up as tabs.
     override func revertToSaved(_ sender: Any?) {
-        guard fileURL != nil, let revertText, revertText != text, let window = windowForSheet else { return }
+        guard fileURL != nil, !isInTrash, let revertText, revertText != text, let window = windowForSheet else { return }
         let alert = NSAlert()
         alert.messageText = String(localized: "Revert to the last saved version of “\(title)”?")
         alert.informativeText = String(localized: "Your current changes will be lost.")
