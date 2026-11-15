@@ -29,8 +29,16 @@ BASELINE="$WORK/baseline-$COMMIT-$audit_version"
 capture() {  # <source root> <scratch path> <output folder>
     rm -rf "$3"
     mkdir -p "$3"
-    (cd "$1" && UI_AUDIT_OUT="$3" swift test --scratch-path "$2" --filter UIAuditTests 2>&1) \
-        | grep -E "error|✔|✘|recorded|signal" || true
+    # A walk that stops halfway leaves some captures behind, and kept as a
+    # baseline they would show every later screen as new: the run has to
+    # pass, not just leave pictures.
+    if ! (cd "$1" && UI_AUDIT_OUT="$3" swift test --scratch-path "$2" --filter UIAuditTests >"$3/run.log" 2>&1); then
+        grep -E "error|✘|recorded|signal" "$3/run.log" >&2 || tail -20 "$3/run.log" >&2
+        echo "the audit did not finish in $1" >&2
+        exit 1
+    fi
+    grep -E "✔ Test run" "$3/run.log" || true
+    rm -f "$3/run.log"
     if ! ls "$3"/*/*.png >/dev/null 2>&1; then
         echo "no captures came out of $1 (is the screen locked?)" >&2
         exit 1
