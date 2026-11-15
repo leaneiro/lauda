@@ -47,7 +47,8 @@ final class MarkdownDocument: NSDocument {
     @ObservationIgnored private var revertText: String?
     /// The reader is being asked whether to keep unsaved edits or the file
     /// as it changed in the Trash; nothing is autosaved until they answer.
-    @ObservationIgnored private var asksWhichTextToKeep = false
+    @ObservationIgnored private(set) var asksWhichTextToKeep = false
+    @ObservationIgnored private var asksWhetherToLoseEdits = false
 
     var scrollSync = ScrollSync()
     /// Whether this document's panes scroll together. The chain on the
@@ -147,9 +148,10 @@ final class MarkdownDocument: NSDocument {
         // autosave of an edit made just before the file went. The document
         // stays edited, so that edit is saved once the file is put back.
         // Saving somewhere else (Save As, Duplicate) is a way out and goes on.
-        // Nor while the reader is being asked which text to keep (see
-        // readAgainAfterPutBack): an autosave then would answer for them.
-        guard !Trash.contains(url), !(asksWhichTextToKeep && saveOperation == .autosaveInPlaceOperation) else {
+        // Nor into the file while the reader is being asked which text to
+        // keep (see readAgainAfterPutBack): a save then, the autosave's or
+        // Save's, would answer for them.
+        guard !Trash.contains(url), !(asksWhichTextToKeep && url == fileURL) else {
             completionHandler(nil)
             return
         }
@@ -229,12 +231,17 @@ final class MarkdownDocument: NSDocument {
                 self.readFile(at: fileURL)
                 return
             }
-            let onDisk = try? Self.decode(Data(contentsOf: fileURL))
-            guard let onDisk, onDisk != self.savedText else {
-                self.saveKeptEdits()
-                return
+            do {
+                // A file that can't be read is not one to write over: the
+                // edits stay kept.
+                guard try Self.decode(Data(contentsOf: fileURL)) != self.savedText else {
+                    self.saveKeptEdits()
+                    return
+                }
+                self.askWhichTextToKeep()
+            } catch {
+                Log.documents.failure("Reading a document put back from the Trash", error)
             }
-            self.askWhichTextToKeep(over: fileURL)
         }
     }
 
@@ -259,7 +266,9 @@ final class MarkdownDocument: NSDocument {
     /// sheet, with the tab brought forward as every question about a
     /// document is. With no window to ask in, the edits stay, unsaved, and
     /// the next save is AppKit's to settle.
-    private func askWhichTextToKeep(over fileURL: URL) {
+    private func askWhichTextToKeep() {
+        // Thrown away and put back again before the answer: one question.
+        guard !asksWhichTextToKeep else { return }
         inWindow { $0.select(self) }
         guard let window = windowForSheet else { return }
         asksWhichTextToKeep = true
@@ -271,6 +280,9 @@ final class MarkdownDocument: NSDocument {
         alert.beginSheetModal(for: window) { [weak self] response in
             guard let self else { return }
             self.asksWhichTextToKeep = false
+            // The file is where it is now, not where it was when asked. Back
+            // in the Trash, the edits go on kept and the next put back asks.
+            guard !self.isInTrash, let fileURL = self.fileURL else { return }
             guard response == .alertFirstButtonReturn else {
                 self.readFile(at: fileURL)
                 return
@@ -320,6 +332,12 @@ final class MarkdownDocument: NSDocument {
         if isDocumentEdited, fileURL == nil {
             inWindow { $0.select(self) }
         }
+        // A question on screen about this document is answered before it
+        // closes: closing under it would lose the edits it asks about.
+        guard !asksWhichTextToKeep else {
+            reply(to: delegate, selector: shouldCloseSelector, shouldClose: false, contextInfo: contextInfo)
+            return
+        }
         if losesEditsOnClosing {
             askWhetherToLoseEdits { [weak self] close in
                 self?.reply(to: delegate, selector: shouldCloseSelector, shouldClose: close, contextInfo: contextInfo)
@@ -341,12 +359,22 @@ final class MarkdownDocument: NSDocument {
             answer(true)
             return
         }
+        // Asked again (a second ⌘W) while its question is up: one is enough.
+        guard !asksWhetherToLoseEdits else {
+            answer(false)
+            return
+        }
+        asksWhetherToLoseEdits = true
         let alert = NSAlert()
         alert.messageText = String(localized: "Close “\(title)” without saving?")
         alert.informativeText = String(localized: "The file is in the Trash, so your changes can't be saved. Put it back to keep them.")
-        alert.addButton(withTitle: String(localized: "Close"))
+        // Return loses nothing: the button that does has to be clicked.
+        let close = alert.addButton(withTitle: String(localized: "Close"))
+        close.hasDestructiveAction = true
+        close.keyEquivalent = ""
         alert.addButton(withTitle: String(localized: "Cancel"))
-        alert.beginSheetModal(for: window) { response in
+        alert.beginSheetModal(for: window) { [weak self] response in
+            self?.asksWhetherToLoseEdits = false
             answer(response == .alertFirstButtonReturn)
         }
     }

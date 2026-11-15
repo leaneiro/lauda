@@ -140,6 +140,13 @@ struct TrashEndToEndTests {
             #expect(await stage.wait { window?.attachedSheet == nil })
         }
 
+        /// Answers a question that is followed by another one on the same window.
+        @MainActor func answerAndWaitForTheNext(_ response: NSApplication.ModalResponse) async throws {
+            let first = try await sheet()
+            window?.endSheet(first, returnCode: response)
+            #expect(await stage.wait { window?.attachedSheet != nil && window?.attachedSheet !== first })
+        }
+
         @MainActor var isOpen: Bool {
             stage.workspace.documents.contains { $0 === document }
         }
@@ -396,8 +403,8 @@ struct TrashEndToEndTests {
 
             scene.stage.workspace.close(scene.document)
 
+            // Closed with nothing to answer: a question would have kept it.
             #expect(await scene.stage.wait { !scene.isOpen })
-            #expect(scene.window?.attachedSheet == nil)
         }
     }
 
@@ -459,6 +466,230 @@ struct TrashEndToEndTests {
         }
     }
 
+    private static func words(in view: NSView) -> [String] {
+        var found: [String] = []
+        if let field = view as? NSTextField { found.append(field.stringValue) }
+        if let button = view as? NSButton { found.append(button.title) }
+        for child in view.subviews { found += words(in: child) }
+        return found
+    }
+
+    @Test("TRASH-01.10 an edit not yet saved shows in the editor and stays out of the file in the Trash") func anEditNotYetSavedShowsInTheEditorAndStaysOutOfTheFile() async throws {
+        try await Scene.run { scene in
+            try await scene.throwAwayWithAnEditKept()
+
+            #expect(Self.typed("x", into: "draft", gives: scene.editor?.string ?? ""))
+            #expect(Self.typed("x", into: "draft", gives: scene.document.text))
+            #expect(try String(contentsOf: scene.trashed, encoding: .utf8) == "draft")
+        }
+    }
+
+    @Test("TRASH-01.10 a file saved before it went to the Trash keeps no edit") func aFileSavedBeforeItWentToTheTrashKeepsNoEdit() async throws {
+        try await Scene.run { scene in
+            scene.press("x", keyCode: Self.x)
+            #expect(await scene.stage.wait { scene.document.isDocumentEdited })
+            await withCheckedContinuation { done in
+                scene.document.autosave(withImplicitCancellability: false) { _ in done.resume() }
+            }
+            #expect(await scene.stage.wait { !scene.document.isDocumentEdited })
+
+            try await scene.throwAway()
+
+            #expect(!scene.document.isDocumentEdited)
+            scene.stage.workspace.close(scene.document)
+            #expect(await scene.stage.wait { !scene.isOpen })
+            #expect(scene.window?.attachedSheet == nil)
+        }
+    }
+
+    @Test("TRASH-01.11 put back with no edit kept writes nothing to the file") func putBackWithNoEditKeptWritesNothingToTheFile() async throws {
+        try await Scene.run { scene in
+            try await scene.throwAway()
+            let before = try scene.modified()
+
+            try await scene.putBack()
+            try await Task.sleep(for: .seconds(1))
+
+            #expect(try scene.modified() == before)
+            #expect(scene.onDisk() == "draft")
+            #expect(scene.window?.attachedSheet == nil)
+        }
+    }
+
+    @Test("TRASH-01.11 Cancel on the closing question and then putting the file back saves the edit without a question") func cancelThenPutBackSavesTheEdit() async throws {
+        try await Scene.run { scene in
+            try await scene.throwAwayWithAnEditKept()
+            scene.stage.workspace.close(scene.document)
+            try await scene.answer(.alertSecondButtonReturn)
+
+            try await scene.putBack()
+
+            #expect(await scene.stage.wait { Self.typed("x", into: "draft", gives: scene.onDisk()) })
+            #expect(scene.window?.attachedSheet == nil)
+            #expect(scene.isOpen)
+        }
+    }
+
+    @Test("TRASH-01.12 the closing question has the title, the text and the two buttons") func theClosingQuestionHasTheTitleTheTextAndTheTwoButtons() async throws {
+        try await Scene.run { scene in
+            try await scene.throwAwayWithAnEditKept()
+
+            scene.stage.workspace.close(scene.document)
+            let words = Self.words(in: try await scene.sheet().contentView ?? NSView())
+
+            #expect(words.contains("Close “notes.md” without saving?"))
+            #expect(words.contains("The file is in the Trash, so your changes can't be saved. Put it back to keep them."))
+            #expect(words.contains("Close"))
+            #expect(words.contains("Cancel"))
+            try await scene.answer(.alertSecondButtonReturn)
+        }
+    }
+
+    @Test("TRASH-01.12 closing the whole window asks about the edit kept, and Cancel keeps it open") func closingTheWholeWindowAsksAboutTheEditKept() async throws {
+        try await Scene.run { scene in
+            try await scene.throwAwayWithAnEditKept()
+
+            scene.stage.workspace.closeEveryTab()
+            try await scene.answer(.alertSecondButtonReturn)
+
+            #expect(scene.isOpen)
+            #expect(scene.document.isInTrash)
+            #expect(Self.typed("x", into: "draft", gives: scene.document.text))
+        }
+    }
+
+    @Test("TRASH-01.12 closing the whole window and answering Close closes the document and leaves the file as it was") func closingTheWholeWindowAndAnsweringClose() async throws {
+        try await Scene.run { scene in
+            try await scene.throwAwayWithAnEditKept()
+
+            scene.stage.workspace.closeEveryTab()
+            try await scene.answer(.alertFirstButtonReturn)
+
+            #expect(await scene.stage.wait { !scene.isOpen })
+            #expect(try String(contentsOf: scene.trashed, encoding: .utf8) == "draft")
+        }
+    }
+
+    @Test("TRASH-01.12 quitting with another tab in front brings the tab of the file in the Trash to the front") func quittingBringsTheTabToTheFront() async throws {
+        try await Scene.run { scene in
+            try await scene.throwAwayWithAnEditKept()
+            let other = try scene.stage.open("other.md", text: "other")
+            #expect(await scene.stage.wait { scene.stage.workspace.selected === other })
+            var mayQuit: Bool?
+
+            scene.stage.workspace.askAboutEditsLostOnQuitting { mayQuit = $0 }
+            _ = try await scene.sheet()
+
+            #expect(scene.stage.workspace.selected === scene.document)
+            try await scene.answer(.alertSecondButtonReturn)
+            #expect(mayQuit == false)
+        }
+    }
+
+    @Test("TRASH-01.12 quitting with two documents holding an edit asks about each, and Cancel on the second stops the quit") func quittingWithTwoDocumentsAsksAboutEach() async throws {
+        try await Scene.run { scene in
+            try await scene.throwAwayWithAnEditKept()
+            let second = try scene.stage.open("second.md", text: "second")
+            second.edit("second kept")
+            #expect(await scene.stage.wait { second.isDocumentEdited })
+            let secondHome = try #require(second.fileURL)
+            let secondTrashed = scene.trashed.deletingLastPathComponent().appendingPathComponent("second.md")
+            try Scene.move(secondHome, to: secondTrashed)
+            #expect(await scene.stage.wait { second.isInTrash })
+            var mayQuit: Bool?
+
+            scene.stage.workspace.askAboutEditsLostOnQuitting { mayQuit = $0 }
+            try await scene.answerAndWaitForTheNext(.alertFirstButtonReturn)
+            try await scene.answer(.alertSecondButtonReturn)
+
+            #expect(mayQuit == false)
+            #expect(try String(contentsOf: secondTrashed, encoding: .utf8) == "second")
+            #expect(try String(contentsOf: scene.trashed, encoding: .utf8) == "draft")
+            #expect(scene.window?.attachedSheet == nil)
+        }
+    }
+
+    @Test("TRASH-01.12 quitting with two documents holding an edit goes on once both are answered Close") func quittingWithTwoDocumentsGoesOnWhenBothAreClosed() async throws {
+        try await Scene.run { scene in
+            try await scene.throwAwayWithAnEditKept()
+            let second = try scene.stage.open("second.md", text: "second")
+            second.edit("second kept")
+            #expect(await scene.stage.wait { second.isDocumentEdited })
+            let secondHome = try #require(second.fileURL)
+            try Scene.move(secondHome, to: scene.trashed.deletingLastPathComponent().appendingPathComponent("second.md"))
+            #expect(await scene.stage.wait { second.isInTrash })
+            var mayQuit: Bool?
+
+            scene.stage.workspace.askAboutEditsLostOnQuitting { mayQuit = $0 }
+            try await scene.answerAndWaitForTheNext(.alertFirstButtonReturn)
+            try await scene.answer(.alertFirstButtonReturn)
+
+            #expect(mayQuit == true)
+        }
+    }
+
+    @Test("TRASH-01.13 the question about a file changed in the Trash has the title, the text and the two buttons") func theQuestionAboutAChangedFileHasTheTitleTheTextAndTheTwoButtons() async throws {
+        try await Scene.run { scene in
+            try await scene.throwAwayWithAnEditKept()
+            try Data("final".utf8).write(to: scene.trashed)
+
+            try await scene.putBack()
+            let words = Self.words(in: try await scene.sheet().contentView ?? NSView())
+
+            #expect(words.contains("“notes.md” changed while it was in the Trash"))
+            #expect(words.contains("Keep the changes you made here, or use the file as it is now?"))
+            #expect(words.contains("Keep My Changes"))
+            #expect(words.contains("Use the File"))
+            #expect(!scene.document.isInTrash)
+            #expect(scene.onDisk() == "final")
+            try await scene.answer(.alertSecondButtonReturn)
+        }
+    }
+
+    @Test("TRASH-01.13 put back changed with another tab in front brings the tab of the file to the front") func putBackChangedBringsTheTabToTheFront() async throws {
+        try await Scene.run { scene in
+            try await scene.throwAwayWithAnEditKept()
+            try Data("final".utf8).write(to: scene.trashed)
+            let other = try scene.stage.open("other.md", text: "other")
+            #expect(await scene.stage.wait { scene.stage.workspace.selected === other })
+
+            try Scene.move(scene.trashed, to: scene.home)
+            _ = try await scene.sheet()
+
+            #expect(scene.stage.workspace.selected === scene.document)
+            try await scene.answer(.alertSecondButtonReturn)
+        }
+    }
+
+    @Test("TRASH-01.13 after Keep My Changes typing changes the text") func afterKeepMyChangesTypingChangesTheText() async throws {
+        try await Scene.run { scene in
+            try await scene.throwAwayWithAnEditKept()
+            try Data("final".utf8).write(to: scene.trashed)
+            try await scene.putBack()
+            try await scene.answer(.alertFirstButtonReturn)
+            #expect(await scene.stage.wait { scene.keyboardIsInTheEditor })
+            let before = scene.document.text
+
+            scene.press("y", keyCode: 16)
+
+            #expect(await scene.stage.wait { Self.typed("y", into: before, gives: scene.document.text) })
+        }
+    }
+
+    @Test("TRASH-01.13 after Use the File typing changes the text") func afterUseTheFileTypingChangesTheText() async throws {
+        try await Scene.run { scene in
+            try await scene.throwAwayWithAnEditKept()
+            try Data("final".utf8).write(to: scene.trashed)
+            try await scene.putBack()
+            try await scene.answer(.alertSecondButtonReturn)
+            #expect(await scene.stage.wait { scene.document.text == "final" && scene.keyboardIsInTheEditor })
+
+            scene.press("y", keyCode: 16)
+
+            #expect(await scene.stage.wait { Self.typed("y", into: "final", gives: scene.document.text) })
+        }
+    }
+
     @Test("TRASH-01.12 quitting goes on once the question is answered Close, and asks nothing with no edit kept") func quittingGoesOnOnceAnsweredClose() async throws {
         try await Scene.run { scene in
             try await scene.throwAway()
@@ -476,6 +707,86 @@ struct TrashEndToEndTests {
 
             #expect(mayQuit == true)
             #expect(try String(contentsOf: scene.trashed, encoding: .utf8) == "draft")
+        }
+    }
+
+    @Test("TRASH-01.12 closing again while the question is up asks only once") func closingAgainWhileTheQuestionIsUpAsksOnlyOnce() async throws {
+        try await Scene.run { scene in
+            try await scene.throwAwayWithAnEditKept()
+
+            scene.stage.workspace.close(scene.document)
+            _ = try await scene.sheet()
+            scene.stage.workspace.close(scene.document)
+            try await scene.answer(.alertSecondButtonReturn)
+
+            // No second question waiting behind the first.
+            try await Task.sleep(for: .milliseconds(300))
+            #expect(scene.window?.attachedSheet == nil)
+            #expect(scene.isOpen)
+        }
+    }
+
+    @Test("TRASH-01.12 Return does not answer Close: the button that loses the edit has to be chosen") func returnDoesNotAnswerClose() async throws {
+        try await Scene.run { scene in
+            try await scene.throwAwayWithAnEditKept()
+
+            scene.stage.workspace.close(scene.document)
+            let sheet = try await scene.sheet()
+
+            #expect(sheet.defaultButtonCell == nil)
+            try await scene.answer(.alertSecondButtonReturn)
+        }
+    }
+
+    @Test("TRASH-01.13 while the question is up the document does not close and Save writes nothing") func whileTheQuestionIsUpTheDocumentDoesNotCloseAndSaveWritesNothing() async throws {
+        try await Scene.run { scene in
+            try await scene.throwAwayWithAnEditKept()
+            try Data("final".utf8).write(to: scene.trashed)
+            try await scene.putBack()
+            _ = try await scene.sheet()
+
+            scene.stage.workspace.close(scene.document)
+            await withCheckedContinuation { done in
+                scene.document.save(to: scene.home, ofType: "net.daringfireball.markdown", for: .saveOperation) { _ in done.resume() }
+            }
+
+            #expect(scene.isOpen)
+            #expect(scene.onDisk() == "final")
+            try await scene.answer(.alertFirstButtonReturn)
+            #expect(await scene.stage.wait { Self.typed("x", into: "draft", gives: scene.onDisk()) })
+        }
+    }
+
+    @Test("TRASH-01.13 Use the File reads the file where it is when answered, moved since the question") func useTheFileReadsTheFileWhereItIsWhenAnswered() async throws {
+        try await Scene.run { scene in
+            try await scene.throwAwayWithAnEditKept()
+            try Data("final".utf8).write(to: scene.trashed)
+            try await scene.putBack()
+            _ = try await scene.sheet()
+            let renamed = scene.home.deletingLastPathComponent().appendingPathComponent("renamed.md")
+            try Scene.move(scene.home, to: renamed)
+            #expect(await scene.stage.wait { scene.document.fileURL?.lastPathComponent == "renamed.md" })
+
+            try await scene.answer(.alertSecondButtonReturn)
+
+            #expect(await scene.stage.wait { scene.document.text == "final" && !scene.document.isDocumentEdited })
+        }
+    }
+
+    @Test("TRASH-01.13 thrown away again before the answer, the edit stays kept and nothing is written") func thrownAwayAgainBeforeTheAnswerTheEditStaysKept() async throws {
+        try await Scene.run { scene in
+            try await scene.throwAwayWithAnEditKept()
+            try Data("final".utf8).write(to: scene.trashed)
+            try await scene.putBack()
+            _ = try await scene.sheet()
+            try Scene.move(scene.home, to: scene.trashed)
+            #expect(await scene.stage.wait { scene.document.isInTrash })
+
+            try await scene.answer(.alertSecondButtonReturn)
+
+            #expect(Self.typed("x", into: "draft", gives: scene.document.text))
+            #expect(scene.document.isDocumentEdited)
+            #expect(try String(contentsOf: scene.trashed, encoding: .utf8) == "final")
         }
     }
 }

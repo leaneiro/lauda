@@ -65,6 +65,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Edits kept out of the Trash would be lost without a word: those
     /// documents are asked first, and a Cancel keeps the app open.
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        // A question already on screen is answered before the app quits.
+        guard !Workspace.shared.documents.contains(where: \.asksWhichTextToKeep) else { return .terminateCancel }
         guard Workspace.shared.documents.contains(where: \.losesEditsOnClosing) else {
             Workspace.shared.remembersSession = false
             return .terminateNow
