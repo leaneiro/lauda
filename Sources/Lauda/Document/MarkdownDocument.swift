@@ -227,7 +227,11 @@ final class MarkdownDocument: NSDocument {
         trashWatch = nil
         guard isInTrash, let fileURL else { return }
         let descriptor = open(fileURL.path, O_EVTONLY)
-        guard descriptor >= 0 else { return }
+        guard descriptor >= 0 else {
+            // Unwatched, the notice would stay over a file that is gone.
+            Log.documents.failure("Watching a file in the Trash", POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO))
+            return
+        }
         let watch = DispatchSource.makeFileSystemObjectSource(fileDescriptor: descriptor, eventMask: .delete, queue: .main)
         watch.setEventHandler { [weak self] in self?.fileInTheTrashWasDeleted() }
         watch.setCancelHandler { Darwin.close(descriptor) }
@@ -250,8 +254,16 @@ final class MarkdownDocument: NSDocument {
             close()
             return
         }
+        // Out of the Trash by having no file at all: the reading again a
+        // put back file gets finds no file and does nothing.
         self.fileURL = nil
         fileModificationDate = nil
+        // AppKit numbers a document untitled when it is made, and this one
+        // was made with a file (measured: it came out "Untitled -1"). It
+        // takes the name a new document would get now.
+        displayName = MarkdownDocument().displayName
+        // The session forgets the file that is gone.
+        inWindow { $0.documentDidSave() }
     }
 
     /// What the Find commands reach: nothing while the file is in the

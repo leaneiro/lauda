@@ -823,6 +823,7 @@ struct TrashEndToEndTests {
             #expect(await scene.stage.wait { !scene.document.isInTrash && scene.editor?.isEditable == true })
             #expect(scene.isOpen)
             #expect(scene.document.fileURL == nil)
+            #expect(scene.document.title == "Untitled", "title is \(scene.document.title)")
             #expect(scene.document.isDocumentEdited)
             #expect(Self.typed("x", into: "draft", gives: scene.document.text))
             #expect(await scene.stage.wait { scene.keyboardIsInTheEditor })
@@ -846,8 +847,19 @@ struct TrashEndToEndTests {
 
             #expect(scene.isOpen)
             #expect(scene.document.isInTrash)
-            try await scene.putBack()
-            #expect(await scene.stage.wait { scene.document.text == "final" })
+            // The file written in its place is the one watched from here on.
+            try FileManager.default.removeItem(at: scene.trashed)
+            #expect(await scene.stage.wait { !scene.isOpen })
+        }
+    }
+
+    @Test("TRASH-01.14 alone in the window, the document closes and takes the window with it") func aloneInTheWindowTheDocumentClosesAndTakesTheWindow() async throws {
+        try await Scene.run { scene in
+            try await scene.throwAway()
+
+            try FileManager.default.removeItem(at: scene.trashed)
+
+            #expect(await scene.stage.wait { !scene.isOpen && scene.window == nil })
         }
     }
 }
