@@ -798,5 +798,57 @@ struct TrashEndToEndTests {
             #expect(try String(contentsOf: scene.trashed, encoding: .utf8) == "final")
         }
     }
+
+    @Test("TRASH-01.14 the file deleted from the Trash with no edit kept closes the document without a question") func theFileDeletedFromTheTrashWithNoEditKeptClosesTheDocument() async throws {
+        try await Scene.run { scene in
+            let other = try scene.stage.open("other.md", text: "other")
+            scene.stage.workspace.select(scene.document)
+            try Scene.move(scene.home, to: scene.trashed)
+            #expect(await scene.stage.wait { scene.document.isInTrash })
+
+            try FileManager.default.removeItem(at: scene.trashed)
+
+            #expect(await scene.stage.wait { !scene.isOpen })
+            #expect(scene.window?.attachedSheet == nil)
+            #expect(scene.stage.workspace.selected === other)
+        }
+    }
+
+    @Test("TRASH-01.15 the file deleted from the Trash with an edit kept leaves an untitled document that takes typing") func theFileDeletedFromTheTrashWithAnEditKeptLeavesAnUntitledDocument() async throws {
+        try await Scene.run { scene in
+            try await scene.throwAwayWithAnEditKept()
+
+            try FileManager.default.removeItem(at: scene.trashed)
+
+            #expect(await scene.stage.wait { !scene.document.isInTrash && scene.editor?.isEditable == true })
+            #expect(scene.isOpen)
+            #expect(scene.document.fileURL == nil)
+            #expect(scene.document.isDocumentEdited)
+            #expect(Self.typed("x", into: "draft", gives: scene.document.text))
+            #expect(await scene.stage.wait { scene.keyboardIsInTheEditor })
+            let kept = scene.document.text
+            scene.press("x", keyCode: Self.x)
+            // A second x beside the first: the text grows by the key.
+            #expect(await scene.stage.wait { scene.document.text.count == kept.count + 1 })
+            #expect(scene.document.text.filter { $0 == "x" }.count == 2)
+            // Nothing came back to where the file was, in the Trash or out.
+            #expect(!FileManager.default.fileExists(atPath: scene.trashed.path))
+            #expect(!FileManager.default.fileExists(atPath: scene.home.path))
+        }
+    }
+
+    @Test("TRASH-01.14 a file written again in the Trash, replaced and not deleted, keeps the document open") func aFileReplacedInTheTrashKeepsTheDocumentOpen() async throws {
+        try await Scene.run { scene in
+            try await scene.throwAway()
+
+            try Data("final".utf8).write(to: scene.trashed, options: .atomic)
+            try await Task.sleep(for: .milliseconds(300))
+
+            #expect(scene.isOpen)
+            #expect(scene.document.isInTrash)
+            try await scene.putBack()
+            #expect(await scene.stage.wait { scene.document.text == "final" })
+        }
+    }
 }
 }

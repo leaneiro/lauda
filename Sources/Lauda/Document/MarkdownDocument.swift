@@ -52,6 +52,7 @@ final class MarkdownDocument: NSDocument {
     /// The question about closing is up: asked again, by a second ⌘W or a
     /// ⌘Q, it is not put up twice.
     @ObservationIgnored private var asksWhetherToLoseEdits = false
+    @ObservationIgnored private var trashWatch: DispatchSourceFileSystemObject?
 
     var scrollSync = ScrollSync()
     /// Whether this document's panes scroll together. The chain on the
@@ -214,7 +215,43 @@ final class MarkdownDocument: NSDocument {
             if wasInTrash, !isInTrash {
                 readAgainAfterPutBack()
             }
+            watchForTheTrashBeingEmptied()
         }
+    }
+
+    /// A file in the Trash can stop existing: the Trash is emptied, which
+    /// no file presenter hears of (the Finder deletes without coordinating).
+    /// The file itself is watched instead, for as long as it is there.
+    private func watchForTheTrashBeingEmptied() {
+        trashWatch?.cancel()
+        trashWatch = nil
+        guard isInTrash, let fileURL else { return }
+        let descriptor = open(fileURL.path, O_EVTONLY)
+        guard descriptor >= 0 else { return }
+        let watch = DispatchSource.makeFileSystemObjectSource(fileDescriptor: descriptor, eventMask: .delete, queue: .main)
+        watch.setEventHandler { [weak self] in self?.fileInTheTrashWasDeleted() }
+        watch.setCancelHandler { Darwin.close(descriptor) }
+        watch.resume()
+        trashWatch = watch
+    }
+
+    /// Nothing is left to put back. With no edits kept the document has
+    /// nothing the reader could lose and closes. With edits kept (see save)
+    /// it becomes an untitled document holding them, to be saved somewhere
+    /// or let go as any new document is.
+    private func fileInTheTrashWasDeleted() {
+        guard isInTrash, let fileURL else { return }
+        // Replaced, not gone: another app wrote a new file over the old one.
+        guard !FileManager.default.fileExists(atPath: fileURL.path) else {
+            watchForTheTrashBeingEmptied()
+            return
+        }
+        guard isDocumentEdited else {
+            close()
+            return
+        }
+        self.fileURL = nil
+        fileModificationDate = nil
     }
 
     /// What the Find commands reach: nothing while the file is in the
@@ -387,6 +424,8 @@ final class MarkdownDocument: NSDocument {
     /// a document closes the windows it holds, and the shared window must
     /// be with a document that stays.
     override func close() {
+        trashWatch?.cancel()
+        trashWatch = nil
         inWindow { $0.willClose(self) }
         super.close()
     }
