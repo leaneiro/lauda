@@ -255,13 +255,14 @@ final class MarkdownDocument: NSDocument {
             close()
             return
         }
-        // Out of the Trash by having no file at all: the reading again a
-        // put back file gets finds no file and does nothing.
+        // No file is also "out of the Trash" to fileURL's didSet, which
+        // calls readAgainAfterPutBack: it finds no file and does nothing.
         self.fileURL = nil
         fileModificationDate = nil
         // AppKit numbers a document untitled when it is made, and this one
-        // was made with a file (measured: it came out "Untitled -1"). It
-        // takes the name a new document would get now.
+        // was made with a file (measured: with the name reset to nil it
+        // came out "Untitled -1"). It takes the name a new document would
+        // get now.
         displayName = MarkdownDocument().displayName
         // The session forgets the file that is gone.
         inWindow { $0.documentDidSave() }
@@ -269,7 +270,9 @@ final class MarkdownDocument: NSDocument {
         // Close would lose edits that can now be saved somewhere: it is
         // answered Cancel, and closing again asks what a new document asks.
         if let closingQuestion {
-            closingQuestion.sheetParent?.endSheet(closingQuestion, returnCode: .alertSecondButtonReturn)
+            // By the document's window, not the sheet's parent: a question
+            // still waiting behind another sheet has no parent yet.
+            (windowForSheet ?? closingQuestion.sheetParent)?.endSheet(closingQuestion, returnCode: .alertSecondButtonReturn)
         }
     }
 
