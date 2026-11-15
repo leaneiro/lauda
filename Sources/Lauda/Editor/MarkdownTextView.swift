@@ -470,6 +470,13 @@ struct MarkdownTextView: NSViewRepresentable {
             textView.performTextFinderAction(sender)
         }
 
+        /// Puts the native find bar away without asking for the keyboard,
+        /// which performFindAction takes on the way: this is for a pane
+        /// that is giving the keyboard up, or never had it.
+        func hideFindBar() {
+            textView?.enclosingScrollView?.isFindBarVisible = false
+        }
+
         // MARK: - Style
 
         func applyStyle(fontName: String, fontSize: Double) {

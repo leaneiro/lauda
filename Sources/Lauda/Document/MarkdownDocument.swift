@@ -220,7 +220,11 @@ final class MarkdownDocument: NSDocument {
         DispatchQueue.main.async { [weak self] in
             guard let self, !self.isInTrash else { return }
             guard !self.isDocumentEdited else {
-                self.autosave(withImplicitCancellability: false) { _ in }
+                self.autosave(withImplicitCancellability: false) { error in
+                    if let error {
+                        Log.documents.failure("Saving a document put back from the Trash", error)
+                    }
+                }
                 return
             }
             guard let fileURL = self.fileURL, let fileType = self.fileType else { return }

@@ -13,6 +13,7 @@ final class EditorActions: EditorFinding {
     func toggleUnderline() { coordinator?.toggleInlinePair("<u>", "</u>") }
     func insertLink() { coordinator?.insertLink() }
     func performFind(_ action: NSTextFinder.Action) { coordinator?.performFindAction(action) }
+    func hideFindBar() { coordinator?.hideFindBar() }
     func findUpdate(_ query: String) -> (current: Int, total: Int) {
         coordinator?.find.update(query) ?? (0, 0)
     }

@@ -66,7 +66,7 @@ struct DocumentPanes: View {
             // An open find bar goes too, ours or the editor's own for
             // replacing: its field would keep the keyboard.
             document.findSession.close()
-            document.editorActions.performFind(.hideFindInterface)
+            document.editorActions.hideFindBar()
         }
         guard let window = workspace.window, let panes = workspace.stack.panes(of: document) else { return }
         if isInTrash {
