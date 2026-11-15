@@ -22,15 +22,22 @@ struct TrashEndToEndTests {
 
         @MainActor init(text: String = "draft") async throws {
             let scratch = FileManager.default.temporaryDirectory.appendingPathComponent("lauda-e2e-\(UUID().uuidString)")
-            stage = try AuditStage(named: "e2e", into: scratch)
-            stage.workspace.viewMode = .split
-            document = try stage.open("notes.md", text: text)
-            stage.resize(to: NSSize(width: 1100, height: 800))
-            home = try #require(document.fileURL)
-            let trash = stage.folder.appendingPathComponent(".Trash", isDirectory: true)
-            try FileManager.default.createDirectory(at: trash, withIntermediateDirectories: true)
-            trashed = trash.appendingPathComponent(home.lastPathComponent)
+            let stage = try AuditStage(named: "e2e", into: scratch)
             try? FileManager.default.removeItem(at: scratch)
+            self.stage = stage
+            stage.workspace.viewMode = .split
+            let trash = stage.folder.appendingPathComponent(".Trash", isDirectory: true)
+            do {
+                document = try stage.open("notes.md", text: text)
+                home = try #require(document.fileURL)
+                try FileManager.default.createDirectory(at: trash, withIntermediateDirectories: true)
+            } catch {
+                // Half a scene is still a window and a folder to take down.
+                await stage.close()
+                throw error
+            }
+            stage.resize(to: NSSize(width: 1100, height: 800))
+            trashed = trash.appendingPathComponent(home.lastPathComponent)
             #expect(await stage.wait { editor != nil && keyboardIsInTheEditor })
         }
 
@@ -76,7 +83,7 @@ struct TrashEndToEndTests {
 
         /// The Finder moves files under a file coordinator, which is what
         /// tells an open document about it; a bare move does not.
-        private static func move(_ from: URL, to target: URL) throws {
+        static func move(_ from: URL, to target: URL) throws {
             var coordinationError: NSError?
             var moveError: Error?
             let coordinator = NSFileCoordinator(filePresenter: nil)
@@ -191,7 +198,10 @@ struct TrashEndToEndTests {
             #expect(Self.typed("x", into: "draft", gives: scene.document.text))
             // With nothing typed and nothing asked: the document saves by
             // itself what it had kept.
-            #expect(await scene.stage.wait { (try? String(contentsOf: scene.home, encoding: .utf8)) == scene.document.text })
+            #expect(await scene.stage.wait {
+                Self.typed("x", into: "draft", gives: (try? String(contentsOf: scene.home, encoding: .utf8)) ?? "")
+            })
+            #expect(Self.typed("x", into: "draft", gives: scene.document.text))
         }
     }
 
@@ -223,13 +233,26 @@ struct TrashEndToEndTests {
         }
     }
 
-    @Test("TRASH-01.2 Escape and a change of tab and back leave the file's document locked") func escapeAndAChangeOfTabAndBackLeaveTheFilesDocumentLocked() async throws {
+    @Test("TRASH-01.4 the editor's own replace bar closes when the file goes to the Trash") func theEditorsOwnReplaceBarClosesWhenTheFileGoesToTheTrash() async throws {
+        try await Scene.run { scene in
+            scene.document.findSession.replace(in: .split)
+            #expect(await scene.stage.wait { scene.editor?.enclosingScrollView?.isFindBarVisible == true })
+
+            try await scene.throwAway()
+
+            #expect(await scene.stage.wait { scene.editor?.enclosingScrollView?.isFindBarVisible == false })
+            #expect(await scene.stage.wait { scene.window?.firstResponder === scene.window })
+        }
+    }
+
+    @Test("TRASH-01.2 a change of tab and back leaves the file's document locked, and Escape goes to the window, not to a pane") func aChangeOfTabAndBackLeavesTheFilesDocumentLocked() async throws {
         try await Scene.run { scene in
             try await scene.throwAway()
             #expect(await scene.stage.wait { !scene.keyboardIsInTheEditor })
             // Escape as it arrives with the notice in front: at whoever has
             // the keyboard, which is the window.
-            scene.window?.firstResponder?.tryToPerform(#selector(NSResponder.cancelOperation(_:)), with: nil)
+            #expect(scene.window?.firstResponder === scene.window)
+            scene.window?.tryToPerform(#selector(NSResponder.cancelOperation(_:)), with: nil)
             #expect(scene.document.isInTrash)
             #expect(scene.editor?.isEditable == false)
 
@@ -253,6 +276,22 @@ struct TrashEndToEndTests {
 
             #expect(await scene.stage.wait { Self.typed("x", into: "other", gives: other.text) })
             #expect(scene.document.text == "draft")
+        }
+    }
+
+    @Test("TRASH-01.5 a file in a tab behind goes to the Trash and the tab in front keeps the keyboard") func aFileInATabBehindGoesToTheTrashAndTheTabInFrontKeepsTheKeyboard() async throws {
+        try await Scene.run { scene in
+            let other = try scene.stage.open("other.md", text: "other")
+            #expect(await scene.stage.wait { scene.stage.workspace.selected === other && scene.keyboardIsInTheEditor })
+            let typing = scene.window?.firstResponder
+
+            try Scene.move(scene.home, to: scene.trashed)
+            #expect(await scene.stage.wait { scene.document.isInTrash })
+            try await Task.sleep(for: .milliseconds(300))
+
+            #expect(scene.window?.firstResponder === typing)
+            scene.press("x", keyCode: Self.x)
+            #expect(await scene.stage.wait { Self.typed("x", into: "other", gives: other.text) })
         }
     }
 
