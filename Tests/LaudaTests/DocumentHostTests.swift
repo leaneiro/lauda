@@ -8,6 +8,7 @@ import Testing
 ///
 /// Closing an edited document is left out: AppKit answers `canClose` with a
 /// sheet and waits for it, which in a test with no window never returns.
+extension OpenDocumentsSuites {
 @MainActor
 @Suite(.serialized)
 final class DocumentHostTests {
@@ -228,4 +229,5 @@ final class DocumentHostTests {
         #expect(window.attachedSheet == nil)
         withExtendedLifetime(controller) {}
     }
+}
 }

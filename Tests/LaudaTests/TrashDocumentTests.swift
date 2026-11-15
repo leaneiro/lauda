@@ -2,6 +2,7 @@ import AppKit
 import Testing
 @testable import Lauda
 
+extension OpenDocumentsSuites {
 @MainActor
 @Suite(.serialized)
 final class TrashDocumentTests {
@@ -61,7 +62,7 @@ final class TrashDocumentTests {
         if let error = coordinationError ?? moveError { throw error }
     }
 
-    @Test func `TRASH-01.4 a document whose file is in the Trash refuses typing`() async throws {
+    @Test("TRASH-01.4 a document whose file is in the Trash refuses typing") func aDocumentWhoseFileIsInTheTrashRefusesTyping() async throws {
         let document = try open("notes.md")
         let url = try #require(document.fileURL)
         let inTrash = try move(url, to: trash)
@@ -74,7 +75,7 @@ final class TrashDocumentTests {
         document.close()
     }
 
-    @Test func `TRASH-01.5 other documents stay editable and the trashed one closes`() async throws {
+    @Test("TRASH-01.5 other documents stay editable and the trashed one closes") func otherDocumentsStayEditableAndTheTrashedOneCloses() async throws {
         let notes = try open("notes.md")
         let other = try open("other.md")
         let third = try open("third.md")
@@ -93,7 +94,7 @@ final class TrashDocumentTests {
         third.close()
     }
 
-    @Test func `TRASH-01.6 a returned file is reread and accepts typing again`() async throws {
+    @Test("TRASH-01.6 a returned file is reread and accepts typing again") func aReturnedFileIsRereadAndAcceptsTypingAgain() async throws {
         let document = try open("notes.md")
         let url = try #require(document.fileURL)
         let inTrash = try move(url, to: trash)
@@ -109,7 +110,7 @@ final class TrashDocumentTests {
         document.close()
     }
 
-    @Test func `TRASH-01.6 a file dragged from the Trash to another folder is followed there`() async throws {
+    @Test("TRASH-01.6 a file dragged from the Trash to another folder is followed there") func aFileDraggedFromTheTrashToAnotherFolderIsFollowedThere() async throws {
         let document = try open("notes.md")
         let url = try #require(document.fileURL)
         let inTrash = try move(url, to: trash)
@@ -125,7 +126,7 @@ final class TrashDocumentTests {
         document.close()
     }
 
-    @Test func `TRASH-01.8 a file moved to another folder is followed without a warning`() async throws {
+    @Test("TRASH-01.8 a file moved to another folder is followed without a warning") func aFileMovedToAnotherFolderIsFollowedWithoutAWarning() async throws {
         let document = try open("notes.md")
         let url = try #require(document.fileURL)
         let desk = root.appendingPathComponent("Desk")
@@ -141,7 +142,7 @@ final class TrashDocumentTests {
         document.close()
     }
 
-    @Test func `TRASH-01.8 a renamed file is followed under its new name`() async throws {
+    @Test("TRASH-01.8 a renamed file is followed under its new name") func aRenamedFileIsFollowedUnderItsNewName() async throws {
         let document = try open("notes.md")
         let url = try #require(document.fileURL)
         let renamed = root.appendingPathComponent("ideas.md")
@@ -157,4 +158,5 @@ final class TrashDocumentTests {
         #expect(document.text == "x")
         document.close()
     }
+}
 }

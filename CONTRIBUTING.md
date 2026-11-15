@@ -124,6 +124,21 @@ Suites that drive AppKit are marked `@MainActor`. Some are also
 undo by timing, and the ones that drive a WebKit page: `PDFExportTests`,
 `ScrollLinkPanesTests` and the suites in `PreviewReflowTests.swift`.
 
+Tests in `Tests/LaudaTests/EndToEnd` go through the real window: the
+workspace with its panes, kept far off every screen, files moved under a
+file coordinator as the Finder moves them, and keys sent to the window.
+They are for what a test of one type can't see, such as who has the
+keyboard or what a save writes. They never use the pasteboard, the real
+Trash or a real click: those belong to whoever is at the Mac.
+
+`Scripts/ui-audit.sh [ref]` (or `make ui-audit`) captures every screen of
+the app, in light and dark and in two window sizes, from the working tree
+and from `ref` (`main` by default), and writes what differs to a folder in
+/tmp. A difference is something to read: it has to be one the change
+meant. The suite behind it, `UIAuditTests`, only runs when `UI_AUDIT_OUT`
+names the folder for the captures, which is the one place a test writes
+outside its temporary folder. It needs the screen unlocked.
+
 ### Settings and logs
 
 - Every stored setting is declared once in `AppSettings`, with its key and
