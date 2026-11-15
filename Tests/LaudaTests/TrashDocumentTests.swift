@@ -38,34 +38,16 @@ final class TrashDocumentTests {
         return condition()
     }
 
-    private func move(_ from: URL, to directory: URL) throws -> URL {
+    private func move(_ from: URL, to directory: URL) async throws -> URL {
         let target = directory.appendingPathComponent(from.lastPathComponent)
-        try coordinatedMove(from, to: target)
+        try await FinderMove.move(from, to: target)
         return target
-    }
-
-    /// The Finder moves files under a file coordinator, which is what tells a
-    /// file presenter about it; a bare `moveItem` does not.
-    private func coordinatedMove(_ from: URL, to target: URL) throws {
-        var coordinationError: NSError?
-        var moveError: Error?
-        let coordinator = NSFileCoordinator(filePresenter: nil)
-        coordinator.coordinate(
-            writingItemAt: from, options: .forMoving,
-            writingItemAt: target, options: .forReplacing, error: &coordinationError
-        ) { source, destination in
-            do {
-                try FileManager.default.moveItem(at: source, to: destination)
-                coordinator.item(at: source, didMoveTo: destination)
-            } catch { moveError = error }
-        }
-        if let error = coordinationError ?? moveError { throw error }
     }
 
     @Test("TRASH-01.4 a document whose file is in the Trash refuses typing") func aDocumentWhoseFileIsInTheTrashRefusesTyping() async throws {
         let document = try open("notes.md")
         let url = try #require(document.fileURL)
-        let inTrash = try move(url, to: trash)
+        let inTrash = try await move(url, to: trash)
         #expect(await waitUntil { document.isInTrash })
 
         document.edit("x")
@@ -80,7 +62,7 @@ final class TrashDocumentTests {
         let other = try open("other.md")
         let third = try open("third.md")
         let url = try #require(notes.fileURL)
-        _ = try move(url, to: trash)
+        _ = try await move(url, to: trash)
         #expect(await waitUntil { notes.isInTrash })
 
         other.edit("x")
@@ -97,11 +79,11 @@ final class TrashDocumentTests {
     @Test("TRASH-01.6 a returned file is reread and accepts typing again") func aReturnedFileIsRereadAndAcceptsTypingAgain() async throws {
         let document = try open("notes.md")
         let url = try #require(document.fileURL)
-        let inTrash = try move(url, to: trash)
+        let inTrash = try await move(url, to: trash)
         #expect(await waitUntil { document.isInTrash })
         try "final".write(to: inTrash, atomically: false, encoding: .utf8)
 
-        _ = try move(inTrash, to: root)
+        _ = try await move(inTrash, to: root)
         #expect(await waitUntil { !document.isInTrash })
 
         #expect(await waitUntil { document.text == "final" })
@@ -113,11 +95,11 @@ final class TrashDocumentTests {
     @Test("TRASH-01.6 a file dragged from the Trash to another folder is followed there") func aFileDraggedFromTheTrashToAnotherFolderIsFollowedThere() async throws {
         let document = try open("notes.md")
         let url = try #require(document.fileURL)
-        let inTrash = try move(url, to: trash)
+        let inTrash = try await move(url, to: trash)
         #expect(await waitUntil { document.isInTrash })
 
         let desk = root.appendingPathComponent("Desk")
-        let target = try move(inTrash, to: desk)
+        let target = try await move(inTrash, to: desk)
         #expect(await waitUntil { !document.isInTrash })
 
         document.edit("x")
@@ -131,7 +113,7 @@ final class TrashDocumentTests {
         let url = try #require(document.fileURL)
         let desk = root.appendingPathComponent("Desk")
 
-        let target = try move(url, to: desk)
+        let target = try await move(url, to: desk)
 
         #expect(await waitUntil {
             document.fileURL?.resolvingSymlinksInPath() == target.resolvingSymlinksInPath()
@@ -147,7 +129,7 @@ final class TrashDocumentTests {
         let url = try #require(document.fileURL)
         let renamed = root.appendingPathComponent("ideas.md")
 
-        try coordinatedMove(url, to: renamed)
+        try await FinderMove.move(url, to: renamed)
 
         #expect(await waitUntil {
             document.fileURL?.resolvingSymlinksInPath() == renamed.resolvingSymlinksInPath()

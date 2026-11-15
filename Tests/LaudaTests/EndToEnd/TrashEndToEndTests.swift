@@ -77,33 +77,17 @@ struct TrashEndToEndTests {
         }
 
         @MainActor func throwAway() async throws {
-            try Self.move(home, to: trashed)
+            try await Self.move(home, to: trashed)
             #expect(await stage.wait { document.isInTrash && editor?.isEditable == false })
         }
 
         @MainActor func putBack() async throws {
-            try Self.move(trashed, to: home)
+            try await Self.move(trashed, to: home)
             #expect(await stage.wait { !document.isInTrash && editor?.isEditable == true })
         }
 
-        /// The Finder moves files under a file coordinator, which is what
-        /// tells an open document about it; a bare move does not.
-        static func move(_ from: URL, to target: URL) throws {
-            var coordinationError: NSError?
-            var moveError: Error?
-            let coordinator = NSFileCoordinator(filePresenter: nil)
-            coordinator.coordinate(
-                writingItemAt: from, options: .forMoving,
-                writingItemAt: target, options: .forReplacing, error: &coordinationError
-            ) { source, destination in
-                do {
-                    try FileManager.default.moveItem(at: source, to: destination)
-                    coordinator.item(at: source, didMoveTo: destination)
-                } catch {
-                    moveError = error
-                }
-            }
-            if let error = coordinationError ?? moveError { throw error }
+        static func move(_ from: URL, to target: URL) async throws {
+            try await FinderMove.move(from, to: target)
         }
 
         /// A key pressed, sent to the window as the keyboard's are. Only
@@ -337,7 +321,7 @@ struct TrashEndToEndTests {
             #expect(await scene.stage.wait { scene.stage.workspace.selected === other && scene.keyboardIsInTheEditor })
             let typing = scene.window?.firstResponder
 
-            try Scene.move(scene.home, to: scene.trashed)
+            try await Scene.move(scene.home, to: scene.trashed)
             // Until the panes behind have heard of it, which is when they
             // would have taken the keyboard: their editor stops taking text.
             #expect(await scene.stage.wait { scene.document.isInTrash && scene.lockedEditors == 1 })
@@ -599,7 +583,7 @@ struct TrashEndToEndTests {
             #expect(await scene.stage.wait { second.isDocumentEdited })
             let secondHome = try #require(second.fileURL)
             let secondTrashed = scene.trashed.deletingLastPathComponent().appendingPathComponent("second.md")
-            try Scene.move(secondHome, to: secondTrashed)
+            try await Scene.move(secondHome, to: secondTrashed)
             #expect(await scene.stage.wait { second.isInTrash })
             var mayQuit: Bool?
 
@@ -621,7 +605,7 @@ struct TrashEndToEndTests {
             second.edit("second kept")
             #expect(await scene.stage.wait { second.isDocumentEdited })
             let secondHome = try #require(second.fileURL)
-            try Scene.move(secondHome, to: scene.trashed.deletingLastPathComponent().appendingPathComponent("second.md"))
+            try await Scene.move(secondHome, to: scene.trashed.deletingLastPathComponent().appendingPathComponent("second.md"))
             #expect(await scene.stage.wait { second.isInTrash })
             var mayQuit: Bool?
 
@@ -658,7 +642,7 @@ struct TrashEndToEndTests {
             let other = try scene.stage.open("other.md", text: "other")
             #expect(await scene.stage.wait { scene.stage.workspace.selected === other })
 
-            try Scene.move(scene.trashed, to: scene.home)
+            try await Scene.move(scene.trashed, to: scene.home)
             _ = try await scene.sheet()
 
             #expect(scene.stage.workspace.selected === scene.document)
@@ -773,7 +757,7 @@ struct TrashEndToEndTests {
             try await scene.putBack()
             _ = try await scene.sheet()
             let renamed = scene.home.deletingLastPathComponent().appendingPathComponent("renamed.md")
-            try Scene.move(scene.home, to: renamed)
+            try await Scene.move(scene.home, to: renamed)
             #expect(await scene.stage.wait { scene.document.fileURL?.lastPathComponent == "renamed.md" })
 
             try await scene.answer(.alertSecondButtonReturn)
@@ -788,7 +772,7 @@ struct TrashEndToEndTests {
             try Data("final".utf8).write(to: scene.trashed)
             try await scene.putBack()
             _ = try await scene.sheet()
-            try Scene.move(scene.home, to: scene.trashed)
+            try await Scene.move(scene.home, to: scene.trashed)
             #expect(await scene.stage.wait { scene.document.isInTrash })
 
             try await scene.answer(.alertSecondButtonReturn)
@@ -803,7 +787,7 @@ struct TrashEndToEndTests {
         try await Scene.run { scene in
             let other = try scene.stage.open("other.md", text: "other")
             scene.stage.workspace.select(scene.document)
-            try Scene.move(scene.home, to: scene.trashed)
+            try await Scene.move(scene.home, to: scene.trashed)
             #expect(await scene.stage.wait { scene.document.isInTrash })
 
             try FileManager.default.removeItem(at: scene.trashed)
@@ -873,6 +857,7 @@ struct TrashEndToEndTests {
 
             #expect(await scene.stage.wait { scene.window?.attachedSheet == nil && scene.document.fileURL == nil })
             #expect(scene.isOpen)
+            #expect(scene.document.title == "Untitled")
             #expect(scene.document.isDocumentEdited)
             #expect(Self.typed("x", into: "draft", gives: scene.document.text))
         }
