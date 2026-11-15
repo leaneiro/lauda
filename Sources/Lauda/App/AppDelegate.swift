@@ -62,9 +62,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// so the session stops being rewritten from here on. Measured: the
     /// question about unsaved text comes before this, so a cancelled quit
     /// never gets here, and the documents close after it.
+    /// Edits kept out of the Trash would be lost without a word: those
+    /// documents are asked first, and a Cancel keeps the app open.
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        Workspace.shared.remembersSession = false
-        return .terminateNow
+        guard Workspace.shared.documents.contains(where: \.losesEditsOnClosing) else {
+            Workspace.shared.remembersSession = false
+            return .terminateNow
+        }
+        Workspace.shared.askAboutEditsLostOnQuitting { quit in
+            if quit {
+                Workspace.shared.remembersSession = false
+            }
+            sender.reply(toApplicationShouldTerminate: quit)
+        }
+        return .terminateLater
     }
 
     func applicationDidBecomeActive(_ notification: Notification) {

@@ -735,6 +735,48 @@
         }
       }
     },
+    "Close “%@” without saving?" : {
+      "comment" : "Asked when a tab closes with unsaved changes while its file is in the Trash. %@ is the file's name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fechar “%@” sem salvar?"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "„%@“ ohne Sichern schließen?"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "¿Cerrar “%@” sin guardar?"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Fermer « %@ » sans enregistrer ?"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "“%@”を保存せずに閉じますか？"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "不存储就关闭“%@”吗？"
+          }
+        }
+      }
+    },
     "Couldn't add the image to the document's folder" : {
       "comment" : "Alert title when a dropped or pasted image can't be copied or saved into the document's folder; the system's reason is shown below it.",
       "localizations" : {
@@ -1533,6 +1575,90 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "斜体"
+          }
+        }
+      }
+    },
+    "Keep My Changes" : {
+      "comment" : "Button: the open document's unsaved text is saved over the file.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manter minhas alterações"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Meine Änderungen behalten"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Conservar mis cambios"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Conserver mes modifications"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "自分の変更を残す"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "保留我的更改"
+          }
+        }
+      }
+    },
+    "Keep the changes you made here, or use the file as it is now?" : {
+      "comment" : "Under “… changed while it was in the Trash”.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Você quer manter as alterações feitas aqui ou usar o arquivo como está agora?"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Möchtest du deine Änderungen hier behalten oder die Datei verwenden, wie sie jetzt ist?"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "¿Quieres conservar los cambios hechos aquí o usar el archivo como está ahora?"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Voulez-vous conserver les modifications faites ici ou utiliser le fichier tel qu’il est maintenant ?"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "ここで行った変更を残しますか？それとも現在のファイルを使いますか？"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "要保留你在此处所做的更改，还是使用文件现在的内容？"
           }
         }
       }
@@ -3192,6 +3318,48 @@
         }
       }
     },
+    "The file is in the Trash, so your changes can't be saved. Put it back to keep them." : {
+      "comment" : "Under “Close … without saving?”. “Put back” is the Finder's command that takes a file out of the Trash.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O arquivo está na Lixeira e as alterações não podem ser salvas. Devolva o arquivo para mantê-las."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Die Datei liegt im Papierkorb, daher können deine Änderungen nicht gesichert werden. Lege sie zurück, um sie zu behalten."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "El archivo está en la Papelera y los cambios no se pueden guardar. Recupéralo para conservarlos."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Le fichier est dans la Corbeille et vos modifications ne peuvent pas être enregistrées. Remettez-le en place pour les conserver."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "ファイルがゴミ箱にあるため、変更内容を保存できません。変更を残すには、元の場所に戻してください。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "文件在废纸篓中，无法存储你的更改。将其放回原处即可保留更改。"
+          }
+        }
+      }
+    },
     "This file is in the Trash" : {
       "comment" : "Over a document whose file was moved to the Trash: why its text takes no edits.",
       "localizations" : {
@@ -3309,6 +3477,48 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "未命名"
+          }
+        }
+      }
+    },
+    "Use the File" : {
+      "comment" : "Button: the open document takes the file's text and the unsaved changes are lost.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar o arquivo"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Datei verwenden"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Usar el archivo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Utiliser le fichier"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "ファイルを使う"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "使用文件"
           }
         }
       }
@@ -3672,6 +3882,48 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "阅读约 %lld 分钟"
+          }
+        }
+      }
+    },
+    "“%@” changed while it was in the Trash" : {
+      "comment" : "Asked when a file comes back from the Trash changed, and the open document has unsaved changes too. %@ is the file's name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” mudou enquanto estava na Lixeira"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "„%@“ wurde im Papierkorb geändert"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "“%@” cambió mientras estaba en la Papelera"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "« %@ » a changé pendant qu’il était dans la Corbeille"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "“%@”はゴミ箱にある間に変更されました"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "“%@”在废纸篓中时已被更改"
           }
         }
       }

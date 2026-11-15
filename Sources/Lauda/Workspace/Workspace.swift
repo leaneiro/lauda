@@ -188,6 +188,28 @@ final class Workspace: NSObject, DocumentHost {
         }
     }
 
+    /// Quitting: AppKit's own review of unsaved documents asks nothing of
+    /// one that autosaves in place (measured: no question, the app quits),
+    /// so the documents whose edits are kept out of the Trash are asked
+    /// here, one after the other. The first Cancel ends it with a no.
+    func askAboutEditsLostOnQuitting(then answer: @escaping (Bool) -> Void) {
+        askWhetherToLoseEdits(of: documents.filter(\.losesEditsOnClosing), then: answer)
+    }
+
+    private func askWhetherToLoseEdits(of asked: [MarkdownDocument], then answer: @escaping (Bool) -> Void) {
+        guard let document = asked.first else {
+            answer(true)
+            return
+        }
+        document.askWhetherToLoseEdits { [weak self] close in
+            guard close else {
+                answer(false)
+                return
+            }
+            self?.askWhetherToLoseEdits(of: Array(asked.dropFirst()), then: answer)
+        }
+    }
+
     /// The window's close button: every tab closes, each document asked in
     /// turn, and the session stays as it was, so the tabs come back when
     /// the Dock icon is clicked or the app opens again, as after Quit. It

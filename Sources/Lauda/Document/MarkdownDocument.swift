@@ -45,6 +45,9 @@ final class MarkdownDocument: NSDocument {
     /// What Revert to Saved brings back: the text as the file was opened, or
     /// as it was last saved with Save, as in the Electron edition.
     @ObservationIgnored private var revertText: String?
+    /// The reader is being asked whether to keep unsaved edits or the file
+    /// as it changed in the Trash; nothing is autosaved until they answer.
+    @ObservationIgnored private var asksWhichTextToKeep = false
 
     var scrollSync = ScrollSync()
     /// Whether this document's panes scroll together. The chain on the
@@ -144,7 +147,9 @@ final class MarkdownDocument: NSDocument {
         // autosave of an edit made just before the file went. The document
         // stays edited, so that edit is saved once the file is put back.
         // Saving somewhere else (Save As, Duplicate) is a way out and goes on.
-        guard !Trash.contains(url) else {
+        // Nor while the reader is being asked which text to keep (see
+        // readAgainAfterPutBack): an autosave then would answer for them.
+        guard !Trash.contains(url), !(asksWhichTextToKeep && saveOperation == .autosaveInPlaceOperation) else {
             completionHandler(nil)
             return
         }
@@ -215,24 +220,65 @@ final class MarkdownDocument: NSDocument {
     /// file may have changed while it was there, so the text is read from it
     /// again. Once AppKit is done moving the document, and never over edits
     /// still unsaved: those were kept out of the Trash (see save) and are
-    /// saved now, with nothing more to wait for.
+    /// saved now. When the file changed there as well, only the reader knows
+    /// which of the two texts is the one to keep.
     private func readAgainAfterPutBack() {
         DispatchQueue.main.async { [weak self] in
-            guard let self, !self.isInTrash else { return }
-            guard !self.isDocumentEdited else {
-                self.autosave(withImplicitCancellability: false) { error in
-                    if let error {
-                        Log.documents.failure("Saving a document put back from the Trash", error)
-                    }
-                }
+            guard let self, !self.isInTrash, let fileURL = self.fileURL else { return }
+            guard self.isDocumentEdited else {
+                self.readFile(at: fileURL)
                 return
             }
-            guard let fileURL = self.fileURL, let fileType = self.fileType else { return }
-            do {
-                try self.revert(toContentsOf: fileURL, ofType: fileType)
-            } catch {
-                Log.documents.failure("Reading a document put back from the Trash", error)
+            let onDisk = try? Self.decode(Data(contentsOf: fileURL))
+            guard let onDisk, onDisk != self.savedText else {
+                self.saveKeptEdits()
+                return
             }
+            self.askWhichTextToKeep(over: fileURL)
+        }
+    }
+
+    private func readFile(at fileURL: URL) {
+        guard let fileType else { return }
+        do {
+            try revert(toContentsOf: fileURL, ofType: fileType)
+        } catch {
+            Log.documents.failure("Reading a document put back from the Trash", error)
+        }
+    }
+
+    private func saveKeptEdits() {
+        autosave(withImplicitCancellability: false) { error in
+            if let error {
+                Log.documents.failure("Saving a document put back from the Trash", error)
+            }
+        }
+    }
+
+    /// The file changed in the Trash and the text changed here: asked in a
+    /// sheet, with the tab brought forward as every question about a
+    /// document is. With no window to ask in, the edits stay, unsaved, and
+    /// the next save is AppKit's to settle.
+    private func askWhichTextToKeep(over fileURL: URL) {
+        inWindow { $0.select(self) }
+        guard let window = windowForSheet else { return }
+        asksWhichTextToKeep = true
+        let alert = NSAlert()
+        alert.messageText = String(localized: "“\(title)” changed while it was in the Trash")
+        alert.informativeText = String(localized: "Keep the changes you made here, or use the file as it is now?")
+        alert.addButton(withTitle: String(localized: "Keep My Changes"))
+        alert.addButton(withTitle: String(localized: "Use the File"))
+        alert.beginSheetModal(for: window) { [weak self] response in
+            guard let self else { return }
+            self.asksWhichTextToKeep = false
+            guard response == .alertFirstButtonReturn else {
+                self.readFile(at: fileURL)
+                return
+            }
+            // The reader has seen the file changed and chose: the date the
+            // save compares is the file's of now, so AppKit doesn't ask again.
+            self.fileModificationDate = try? fileURL.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
+            self.saveKeptEdits()
         }
     }
 
@@ -274,7 +320,35 @@ final class MarkdownDocument: NSDocument {
         if isDocumentEdited, fileURL == nil {
             inWindow { $0.select(self) }
         }
+        if losesEditsOnClosing {
+            askWhetherToLoseEdits { [weak self] close in
+                self?.reply(to: delegate, selector: shouldCloseSelector, shouldClose: close, contextInfo: contextInfo)
+            }
+            return
+        }
         super.canClose(withDelegate: delegate, shouldClose: shouldCloseSelector, contextInfo: contextInfo)
+    }
+
+    /// Edits kept out of the Trash (see save) have nowhere to be saved:
+    /// closing loses them, which is the reader's to say.
+    var losesEditsOnClosing: Bool { isDocumentEdited && isInTrash }
+
+    /// Asked in a sheet, with the tab in front. With no window to ask in
+    /// there is nobody to ask, and the answer is yes.
+    func askWhetherToLoseEdits(then answer: @escaping (Bool) -> Void) {
+        inWindow { $0.select(self) }
+        guard let window = windowForSheet else {
+            answer(true)
+            return
+        }
+        let alert = NSAlert()
+        alert.messageText = String(localized: "Close “\(title)” without saving?")
+        alert.informativeText = String(localized: "The file is in the Trash, so your changes can't be saved. Put it back to keep them.")
+        alert.addButton(withTitle: String(localized: "Close"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
+        alert.beginSheetModal(for: window) { response in
+            answer(response == .alertFirstButtonReturn)
+        }
     }
 
     /// Every way of closing ends here (the tab's button, the window, Quit),
