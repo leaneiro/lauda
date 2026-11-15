@@ -89,5 +89,21 @@ struct UIAuditTests {
             stage.note("the document never heard that its file was put back")
         }
         await stage.capture("12-file-put-back")
+
+        // The toolbar lays its items out again when the window changes
+        // size, and with tabs it once kept the old layout after growing.
+        let reopened = try stage.open("ideas.md", text: AuditDocuments.ideas)
+        stage.resize(to: NSSize(width: size.width + 300, height: size.height))
+        await stage.capture("13-two-tabs-window-grown")
+
+        stage.resize(to: NSSize(width: 760, height: size.height))
+        await stage.capture("14-two-tabs-window-narrow")
+
+        stage.resize(to: size)
+        await stage.capture("15-two-tabs-window-back")
+
+        reopened.close()
+        stage.resize(to: NSSize(width: size.width + 300, height: size.height))
+        await stage.capture("16-one-document-window-grown")
     }
 }
