@@ -62,10 +62,14 @@ struct DocumentPanes: View {
     /// as the editor's. Put back, the document in front takes it again,
     /// unless something else has taken it in the meantime.
     private func keyboardFollowsTrash(_ isInTrash: Bool) {
+        if isInTrash {
+            // An open find bar goes too, ours or the editor's own for
+            // replacing: its field would keep the keyboard.
+            document.findSession.close()
+            document.editorActions.performFind(.hideFindInterface)
+        }
         guard let window = workspace.window, let panes = workspace.stack.panes(of: document) else { return }
         if isInTrash {
-            // An open find bar goes too: its field would keep the keyboard.
-            document.findSession.close()
             if let responder = window.firstResponder as? NSView, responder.isDescendant(of: panes) {
                 window.makeFirstResponder(nil)
             }

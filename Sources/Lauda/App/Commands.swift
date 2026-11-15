@@ -90,11 +90,7 @@ struct ExportCommands: Commands {
 struct FindCommands: Commands {
     private var workspace: Workspace { .shared }
 
-    /// None while the file is in the Trash, where nothing in the panes
-    /// answers: the find bar would open under the notice, with the keyboard.
-    private var session: FindSession? {
-        workspace.selected.flatMap { $0.isInTrash ? nil : $0.findSession }
-    }
+    private var session: FindSession? { workspace.selected?.findSessionInReach }
 
     var body: some Commands {
         CommandGroup(after: .textEditing) {

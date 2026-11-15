@@ -207,15 +207,23 @@ final class MarkdownDocument: NSDocument {
         }
     }
 
+    /// What the Find commands reach: nothing while the file is in the
+    /// Trash, where the bar would open under the notice, with the keyboard.
+    var findSessionInReach: FindSession? { isInTrash ? nil : findSession }
+
     /// Out of the Trash, put back by the Finder or moved anywhere else: the
     /// file may have changed while it was there, so the text is read from it
     /// again. Once AppKit is done moving the document, and never over edits
-    /// still unsaved.
+    /// still unsaved: those were kept out of the Trash (see save) and are
+    /// saved now, with nothing more to wait for.
     private func readAgainAfterPutBack() {
         DispatchQueue.main.async { [weak self] in
-            guard let self, !self.isInTrash, !self.isDocumentEdited,
-                let fileURL = self.fileURL, let fileType = self.fileType
-            else { return }
+            guard let self, !self.isInTrash else { return }
+            guard !self.isDocumentEdited else {
+                self.autosave(withImplicitCancellability: false) { _ in }
+                return
+            }
+            guard let fileURL = self.fileURL, let fileType = self.fileType else { return }
             do {
                 try self.revert(toContentsOf: fileURL, ofType: fileType)
             } catch {
