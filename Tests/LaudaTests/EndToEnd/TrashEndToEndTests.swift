@@ -6,7 +6,8 @@ import Testing
 /// workspace with its panes, far off every screen, a file moved as the
 /// Finder moves it, and keys sent to the window as the keyboard sends them.
 /// What a test of the document alone can't see is here: who has the
-/// keyboard, what the editor's view takes, what a save writes.
+/// keyboard, what the editor's view takes, what a save writes. What only
+/// the eye sees (the notice, the faded text) is in the audit's captures.
 extension OpenDocumentsSuites {
 @MainActor
 @Suite(.serialized, .enabled(if: TestMachine.drawsWithMetal))
@@ -21,7 +22,7 @@ struct TrashEndToEndTests {
 
         @MainActor init(text: String = "draft") async throws {
             let scratch = FileManager.default.temporaryDirectory.appendingPathComponent("lauda-e2e-\(UUID().uuidString)")
-            stage = try AuditStage(named: "e2e", appearance: .aqua, into: scratch)
+            stage = try AuditStage(named: "e2e", into: scratch)
             stage.workspace.viewMode = .split
             document = try stage.open("notes.md", text: text)
             stage.resize(to: NSSize(width: 1100, height: 800))
@@ -31,6 +32,20 @@ struct TrashEndToEndTests {
             trashed = trash.appendingPathComponent(home.lastPathComponent)
             try? FileManager.default.removeItem(at: scratch)
             #expect(await stage.wait { editor != nil && keyboardIsInTheEditor })
+        }
+
+        /// Runs `body` on a scene and takes the scene down whatever
+        /// happens in it: a window, documents and a folder left behind
+        /// would be the next suite's to trip over.
+        @MainActor static func run(_ body: (Scene) async throws -> Void) async throws {
+            let scene = try await Scene()
+            do {
+                try await body(scene)
+            } catch {
+                await scene.stage.close()
+                throw error
+            }
+            await scene.stage.close()
         }
 
         @MainActor var window: NSWindow? { stage.window }
@@ -107,145 +122,151 @@ struct TrashEndToEndTests {
     }
 
     @Test("a key typed in the window reaches the text while the file is where it was") func aKeyTypedInTheWindowReachesTheTextWhileTheFileIsWhereItWas() async throws {
-        let scene = try await Scene()
+        try await Scene.run { scene in
 
-        scene.press("x", keyCode: Self.x)
+            scene.press("x", keyCode: Self.x)
 
-        #expect(await scene.stage.wait { Self.typed("x", into: "draft", gives: scene.document.text) })
-        await scene.stage.close()
+            #expect(await scene.stage.wait { Self.typed("x", into: "draft", gives: scene.document.text) })
+        }
     }
 
     @Test("TRASH-01.4 the editor gives up the keyboard and takes no text while the file is in the Trash") func theEditorGivesUpTheKeyboardAndTakesNoTextWhileTheFileIsInTheTrash() async throws {
-        let scene = try await Scene()
-        try await scene.throwAway()
-        let editor = try #require(scene.editor)
+        try await Scene.run { scene in
+            try await scene.throwAway()
+            let editor = try #require(scene.editor)
 
-        #expect(await scene.stage.wait { !scene.keyboardIsInTheEditor })
-        // What a key ends in, what Delete does and what Edit > Undo sends,
-        // given to the editor all the same.
-        editor.insertText("x", replacementRange: NSRange(location: 0, length: 0))
-        editor.tryToPerform(#selector(NSText.delete(_:)), with: nil)
-        editor.tryToPerform(Selector(("undo:")), with: nil)
+            #expect(await scene.stage.wait { !scene.keyboardIsInTheEditor })
+            // What a key ends in, what Delete does and what Edit > Undo sends,
+            // given to the editor all the same.
+            editor.insertText("x", replacementRange: NSRange(location: 0, length: 0))
+            editor.tryToPerform(#selector(NSText.delete(_:)), with: nil)
+            editor.tryToPerform(Selector(("undo:")), with: nil)
 
-        #expect(editor.string == "draft")
-        #expect(scene.document.text == "draft")
-        #expect(!scene.document.isDocumentEdited)
-        #expect(try String(contentsOf: scene.trashed, encoding: .utf8) == "draft")
-        await scene.stage.close()
+            #expect(editor.string == "draft")
+            #expect(scene.document.text == "draft")
+            #expect(!scene.document.isDocumentEdited)
+            #expect(try String(contentsOf: scene.trashed, encoding: .utf8) == "draft")
+        }
     }
 
     @Test("TRASH-01.4 an edit made before the file went is not undone in the Trash") func anEditMadeBeforeTheFileWentIsNotUndoneInTheTrash() async throws {
-        let scene = try await Scene()
-        scene.press("x", keyCode: Self.x)
-        #expect(await scene.stage.wait { Self.typed("x", into: "draft", gives: scene.document.text) })
-        try await scene.throwAway()
-        let editor = try #require(scene.editor)
+        try await Scene.run { scene in
+            scene.press("x", keyCode: Self.x)
+            #expect(await scene.stage.wait { Self.typed("x", into: "draft", gives: scene.document.text) })
+            try await scene.throwAway()
+            let editor = try #require(scene.editor)
 
-        editor.tryToPerform(Selector(("undo:")), with: nil)
-        editor.undoManager?.undo()
+            editor.tryToPerform(Selector(("undo:")), with: nil)
+            editor.undoManager?.undo()
 
-        #expect(Self.typed("x", into: "draft", gives: scene.document.text))
-        await scene.stage.close()
+            #expect(Self.typed("x", into: "draft", gives: scene.document.text))
+        }
     }
 
     @Test("TRASH-01.4 saving writes nothing into the Trash") func savingWritesNothingIntoTheTrash() async throws {
-        let scene = try await Scene()
-        try await scene.throwAway()
-        let before = try scene.modified()
+        try await Scene.run { scene in
+            try await scene.throwAway()
+            let before = try scene.modified()
 
-        scene.document.save(nil)
-        try await Task.sleep(for: .seconds(1))
+            scene.document.save(nil)
+            try await Task.sleep(for: .seconds(1))
 
-        #expect(try scene.modified() == before)
-        #expect(try String(contentsOf: scene.trashed, encoding: .utf8) == "draft")
-        await scene.stage.close()
+            #expect(try scene.modified() == before)
+            #expect(try String(contentsOf: scene.trashed, encoding: .utf8) == "draft")
+        }
     }
 
     @Test("TRASH-01.4 an edit not yet saved stays out of the Trash and is saved once the file is back") func anEditNotYetSavedStaysOutOfTheTrashAndIsSavedOnceTheFileIsBack() async throws {
-        let scene = try await Scene()
-        scene.press("x", keyCode: Self.x)
-        #expect(await scene.stage.wait { scene.document.isDocumentEdited })
-        try await scene.throwAway()
+        try await Scene.run { scene in
+            scene.press("x", keyCode: Self.x)
+            #expect(await scene.stage.wait { scene.document.isDocumentEdited })
+            try await scene.throwAway()
 
-        await withCheckedContinuation { done in
-            scene.document.autosave(withImplicitCancellability: false) { _ in done.resume() }
-        }
-        #expect(try String(contentsOf: scene.trashed, encoding: .utf8) == "draft")
+            await withCheckedContinuation { done in
+                scene.document.autosave(withImplicitCancellability: false) { _ in done.resume() }
+            }
+            #expect(try String(contentsOf: scene.trashed, encoding: .utf8) == "draft")
 
-        try await scene.putBack()
-        await withCheckedContinuation { done in
-            scene.document.autosave(withImplicitCancellability: false) { _ in done.resume() }
+            try await scene.putBack()
+            #expect(Self.typed("x", into: "draft", gives: scene.document.text))
+            // With nothing typed and nothing asked: the document saves by
+            // itself what it had kept.
+            #expect(await scene.stage.wait { (try? String(contentsOf: scene.home, encoding: .utf8)) == scene.document.text })
         }
-        #expect(Self.typed("x", into: "draft", gives: scene.document.text))
-        #expect(try String(contentsOf: scene.home, encoding: .utf8) == scene.document.text)
-        await scene.stage.close()
     }
 
     @Test("TRASH-01.4 the Format menu's commands change nothing while the file is in the Trash") func theFormatMenusCommandsChangeNothingWhileTheFileIsInTheTrash() async throws {
-        let scene = try await Scene()
-        try await scene.throwAway()
-        let editor = try #require(scene.editor)
+        try await Scene.run { scene in
+            try await scene.throwAway()
+            let editor = try #require(scene.editor)
 
-        scene.document.editorActions.toggleBold()
-        scene.document.editorActions.toggleItalic()
-        scene.document.editorActions.insertLink()
+            scene.document.editorActions.toggleBold()
+            scene.document.editorActions.toggleItalic()
+            scene.document.editorActions.insertLink()
 
-        #expect(editor.string == "draft")
-        #expect(scene.document.text == "draft")
-        await scene.stage.close()
+            #expect(editor.string == "draft")
+            #expect(scene.document.text == "draft")
+        }
     }
 
-    @Test("TRASH-01.4 a find bar that was open closes when the file goes to the Trash") func aFindBarThatWasOpenClosesWhenTheFileGoesToTheTrash() async throws {
-        let scene = try await Scene()
-        scene.document.findSession.open(in: .split)
-        #expect(scene.document.findSession.isPresented)
+    @Test("TRASH-01.4 a find bar that was open closes when the file goes to the Trash, and Find reaches nothing there") func aFindBarThatWasOpenClosesWhenTheFileGoesToTheTrash() async throws {
+        try await Scene.run { scene in
+            scene.document.findSession.open(in: .split)
+            #expect(scene.document.findSession.isPresented)
 
-        try await scene.throwAway()
+            try await scene.throwAway()
 
-        #expect(await scene.stage.wait { !scene.document.findSession.isPresented })
-        #expect(await scene.stage.wait { !scene.keyboardIsInTheEditor })
-        await scene.stage.close()
+            #expect(await scene.stage.wait { !scene.document.findSession.isPresented })
+            // And the Find commands have nothing to open until it is back.
+            #expect(scene.document.findSessionInReach == nil)
+            #expect(await scene.stage.wait { !scene.keyboardIsInTheEditor })
+        }
     }
 
     @Test("TRASH-01.2 Escape and a change of tab and back leave the file's document locked") func escapeAndAChangeOfTabAndBackLeaveTheFilesDocumentLocked() async throws {
-        let scene = try await Scene()
-        try await scene.throwAway()
-        let other = try scene.stage.open("other.md", text: "other")
-        #expect(await scene.stage.wait { scene.stage.workspace.selected === other && scene.keyboardIsInTheEditor })
+        try await Scene.run { scene in
+            try await scene.throwAway()
+            #expect(await scene.stage.wait { !scene.keyboardIsInTheEditor })
+            // Escape as it arrives with the notice in front: at whoever has
+            // the keyboard, which is the window.
+            scene.window?.firstResponder?.tryToPerform(#selector(NSResponder.cancelOperation(_:)), with: nil)
+            #expect(scene.document.isInTrash)
+            #expect(scene.editor?.isEditable == false)
 
-        scene.window?.firstResponder?.tryToPerform(#selector(NSResponder.cancelOperation(_:)), with: nil)
-        scene.stage.workspace.select(scene.document)
+            let other = try scene.stage.open("other.md", text: "other")
+            #expect(await scene.stage.wait { scene.stage.workspace.selected === other && scene.keyboardIsInTheEditor })
+            scene.stage.workspace.select(scene.document)
 
-        #expect(await scene.stage.wait { scene.stage.workspace.selected === scene.document && scene.editor?.isEditable == false })
-        #expect(scene.document.isInTrash)
-        #expect(await scene.stage.wait { !scene.keyboardIsInTheEditor })
-        await scene.stage.close()
+            #expect(await scene.stage.wait { scene.stage.workspace.selected === scene.document && scene.editor?.isEditable == false })
+            #expect(scene.document.isInTrash)
+            #expect(await scene.stage.wait { !scene.keyboardIsInTheEditor })
+        }
     }
 
     @Test("TRASH-01.5 another file opens beside it and takes what is typed") func anotherFileOpensBesideItAndTakesWhatIsTyped() async throws {
-        let scene = try await Scene()
-        try await scene.throwAway()
+        try await Scene.run { scene in
+            try await scene.throwAway()
 
-        let other = try scene.stage.open("other.md", text: "other")
-        #expect(await scene.stage.wait { scene.stage.workspace.selected === other && scene.keyboardIsInTheEditor })
-        scene.press("x", keyCode: Self.x)
+            let other = try scene.stage.open("other.md", text: "other")
+            #expect(await scene.stage.wait { scene.stage.workspace.selected === other && scene.keyboardIsInTheEditor })
+            scene.press("x", keyCode: Self.x)
 
-        #expect(await scene.stage.wait { Self.typed("x", into: "other", gives: other.text) })
-        #expect(scene.document.text == "draft")
-        await scene.stage.close()
+            #expect(await scene.stage.wait { Self.typed("x", into: "other", gives: other.text) })
+            #expect(scene.document.text == "draft")
+        }
     }
 
     @Test("TRASH-01.6 put back, the file is read again and the window types into it") func putBackTheFileIsReadAgainAndTheWindowTypesIntoIt() async throws {
-        let scene = try await Scene()
-        try await scene.throwAway()
-        try Data("final".utf8).write(to: scene.trashed)
+        try await Scene.run { scene in
+            try await scene.throwAway()
+            try Data("final".utf8).write(to: scene.trashed)
 
-        try await scene.putBack()
-        #expect(await scene.stage.wait { scene.document.text == "final" && scene.keyboardIsInTheEditor })
-        scene.press("x", keyCode: Self.x)
+            try await scene.putBack()
+            #expect(await scene.stage.wait { scene.document.text == "final" && scene.keyboardIsInTheEditor })
+            scene.press("x", keyCode: Self.x)
 
-        #expect(await scene.stage.wait { Self.typed("x", into: "final", gives: scene.document.text) })
-        await scene.stage.close()
+            #expect(await scene.stage.wait { Self.typed("x", into: "final", gives: scene.document.text) })
+        }
     }
 }
 }

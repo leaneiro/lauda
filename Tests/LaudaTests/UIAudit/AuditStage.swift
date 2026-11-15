@@ -5,7 +5,8 @@ import WebKit
 
 /// The interface audit (Scripts/ui-audit.sh): the real workspace window,
 /// with documents made up for it, walked through its screens and captured
-/// as the window server draws it. Nothing of it shows: the window lives far
+/// as the window server draws it. The end-to-end tests stand on the same
+/// stage, without the captures. Nothing of it shows: the window lives far
 /// off every screen, takes no mouse and no keyboard from whoever is at the
 /// Mac, and the files are in a temporary folder.
 enum UIAudit {
@@ -23,8 +24,9 @@ enum UIAudit {
 
     /// AppKit brings a titled window back onto a screen when it is shown,
     /// and the workspace places its window from a saved frame or centres
-    /// it. For the audit's process only, both leave the window where the
-    /// audit puts it, so it never shows on the screen, not even for a frame.
+    /// it. For the process running the tests, from the first stage on and
+    /// for every window after it, both leave a window where it is put, so
+    /// the stage's never shows on the screen, not even for a frame.
     /// The app's code is untouched, which also lets the same audit run on an
     /// older commit to make the baseline.
     @MainActor static func keepWindowsOffscreen() {
@@ -54,10 +56,14 @@ final class AuditStage {
     private let output: URL
     private var notes: [String] = []
 
-    init(named name: String, appearance: NSAppearance.Name, into output: URL) throws {
+    /// `appearance` is the whole process's while the stage stands, so only
+    /// the audit, which runs alone, asks for one.
+    init(named name: String, appearance: NSAppearance.Name? = nil, into output: URL) throws {
         _ = NSApplication.shared
         UIAudit.keepWindowsOffscreen()
-        NSApp.appearance = NSAppearance(named: appearance)
+        if let appearance {
+            NSApp.appearance = NSAppearance(named: appearance)
+        }
         workspace = Workspace(defaults: TestDefaults(), showsWindow: true)
         MarkdownDocument.host = workspace
         folder = FileManager.default.temporaryDirectory.appendingPathComponent("lauda-ui-audit-\(UUID().uuidString)")

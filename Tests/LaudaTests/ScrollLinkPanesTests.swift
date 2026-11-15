@@ -130,6 +130,7 @@ private final class PanesWindow {
 
 /// The chain on the divider: apart, each pane scrolls on its own; joined
 /// again, the editor comes to the preview, and both follow each other.
+extension OpenDocumentsSuites {
 @MainActor
 @Suite(.serialized, .timeLimit(.minutes(1)), .enabled(if: TestMachine.drawsWithMetal, "the panes draw through Metal"))
 struct ScrollLinkPanesTests {
@@ -178,4 +179,5 @@ struct ScrollLinkPanesTests {
         #expect(!panes.document.previewScrollable)
         #expect(!panes.document.panesScroll)
     }
+}
 }

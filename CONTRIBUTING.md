@@ -131,6 +131,13 @@ They are for what a test of one type can't see, such as who has the
 keyboard or what a save writes. They never use the pasteboard, the real
 Trash or a real click: those belong to whoever is at the Mac.
 
+A suite that puts documents in `NSDocumentController.shared`, or keeps a
+document's panes drawing in a window while it waits, is declared inside
+`OpenDocumentsSuites` (an extension of it), which runs its suites one
+after another: closing every tab closes every document in the process,
+whichever suite opened it, and panes drawing off screen take frames from
+a suite that times a WebKit page.
+
 `Scripts/ui-audit.sh [ref]` (or `make ui-audit`) captures every screen of
 the app, in light and dark and in two window sizes, from the working tree
 and from `ref` (`main` by default), and writes what differs to a folder in
