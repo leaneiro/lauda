@@ -140,6 +140,14 @@ final class MarkdownDocument: NSDocument {
         for saveOperation: NSDocument.SaveOperationType,
         completionHandler: @escaping (Error?) -> Void
     ) {
+        // Nothing is written into the Trash: not by Save, not by the
+        // autosave of an edit made just before the file went. The document
+        // stays edited, so that edit is saved once the file is put back.
+        // Saving somewhere else (Save As, Duplicate) is a way out and goes on.
+        guard !Trash.contains(url) else {
+            completionHandler(nil)
+            return
+        }
         // Taken once, so an edit arriving mid-write isn't recorded as saved.
         let written = text
         super.save(to: url, ofType: typeName, for: saveOperation) { [weak self] error in

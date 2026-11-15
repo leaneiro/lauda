@@ -64,6 +64,8 @@ struct DocumentPanes: View {
     private func keyboardFollowsTrash(_ isInTrash: Bool) {
         guard let window = workspace.window, let panes = workspace.stack.panes(of: document) else { return }
         if isInTrash {
+            // An open find bar goes too: its field would keep the keyboard.
+            document.findSession.close()
             if let responder = window.firstResponder as? NSView, responder.isDescendant(of: panes) {
                 window.makeFirstResponder(nil)
             }
