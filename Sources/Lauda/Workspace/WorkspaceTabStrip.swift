@@ -53,13 +53,10 @@ struct WorkspaceTabStrip: View {
     /// items and at the edge. An exact fit is too tight, and the toolbar then
     /// moves the controls into its overflow menu; four spare points were
     /// enough when measured, six leaves room for a width that isn't whole.
-    /// One gap more is for the flexible space after the tabs, which takes
-    /// up the spare points so the controls sit where they do with a single
-    /// document.
     static func width(in windowWidth: CGFloat, showsWidthButton: Bool) -> CGFloat {
         let gap = ToolbarMetrics.gap
         let button = ToolbarMetrics.buttonSide
-        let spare: CGFloat = 6 + gap
+        let spare: CGFloat = 6
         var controls = gap + viewModesWidth + gap + button + gap
         if showsWidthButton {
             controls += button + gap

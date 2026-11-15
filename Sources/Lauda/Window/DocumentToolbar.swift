@@ -2,9 +2,9 @@ import SwiftUI
 
 /// The window's toolbar: the view mode picker, in preview-only mode the text
 /// width button, and the outline, which is always the last one so it stays
-/// put when the width button comes and goes. The controls line up on the
-/// right whatever is open, so none of them moves when the second document
-/// comes or goes: with two or more, the tabs take the title's place.
+/// put when the width button comes and goes. With two or more documents
+/// open, the tabs take the title's place and the controls line up on the
+/// right; a single document keeps the picker in the middle, as always.
 struct DocumentToolbar: ToolbarContent {
     let workspace: Workspace
     @Binding var viewMode: ViewMode
@@ -24,19 +24,17 @@ struct DocumentToolbar: ToolbarContent {
     var body: some ToolbarContent {
         if workspace.showsTabs {
             tabsItem
-            // The strip is a little narrower than its room (see
-            // WorkspaceTabStrip.width). Without this the controls follow it
-            // at once and the spare points end up at the window's edge.
-            if #available(macOS 26.0, *) {
-                ToolbarSpacer(.flexible)
-            }
+            // primaryAction is the trailing edge on macOS. Left automatic,
+            // these pile up right after the tabs once nothing sits in the
+            // middle to push them across.
+            viewModeItem(placement: .primaryAction)
+            widthItem(placement: .primaryAction)
+            outlineItem(placement: .primaryAction)
+        } else {
+            viewModeItem(placement: .principal)
+            widthItem(placement: .automatic)
+            outlineItem(placement: .automatic)
         }
-        // primaryAction is the trailing edge on macOS. Left automatic,
-        // these pile up right after the tabs once nothing sits in the
-        // middle to push them across.
-        viewModeItem(placement: .primaryAction)
-        widthItem(placement: .primaryAction)
-        outlineItem(placement: .primaryAction)
     }
 
     /// Whether the text width button keeps its place in the toolbar while it
