@@ -862,5 +862,36 @@ struct TrashEndToEndTests {
             #expect(await scene.stage.wait { !scene.isOpen && scene.window == nil })
         }
     }
+
+    @Test("TRASH-01.16 the file deleted while the closing question is up answers it Cancel and leaves an untitled document") func theFileDeletedWhileTheClosingQuestionIsUpAnswersItCancel() async throws {
+        try await Scene.run { scene in
+            try await scene.throwAwayWithAnEditKept()
+            scene.stage.workspace.close(scene.document)
+            _ = try await scene.sheet()
+
+            try FileManager.default.removeItem(at: scene.trashed)
+
+            #expect(await scene.stage.wait { scene.window?.attachedSheet == nil && scene.document.fileURL == nil })
+            #expect(scene.isOpen)
+            #expect(scene.document.isDocumentEdited)
+            #expect(Self.typed("x", into: "draft", gives: scene.document.text))
+        }
+    }
+
+    @Test("TRASH-01.16 the file deleted while quitting asks about it stops the quit") func theFileDeletedWhileQuittingAsksAboutItStopsTheQuit() async throws {
+        try await Scene.run { scene in
+            try await scene.throwAwayWithAnEditKept()
+            var mayQuit: Bool?
+            scene.stage.workspace.askAboutEditsLostOnQuitting { mayQuit = $0 }
+            _ = try await scene.sheet()
+
+            try FileManager.default.removeItem(at: scene.trashed)
+
+            #expect(await scene.stage.wait { mayQuit != nil })
+            #expect(mayQuit == false)
+            #expect(scene.isOpen)
+            #expect(scene.window?.attachedSheet == nil)
+        }
+    }
 }
 }

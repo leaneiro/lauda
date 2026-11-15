@@ -49,9 +49,10 @@ final class MarkdownDocument: NSDocument {
     /// as it changed in the Trash. Until they answer nothing is saved into
     /// the file, and the document neither closes nor lets the app quit.
     @ObservationIgnored private(set) var asksWhichTextToKeep = false
-    /// The question about closing is up: asked again, by a second ⌘W or a
-    /// ⌘Q, it is not put up twice.
-    @ObservationIgnored private var asksWhetherToLoseEdits = false
+    /// The question about closing, while it is up: asked again, by a second
+    /// ⌘W or a ⌘Q, it is not put up twice, and it is taken down when what
+    /// it says stops being true.
+    @ObservationIgnored private var closingQuestion: NSWindow?
     @ObservationIgnored private var trashWatch: DispatchSourceFileSystemObject?
 
     var scrollSync = ScrollSync()
@@ -264,6 +265,12 @@ final class MarkdownDocument: NSDocument {
         displayName = MarkdownDocument().displayName
         // The session forgets the file that is gone.
         inWindow { $0.documentDidSave() }
+        // A question about closing says the file is in the Trash, and its
+        // Close would lose edits that can now be saved somewhere: it is
+        // answered Cancel, and closing again asks what a new document asks.
+        if let closingQuestion {
+            closingQuestion.sheetParent?.endSheet(closingQuestion, returnCode: .alertSecondButtonReturn)
+        }
     }
 
     /// What the Find commands reach: nothing while the file is in the
@@ -412,11 +419,10 @@ final class MarkdownDocument: NSDocument {
             return
         }
         // Asked again (a second ⌘W) while its question is up: one is enough.
-        guard !asksWhetherToLoseEdits else {
+        guard closingQuestion == nil else {
             answer(false)
             return
         }
-        asksWhetherToLoseEdits = true
         let alert = NSAlert()
         alert.messageText = String(localized: "Close “\(title)” without saving?")
         alert.informativeText = String(localized: "The file is in the Trash, so your changes can't be saved. Put it back to keep them.")
@@ -425,8 +431,9 @@ final class MarkdownDocument: NSDocument {
         close.hasDestructiveAction = true
         close.keyEquivalent = ""
         alert.addButton(withTitle: String(localized: "Cancel"))
+        closingQuestion = alert.window
         alert.beginSheetModal(for: window) { [weak self] response in
-            self?.asksWhetherToLoseEdits = false
+            self?.closingQuestion = nil
             answer(response == .alertFirstButtonReturn)
         }
     }
