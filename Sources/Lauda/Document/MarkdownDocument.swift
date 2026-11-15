@@ -46,8 +46,11 @@ final class MarkdownDocument: NSDocument {
     /// as it was last saved with Save, as in the Electron edition.
     @ObservationIgnored private var revertText: String?
     /// The reader is being asked whether to keep unsaved edits or the file
-    /// as it changed in the Trash; nothing is autosaved until they answer.
+    /// as it changed in the Trash. Until they answer nothing is saved into
+    /// the file, and the document neither closes nor lets the app quit.
     @ObservationIgnored private(set) var asksWhichTextToKeep = false
+    /// The question about closing is up: asked again, by a second ⌘W or a
+    /// ⌘Q, it is not put up twice.
     @ObservationIgnored private var asksWhetherToLoseEdits = false
 
     var scrollSync = ScrollSync()
@@ -232,8 +235,8 @@ final class MarkdownDocument: NSDocument {
                 return
             }
             do {
-                // A file that can't be read is not one to write over: the
-                // edits stay kept.
+                // A file that can't be read can't be compared: nothing is
+                // saved now and the edits stay, for the next save to take.
                 guard try Self.decode(Data(contentsOf: fileURL)) != self.savedText else {
                     self.saveKeptEdits()
                     return

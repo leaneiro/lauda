@@ -163,6 +163,11 @@ struct TrashEndToEndTests {
 
     private static let x: UInt16 = 7
 
+    private static func buttons(under view: NSView?) -> [NSButton] {
+        guard let view else { return [] }
+        return ((view as? NSButton).map { [$0] } ?? []) + view.subviews.flatMap { buttons(under: $0) }
+    }
+
     /// Whether `text` is `original` with `key` typed once, wherever the
     /// caret was: where a document opens its caret is not this rule's.
     private static func typed(_ key: String, into original: String, gives text: String) -> Bool {
@@ -734,6 +739,10 @@ struct TrashEndToEndTests {
             let sheet = try await scene.sheet()
 
             #expect(sheet.defaultButtonCell == nil)
+            let buttons = Self.buttons(under: sheet.contentView)
+            #expect(buttons.first { $0.title == "Close" }?.hasDestructiveAction == true)
+            // Escape still means Cancel.
+            #expect(buttons.first { $0.title == "Cancel" }?.keyEquivalent == "\u{1b}")
             try await scene.answer(.alertSecondButtonReturn)
         }
     }

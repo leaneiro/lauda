@@ -71,12 +71,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             Workspace.shared.remembersSession = false
             return .terminateNow
         }
+        // The answer may come before this returns (a question already up
+        // answers no at once), and AppKit takes a reply only after it has
+        // been told to wait for one.
+        var answer: Bool?
+        var waitsForReply = false
         Workspace.shared.askAboutEditsLostOnQuitting { quit in
             if quit {
                 Workspace.shared.remembersSession = false
             }
-            sender.reply(toApplicationShouldTerminate: quit)
+            if waitsForReply {
+                sender.reply(toApplicationShouldTerminate: quit)
+            } else {
+                answer = quit
+            }
         }
+        if let answer {
+            return answer ? .terminateNow : .terminateCancel
+        }
+        waitsForReply = true
         return .terminateLater
     }
 
