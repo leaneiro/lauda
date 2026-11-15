@@ -62,6 +62,11 @@ struct TrashEndToEndTests {
             Self.editors(under: window?.contentView).first { !$0.isHiddenOrHasHiddenAncestor }
         }
 
+        /// How many editors in the window take no text, hidden tabs' too.
+        @MainActor var lockedEditors: Int {
+            Self.editors(under: window?.contentView).filter { !$0.isEditable }.count
+        }
+
         @MainActor var keyboardIsInTheEditor: Bool {
             window?.firstResponder is NSTextView
         }
@@ -233,7 +238,7 @@ struct TrashEndToEndTests {
         }
     }
 
-    @Test("TRASH-01.4 the editor's own replace bar closes when the file goes to the Trash") func theEditorsOwnReplaceBarClosesWhenTheFileGoesToTheTrash() async throws {
+    @Test("TRASH-01.4 the editor's own replace bar closes when the file goes to the Trash and opens again once it is back") func theEditorsOwnReplaceBarClosesWhenTheFileGoesToTheTrash() async throws {
         try await Scene.run { scene in
             scene.document.findSession.replace(in: .split)
             #expect(await scene.stage.wait { scene.editor?.enclosingScrollView?.isFindBarVisible == true })
@@ -242,6 +247,12 @@ struct TrashEndToEndTests {
 
             #expect(await scene.stage.wait { scene.editor?.enclosingScrollView?.isFindBarVisible == false })
             #expect(await scene.stage.wait { scene.window?.firstResponder === scene.window })
+
+            // Hidden from outside the text finder, the bar still opens
+            // again once the file is back.
+            try await scene.putBack()
+            scene.document.findSession.replace(in: .split)
+            #expect(await scene.stage.wait { scene.editor?.enclosingScrollView?.isFindBarVisible == true })
         }
     }
 
@@ -286,8 +297,9 @@ struct TrashEndToEndTests {
             let typing = scene.window?.firstResponder
 
             try Scene.move(scene.home, to: scene.trashed)
-            #expect(await scene.stage.wait { scene.document.isInTrash })
-            try await Task.sleep(for: .milliseconds(300))
+            // Until the panes behind have heard of it, which is when they
+            // would have taken the keyboard: their editor stops taking text.
+            #expect(await scene.stage.wait { scene.document.isInTrash && scene.lockedEditors == 1 })
 
             #expect(scene.window?.firstResponder === typing)
             scene.press("x", keyCode: Self.x)
