@@ -1,4 +1,4 @@
-.PHONY: app run dev icon dmg clean
+.PHONY: app run dev icon dmg clean ui-audit
 
 dmg:
 	Scripts/make-dmg.sh
@@ -19,3 +19,6 @@ icon:
 
 clean:
 	rm -rf .build build
+
+ui-audit:
+	Scripts/ui-audit.sh
