@@ -48,6 +48,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         false
     }
 
+    /// One window is the whole app: closed, the app quits, as it does with
+    /// Quit. The tabs the window's close button closed are kept (see
+    /// Workspace.closeEveryTab) and come back when the app opens again.
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        true
+    }
+
     /// Clicking the Dock icon with no window open brings the tabs back, as
     /// opening the app does: the window's close button keeps them (see
     /// Workspace.closeEveryTab).
