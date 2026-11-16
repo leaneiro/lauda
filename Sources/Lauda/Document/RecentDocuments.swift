@@ -39,6 +39,33 @@ enum RecentDocuments {
         return bookmarks.compactMap { Bookmarks.url(from: $0) }
     }
 
+    /// What Open Recent lists: the files that are there now. One on a disk
+    /// that is not connected stays in the store and comes back with it.
+    static func availableURLs(defaults: UserDefaults = .standard, fileManager: FileManager = .default) -> [URL] {
+        storedURLs(defaults: defaults).filter { fileManager.fileExists(atPath: $0.path) }
+    }
+
+    /// A file that failed to open because it is gone for good (its folder
+    /// is there and the file is not) is not offered again. Its bookmark
+    /// goes if it still resolves, and the menu, built once and kept until
+    /// the revision moves, is built again: a bookmark that stopped
+    /// resolving (measured: a deleted file's does) was already off the
+    /// list, and only an old menu still showed it. With the folder gone
+    /// too (a disk not connected) nothing changes. The other bookmarks are
+    /// kept as they are, not made again.
+    static func forgetIfDeleted(_ url: URL, defaults: UserDefaults = .standard, fileManager: FileManager = .default) {
+        guard !fileManager.fileExists(atPath: url.path),
+            fileManager.fileExists(atPath: url.deletingLastPathComponent().path)
+        else { return }
+        let canonical = url.canonicalPath
+        let bookmarks = defaults.array(forKey: key) as? [Data] ?? []
+        let kept = bookmarks.filter { Bookmarks.url(from: $0)?.canonicalPath != canonical }
+        if kept.count != bookmarks.count {
+            defaults.set(kept, forKey: key)
+        }
+        bumpRevision(defaults)
+    }
+
     static func contains(_ url: URL, defaults: UserDefaults = .standard) -> Bool {
         let canonical = url.canonicalPath
         return storedURLs(defaults: defaults).contains { $0.canonicalPath == canonical }

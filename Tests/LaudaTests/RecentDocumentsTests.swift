@@ -62,4 +62,56 @@ final class RecentDocumentsTests {
         RecentDocuments.clear(defaults: defaults)
         #expect(defaults.integer(forKey: RecentDocuments.revisionKey) > afterNote)
     }
+
+    @Test func aFileThatIsGoneIsNotListedAndOneThatIsThereIs() throws {
+        let kept = try makeFile("kept.md")
+        let gone = try makeFile("gone.md")
+        RecentDocuments.note(gone, defaults: defaults)
+        RecentDocuments.note(kept, defaults: defaults)
+
+        try FileManager.default.removeItem(at: gone)
+
+        #expect(RecentDocuments.availableURLs(defaults: defaults).map(\.lastPathComponent) == ["kept.md"])
+    }
+
+    @Test func aFileThatFailedToOpenLeavesTheListWhenItIsGone() throws {
+        let kept = try makeFile("kept.md")
+        let gone = try makeFile("gone.md")
+        RecentDocuments.note(gone, defaults: defaults)
+        RecentDocuments.note(kept, defaults: defaults)
+        try FileManager.default.removeItem(at: gone)
+        let revision = defaults.integer(forKey: RecentDocuments.revisionKey)
+
+        RecentDocuments.forgetIfDeleted(gone, defaults: defaults)
+
+        #expect(RecentDocuments.storedURLs(defaults: defaults).map(\.lastPathComponent) == ["kept.md"])
+        // The menu is built again without it.
+        #expect(defaults.integer(forKey: RecentDocuments.revisionKey) > revision)
+    }
+
+    @Test func aFileThatIsThereStaysWhateverFailed() throws {
+        let file = try makeFile("there.md")
+        RecentDocuments.note(file, defaults: defaults)
+
+        RecentDocuments.forgetIfDeleted(file, defaults: defaults)
+
+        #expect(RecentDocuments.storedURLs(defaults: defaults).map(\.lastPathComponent) == ["there.md"])
+    }
+
+    /// A disk that is not connected takes the folder with it: the file is
+    /// not listed meanwhile, and is not forgotten.
+    @Test func aFileWhoseFolderIsGoneTooIsKeptForWhenItComesBack() throws {
+        let folder = directory.appendingPathComponent("disk", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let file = folder.appendingPathComponent("away.md")
+        try "x".write(to: file, atomically: true, encoding: .utf8)
+        RecentDocuments.note(file, defaults: defaults)
+        let stored = defaults.array(forKey: "recentDocumentBookmarks")?.count
+
+        try FileManager.default.removeItem(at: folder)
+        RecentDocuments.forgetIfDeleted(file, defaults: defaults)
+
+        #expect(RecentDocuments.availableURLs(defaults: defaults).isEmpty)
+        #expect(defaults.array(forKey: "recentDocumentBookmarks")?.count == stored)
+    }
 }

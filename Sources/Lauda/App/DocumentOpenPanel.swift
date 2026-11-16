@@ -25,6 +25,8 @@ enum DocumentOpenPanel {
             if let error {
                 Log.documents.failure("Opening a document", error)
                 NSApp.presentError(error)
+                // A recent file that is gone is not offered again.
+                RecentDocuments.forgetIfDeleted(url)
             }
             open(Array(urls.dropFirst()), then: completion)
         }

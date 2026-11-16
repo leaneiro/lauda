@@ -15,7 +15,7 @@ struct FileCommands: Commands {
 
     private var recents: [URL] {
         _ = recentsRevision
-        return RecentDocuments.storedURLs()
+        return RecentDocuments.availableURLs()
     }
 
     var body: some Commands {
