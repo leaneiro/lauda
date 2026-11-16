@@ -95,6 +95,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidBecomeActive(_ notification: Notification) {
         Workspace.shared.remembersSession = true
+        RecentDocuments.refreshMenu()
     }
 
     /// The responder-chain form of File > Open, for whatever still sends it.

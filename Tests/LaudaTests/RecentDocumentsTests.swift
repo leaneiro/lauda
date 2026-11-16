@@ -114,4 +114,18 @@ final class RecentDocumentsTests {
         #expect(RecentDocuments.availableURLs(defaults: defaults).isEmpty)
         #expect(defaults.array(forKey: "recentDocumentBookmarks")?.count == stored)
     }
+
+    /// Coming to the front, the app has the menu built again, without the
+    /// file deleted in the Finder meanwhile.
+    @Test func refreshingMovesTheRevisionAndTheListLeavesOutWhatIsGone() throws {
+        let gone = try makeFile("gone.md")
+        RecentDocuments.note(gone, defaults: defaults)
+        let revision = defaults.integer(forKey: RecentDocuments.revisionKey)
+        try FileManager.default.removeItem(at: gone)
+
+        RecentDocuments.refreshMenu(defaults: defaults)
+
+        #expect(defaults.integer(forKey: RecentDocuments.revisionKey) > revision)
+        #expect(RecentDocuments.availableURLs(defaults: defaults).isEmpty)
+    }
 }

@@ -39,6 +39,14 @@ enum RecentDocuments {
         return bookmarks.compactMap { Bookmarks.url(from: $0) }
     }
 
+    /// Has the File menu build Open Recent again. A file deleted in the
+    /// Finder changes nothing here, so the menu built before went on
+    /// showing it; the app coming to the front is when that may have
+    /// happened.
+    static func refreshMenu(defaults: UserDefaults = .standard) {
+        bumpRevision(defaults)
+    }
+
     /// What Open Recent lists: the files that are there now. One on a disk
     /// that is not connected stays in the store and comes back with it.
     static func availableURLs(defaults: UserDefaults = .standard, fileManager: FileManager = .default) -> [URL] {
