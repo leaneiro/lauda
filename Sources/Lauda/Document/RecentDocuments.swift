@@ -39,6 +39,37 @@ enum RecentDocuments {
         return bookmarks.compactMap { Bookmarks.url(from: $0) }
     }
 
+    /// What Open Recent shows for each file: its name, and for files that
+    /// share a name, as many folders before it as it takes to tell them
+    /// apart, the way a path is written and cut short ("…/Notes/draft.md").
+    /// A folder goes by the name the Finder shows, so the Trash reads as
+    /// the Trash.
+    static func menuTitles(for urls: [URL], fileManager: FileManager = .default) -> [String] {
+        var depth = [Int](repeating: 0, count: urls.count)
+        func title(_ index: Int) -> String {
+            let url = urls[index]
+            guard depth[index] > 0 else { return url.lastPathComponent }
+            var folders: [String] = []
+            var folder = url.deletingLastPathComponent()
+            for _ in 0..<depth[index] where folder.path != "/" {
+                folders.insert(fileManager.displayName(atPath: folder.path), at: 0)
+                folder = folder.deletingLastPathComponent()
+            }
+            return (["…"] + folders + [url.lastPathComponent]).joined(separator: "/")
+        }
+        // One folder more for every title still shared, until none is or
+        // the paths have no more folders to give.
+        for _ in 0..<(urls.map(\.pathComponents.count).max() ?? 0) {
+            let titles = urls.indices.map(title)
+            let shared = urls.indices.filter { index in titles.filter { $0 == titles[index] }.count > 1 }
+            guard !shared.isEmpty else { break }
+            for index in shared {
+                depth[index] += 1
+            }
+        }
+        return urls.indices.map(title)
+    }
+
     /// Has the File menu build Open Recent again. A file deleted in the
     /// Finder changes nothing here, so the menu built before went on
     /// showing it; the app coming to the front is when that may have

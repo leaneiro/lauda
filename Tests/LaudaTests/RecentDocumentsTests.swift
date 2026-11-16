@@ -128,4 +128,19 @@ final class RecentDocumentsTests {
         #expect(defaults.integer(forKey: RecentDocuments.revisionKey) > revision)
         #expect(RecentDocuments.availableURLs(defaults: defaults).isEmpty)
     }
+
+    @Test func filesWithNamesOfTheirOwnShowOnlyTheName() {
+        let urls = ["/a/notes/draft.md", "/a/notes/ideas.md"].map { URL(fileURLWithPath: $0) }
+        #expect(RecentDocuments.menuTitles(for: urls) == ["draft.md", "ideas.md"])
+    }
+
+    @Test func filesThatShareANameShowTheFolderBeforeIt() {
+        let urls = ["/a/notes/draft.md", "/a/book/draft.md", "/a/book/ideas.md"].map { URL(fileURLWithPath: $0) }
+        #expect(RecentDocuments.menuTitles(for: urls) == ["…/notes/draft.md", "…/book/draft.md", "ideas.md"])
+    }
+
+    @Test func foldersThatShareANameTooShowOneMore() {
+        let urls = ["/a/x/notes/draft.md", "/a/y/notes/draft.md"].map { URL(fileURLWithPath: $0) }
+        #expect(RecentDocuments.menuTitles(for: urls) == ["…/x/notes/draft.md", "…/y/notes/draft.md"])
+    }
 }

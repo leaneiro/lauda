@@ -25,8 +25,10 @@ struct FileCommands: Commands {
             Button("Open…") { DocumentOpenPanel.run() }
                 .keyboardShortcut("o")
             Menu("Open Recent") {
-                ForEach(recents, id: \.self) { url in
-                    Button(url.lastPathComponent) { DocumentOpenPanel.open([url]) }
+                let recents = recents
+                let titles = RecentDocuments.menuTitles(for: recents)
+                ForEach(Array(recents.enumerated()), id: \.element) { index, url in
+                    Button(titles[index]) { DocumentOpenPanel.open([url]) }
                 }
                 if !recents.isEmpty {
                     Divider()
