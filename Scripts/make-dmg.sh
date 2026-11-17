@@ -53,6 +53,13 @@ if [[ -f Resources/AppIcon.icns && -d "$MOUNT_DIR" ]]; then
     cp Resources/AppIcon.icns "$MOUNT_DIR/.VolumeIcon.icns"
     xcrun SetFile -a C "$MOUNT_DIR" 2>/dev/null || true
 fi
+# No `update without registering applications` below, which classic dmg
+# recipes run: the Finder then deletes the .VolumeIcon.icns copied above and
+# clears the custom icon flag (measured on macOS 27). To check an image,
+# attach it with -nobrowse: `ls -a` on the volume lists .VolumeIcon.icns and
+# `xcrun GetFileInfo -a` on it shows a capital C. Reading the layout back
+# with AppleScript needs the disk's window opened first, or `container
+# window` fails with error -1728.
 osascript - "$MOUNT_DIR" "$WINDOW_WIDTH" "$WINDOW_HEIGHT" "$ICON_SIZE" "$LAUDA_X" "$APPLICATIONS_X" "$ICON_Y" <<'EOF'
 on run {mountDir, windowWidth, windowHeight, iconSize, laudaX, applicationsX, iconY}
     set volumeName to do shell script "basename " & quoted form of mountDir
