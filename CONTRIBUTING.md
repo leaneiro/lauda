@@ -60,7 +60,9 @@ versions other than English and Portuguese are machine drafts too. Review
 them like the strings, and keep the Markdown structure (headings, lists,
 the code block and the table), since the guide demonstrates each feature.
 Keep the app's name wrapped in `<span class="wordmark">Lauda</span>`: the
-preview sets it in the typeface of the app icon.
+preview sets it in the typeface of the app icon. Write each paragraph on
+one line: by default the preview breaks the line at every Return, so a
+paragraph wrapped by hand would show its breaks.
 
 ### Adding a new language
 
@@ -94,7 +96,11 @@ Lauda is a plain SwiftPM package, with no Xcode project. `make run`
 builds and opens the app, `swift test` runs the unit tests, and
 `Scripts/lint.sh` runs the linters. For every pull request, CI builds the
 package, runs the tests, lints and assembles the universal app bundle on
-Apple silicon, then builds and tests again on an Intel Mac.
+Apple silicon, then builds and tests again on an Intel Mac. Tests run in
+parallel, so when the Intel job crashes, the last test its log lists is
+not necessarily the one that crashed: look for a suite that started and
+never finished, and see `Tests/LaudaTests/TestMachine.swift` for what
+that runner can't draw.
 
 The lint catches slips, not style: the Swift here is formatted by hand, so
 swift-format's opinions on indentation, blank lines, line length and the
@@ -138,6 +144,18 @@ after another: closing every tab closes every document in the process,
 whichever suite opened it, and panes drawing off screen take frames from
 a suite that times a WebKit page.
 
+A scroll sync test checks where the text really is: where the element
+that starts the synced line sits (`getBoundingClientRect().top`, as
+`offsetOfItem(startingWith:)` in `PreviewReflowTests` measures it), or
+which text is at the top of each pane. Comparing the line the preview
+reports with the editor's proves nothing: both come from the same
+anchors, so they agree even when the anchors are wrong. See a new sync
+test fail against the old behaviour before trusting it. Measure on an
+everyday document too, such as the welcome guide
+(`Resources/Welcome/<language>.lproj/Welcome.md`), not only on one built
+for the edge case: a short document goes through other paths than a long
+one.
+
 `Scripts/ui-audit.sh [ref]` (or `make ui-audit`) captures every screen of
 the app, in light and dark and in two window sizes, from the working tree
 and from `ref` (`main` by default), and writes what differs to a folder in
@@ -145,6 +163,38 @@ and from `ref` (`main` by default), and writes what differs to a folder in
 meant. The suite behind it, `UIAuditTests`, only runs when `UI_AUDIT_OUT`
 names the folder for the captures, which is the one place a test writes
 outside its temporary folder. It needs the screen unlocked.
+
+### Probing the app
+
+What a test or a diagnostic build meets when it looks at the app from
+code:
+
+- Events made in code reach SwiftUI's gestures and buttons when sent
+  straight to `window.sendEvent`, even with the window off screen and the
+  app in the background (host the view in an `NSHostingView` whose
+  `acceptsFirstMouse` returns true). Posted with `NSApp.postEvent`, a
+  click doesn't drive SwiftUI while the app is inactive.
+- Hover can't be simulated: synthetic `mouseEntered` and `mouseMoved`
+  events change nothing, so a hover look is checked by eye.
+- Liquid Glass is drawn in the order of the views, whatever their
+  `zIndex`. A glass view that has to come to the front is drawn after the
+  others (see `liftedTabsView` in `WorkspaceTabStrip`).
+- Over glass, hierarchical styles such as `.secondary` are drawn vibrant
+  and come out paler than expected. `Color(nsColor: .secondaryLabelColor)`
+  matches the system's toolbar buttons.
+- With the screen locked, a capture of the window comes out blank, but
+  `CALayer.presentation()` still answers, so an animation can be read as
+  numbers.
+- SwiftUI's menu items can't be measured from code: `isEnabled` reads
+  false for commands that work, `NSApp.sendAction` finds no action, and
+  `performKeyEquivalent(with:)` returns true without any effect to
+  observe. Test the function a command calls, and try the menu by hand.
+- `cacheDisplay` doesn't capture a WKWebView, which comes out blank.
+  `UIAudit` captures the window as the window server composes it.
+- The SwiftUI hosting view is flipped: y grows downward from its top
+  edge.
+- In zsh, `log` is a builtin. Read the app's log with
+  `/usr/bin/log show --predicate 'subsystem == "com.carneirolabs.lauda"'`.
 
 ### Settings and logs
 
@@ -154,6 +204,41 @@ outside its temporary folder. It needs the screen unlocked.
 - Failures worth diagnosing go to the system log through `Log`
   (`os.Logger`, subsystem `com.carneirolabs.lauda`). Never log document
   text or file names: people may attach these logs to public bug reports.
+
+### The one window
+
+Every document is a tab of one window, the workspace's. AppKit owns the
+window and SwiftUI draws in it, toolbar and title included. Each file is
+a `MarkdownDocument`, an `NSDocument` with no window of its own:
+`makeWindowControllers` adds it as a tab, and the one window controller
+moves to the selected document, so the title, Save and sheets reach it.
+Each document keeps its own editor and preview alive (`DocumentStack`),
+and switching tabs only changes which set is hidden.
+
+One editor and one preview shared by every tab, with the text swapped on
+a switch, was tried and dropped: undo, the caret, the find state and the
+scroll position leaked from one document into the next, and text being
+composed with an input method could land in the wrong file. A set per
+document costs a text view and a web view for each open file, as a window
+per document did.
+
+What AppKit was measured to do around this window is written beside the
+code that depends on it: the close button
+(`MarkdownDocument.shouldCloseWindowController`), the order of a quit
+(`AppDelegate.applicationShouldTerminate`), a menu that observed state
+doesn't rebuild (`FileCommands`) and the toolbar that has to lay out
+again when the window grows (`Workspace.layOutToolbarAgain`). Two rules
+live nowhere else:
+
+- Never wrap a tab change in a global `withAnimation`. Together with the
+  title bar changing its layout, the update came late about one time in
+  three and left a closed document's panes on screen with the keyboard.
+  The workspace shows the panes itself, and the tab strip animates on its
+  own with `.animation(_:value:)`.
+- A `@MainActor` test waiting for work sent with `DispatchQueue.main.async`
+  (closing every tab is one) has to `await Task.sleep`. Spinning
+  `RunLoop.current.run(until:)` doesn't run those blocks, since the test
+  itself runs inside one.
 
 ### The editor uses TextKit 1 on purpose
 
