@@ -338,7 +338,12 @@ struct TrashEndToEndTests {
             try Data("final".utf8).write(to: scene.trashed)
 
             try await scene.putBack()
-            #expect(await scene.stage.wait { scene.document.text == "final" && scene.keyboardIsInTheEditor })
+            // The editor shows the text read a moment after the document
+            // has it: a key pressed in between went into the text before
+            // (seen on the CI's Apple silicon runner).
+            #expect(await scene.stage.wait {
+                scene.document.text == "final" && scene.editor?.string == "final" && scene.keyboardIsInTheEditor
+            })
             scene.press("x", keyCode: Self.x)
 
             #expect(await scene.stage.wait { Self.typed("x", into: "final", gives: scene.document.text) })
@@ -671,7 +676,12 @@ struct TrashEndToEndTests {
             try Data("final".utf8).write(to: scene.trashed)
             try await scene.putBack()
             try await scene.answer(.alertSecondButtonReturn)
-            #expect(await scene.stage.wait { scene.document.text == "final" && scene.keyboardIsInTheEditor })
+            // The editor shows the text read a moment after the document
+            // has it: a key pressed in between went into the text before
+            // (seen on the CI's Apple silicon runner).
+            #expect(await scene.stage.wait {
+                scene.document.text == "final" && scene.editor?.string == "final" && scene.keyboardIsInTheEditor
+            })
 
             scene.press("y", keyCode: 16)
 
